@@ -49,36 +49,35 @@ _Env.load_from_file(...)_ has up to 3 arguments:
 
    - _.env_
 
-    Use always
+     Use always
 
-  - _.unix.env_
+   - _.unix.env_
 
-    Use for a UNIX-like: _system_ should contain "aix", "bsd", "darwin", "linux"
+     Use for a UNIX-like: _system_ should contain _aix_ or _bsd_ or _darwin_ or _linux_
 
-  - _.bsd.env_
+   - _.bsd.env_
 
-    Use for a BSD-like: _system_ should contain "bsd" or "darwin"
+     Use for a BSD-like: _system_ should contain _bsd_ or _darwin_
 
-  - _.linux.env_
+   - _linux.env_
 
-    Use for a UNIX-like non-BSD: _system_ should contain "linux"
+     Use for a UNIX-like non-BSD: _system_ should contain _linux_
 
-  - _.darwin.env_
+   - _.darwin.env_
 
-    Use for macOS only: _system_ should contain "darwin"
+     Use for macOS only: _system_ should contain _darwin_
 
-  - _.vms.env_
+   - _.vms.env_
 
-    Use for any VMS-compliant system: _system_ should contain "vms"
+     Use for any VMS-compliant system: _system_ should contain _vms_
 
-  - _.windows.env_
+   - _.windows.env_
 
-    Use for Windows or OS/2 only: _system_ should contain "windows" or "os2"
+     Use for Windows or OS/2 only: _system_ should contain _windows_ or _os2_
 
 3. Path _default_dir_
 
   Alternative directory to look for the default files in, when specified as relative, will always use the current directory to reslove
-
 
 If it fails to determine _system_ as above (like _cygwin_, _java_, _MSYS_, etc.), it will analyze the current directory path and make decision based on directory separator character: _unix_, _vms_ or _windows_
   
