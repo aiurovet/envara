@@ -1,0 +1,52 @@
+[project]
+name = "envara"
+version = "0.1.0"
+description = "Expand environment variables and program arguments in a string, parse general and OS-specific .env  files"
+authors = [{name="Alexander Iurovetski", email="aiurovet@gmail.com"}]
+maintainers = [{name="Alexander Iurovetski", email="aiurovet@gmail.com"}]
+license = "MIT"
+license-files = ["LICENSE.txt"]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = []
+keywords = [".env", "cli", "dotenv", "env", "environment"]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "pytest",
+    "pytest-mock",
+    "coverage",
+]
+
+[project.scripts]
+envara = "envara.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/aiurovet/envara"
+Repository = "https://github.com/aiurovet/envara.git"
+Documentation = "https://github.com/aiurovet/envara/blob/main/README.md"
+Changelog = "https://github.com/aiurovet/envara/blob/main/CHANGELOG.md"
+Issues = "https://github.com/aiurovet/envara/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["tests"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''

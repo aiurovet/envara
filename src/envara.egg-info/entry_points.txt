@@ -1,0 +1,2 @@
+[console_scripts]
+svg2many = svg2many.__main__:main

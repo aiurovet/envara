@@ -1,0 +1,5 @@
+graft examples
+include LICENSE.txt
+include README.md
+
+prune tests
