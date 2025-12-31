@@ -147,6 +147,17 @@ class Env:
 
             alt_val = match.group(4) if (use_alt) else ''
 
+            # Do not expand if the substitution is not found, and the matched
+            # pattern should be kept unchanged
+
+            if ((value is None) and keep_unknown):
+                next_pos += len(found)
+
+                if (use_alt and (action == '?')):
+                    print(alt_val, file=sys.stderr)
+
+                continue
+
             # Set the value depending on action and the above flags
 
             match action:
