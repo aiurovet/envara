@@ -83,4 +83,4 @@ If it fails to determine _system_ as above (like _cygwin_, _java_, _MSYS_, etc.)
   
 If you do not specify your own _.env_ file or directory, _with_defaults_ will be considered as _True_, and the default files listed above will be searched in _default_dir_ or in the current directory if the former is omitted too.
 
-## Good Luck
+## __Good Luck!__
