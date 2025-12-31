@@ -65,7 +65,10 @@ class TestExpandConditionalPatterns:
         ("a${bcd:?Test print}b", {"a": "bcd"}, 0, [], False, "ab", 1),
         ("a${bcd:?Test print}b", {"a": "bcd"}, 0, [], True, "a${bcd:?Test print}b", 1),
     ])
-    def test_expand_conditional_patterns(self, mocker: MockerFixture, input: str, env: dict[str, str], arg_cnt: int, args: list[str], keep_unknown: bool, expected: str, exp_prints: int):
+    def test_expand_conditional_patterns(
+        self, mocker: MockerFixture, input: str, env: dict[str, str], arg_cnt: int,
+        args: list[str], keep_unknown: bool, expected: str, exp_prints: int):
+
         # Arrange
         keys_to_clear = list((env or {}).keys())
         for k, v in (env or {}).items():
@@ -106,7 +109,10 @@ class TestExpandExplicitPatterns:
         ("a$a$1${b}", {"a": "efg1"}, 1, ["x"], False, "aefg1x"),
         ("a$a${1}${b}", {"a": "efg1"}, 1, ["x"], True, "aefg1x${b}"),
     ])
-    def test_expand_explicit_patterns(self, input: str, env: dict[str, str], arg_cnt: int, args: list[str], keep_unknown: bool, expected: str):
+    def test_expand_explicit_patterns(
+        self, input: str, env: dict[str, str], arg_cnt: int, args: list[str],
+        keep_unknown: bool, expected: str):
+
         # Arrange
         keys_to_clear = list((env or {}).keys())
         for k, v in (env or {}).items():
@@ -154,7 +160,10 @@ class TestGetArg:
         (["a1", "a2"], 3, 2, False, ""),
         (["a1", "a2"], 3, 2, True, None),
     ])
-    def test_get_arg(self, args: list[str] | None, index: int, count: int, keep_unknown: bool, expected: str):
+    def test_get_arg(
+        self, args: list[str] | None, index: int, count: int,
+        keep_unknown: bool, expected: str):
+
         # Call the method
         result = Env._Env__get_arg(args, index, count, keep_unknown)
 
@@ -182,7 +191,10 @@ class TestGetVar:
         ({"a": "c", "b": "cd"}, "!a", False, ("", "c")),
         ({"a": "c", "b": "cd"}, "!a", True, (None, "c")),
     ])
-    def test_get_var(self, env: dict[str, str], key: str, keep_unknown: bool, expected: tuple[str, str]):
+    def test_get_var(
+        self, env: dict[str, str], key: str, keep_unknown: bool,
+        expected: tuple[str, str]):
+
         # Arrange
         keys_to_clear = list((env or {}).keys())
         for k, v in (env or {}).items():

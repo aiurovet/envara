@@ -187,7 +187,9 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def __expand_explicit_patterns(input: str, arg_cnt: int, args: list[str] = None, keep_unknown: bool = False) -> str:
+    def __expand_explicit_patterns(
+        input: str, arg_cnt: int,
+        args: list[str] = None, keep_unknown: bool = False) -> str:
         """
         Return given string expanded in a single pass with the environment
         variables' plain pattern and, optionally, arguments' plain pattern
@@ -258,7 +260,9 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def __get_arg(args: list[str], index: int, count: int, keep_unknown: bool = False) -> str:
+    def __get_arg(
+        args: list[str], index: int, count: int,
+        keep_unknown: bool = False) -> str:
         """
         Soft argument getter: if index was not found, return None or the empty
         string depending on keep_unknown
