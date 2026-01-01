@@ -12,8 +12,46 @@
 
 import os
 import re
+from enum import IntEnum, IntFlag
 import sys
 from typing import Final
+
+###############################################################################
+# Flags impacting string expansion behaviour
+###############################################################################
+
+class EnvExpandFlags(IntFlag):
+    # No flag set
+    NONE = 0
+
+    # Expand escaped characters: \\ or `\`, \n or `n, \uNNNN or `uNNNN`, etc.
+    # (depends on NATIVE_ESCAPE flag)
+    DECODE_ESCAPED = (1<<0)
+
+    # Remove hash '#' (outside the quotes if found) and everything beyond that
+    REMOVE_LINE_COMMENT = (1<<2)
+
+    # Remove leading and trailing quote, don't expand single-quoted str: '...'
+    REMOVE_QUOTES = (1<<3)
+
+    # If a string is embraced in apostrophes, don't expand it
+    SKIP_SINGLE_QUOTED = (1<<4)
+
+    # Default set of flags
+    DEFAULT = (DECODE_ESCAPED | REMOVE_LINE_COMMENT | \
+               REMOVE_QUOTES | SKIP_SINGLE_QUOTED)
+
+###############################################################################
+
+class EnvQuoteType(IntEnum):
+    # String with no leading quote
+    NONE = 0,
+
+    # Single-quoted string
+    SINGLE = 1,
+
+    # Double-quoted string
+    DOUBLE = 2
 
 ###############################################################################
 # Implementation
@@ -24,24 +62,25 @@ class Env:
     Class for string expansions
     """
 
-    FLAGS: Final = re.DOTALL | re.UNICODE
+    # Regex to find references to arguments ($n or ${n} or %n) by 1-based index
+    # % though will work under Windows only
+    ARGS_RE: Final = re.compile(
+        r'\$(\d+)|\${(\d+)}|%(\d+)', flags=(re.DOTALL | re.UNICODE))
 
-    CONDITIONAL_RE: Final = re.compile(
-        r'\$\{(\d+|[A-Za-z_!][A-Za-z_\d]*)([:]?)([\+\-\=\?])([^}]*)\}', flags=FLAGS)
-
-    EXPLICIT_RE: Final = re.compile(
-        r'(\$(\d+|[A-Za-z_][A-Za-z_\d]*))|(\${(\d+|[A-Za-z_!][A-Za-z_\d]*)})', flags=FLAGS)
+    # Flag indicating whether the script is running under Windows or not
+    IS_WINDOWS: Final = os.sep == '\\'
 
     ###########################################################################
 
     @staticmethod
-    def expand(input: str, args: list[str] = None, keep_unknown: bool = False) -> str:
+    def expand(
+        input: str, args: list[str] = None,
+        flags: EnvExpandFlags = EnvExpandFlags.DEFAULT):
         """
-        Return given string expanded with environment variables and,
-        optionally, with arguments, following UNIX conventions: $ABC, ${ABC},
-        and generally, ${[!]ABC[:][-+=?]${...}}.
-        
-        Windows notation %ABC%, and PowerShell's $env:ABC, are ignored
+        Unquote the input if required, remove trailing line comment if
+        required, expand the result with the arguments if required, expand
+        the result with the environment variables' values. The method follows
+        minimal POSIX conventions: $ABC and ${ABC}, as well as %ABC% on Windows
         
         :param input: Input string to expand
         :type input: str
@@ -51,309 +90,191 @@ class Env:
         :rtype: str
         """
 
-        # Initialize variables
+        # For input as None or the empty string, return empty string
 
-        argc: int = 0 if (args is None) else len(args)
-        prev: str = ''
+        if (not input):
+            return ''
 
-        # Hide escaped characters
+        # If the user indicator is found, expand the string
 
-        next: str = (input or prev)\
-            .replace(r'\\', '\x01')\
-            .replace(r'\$', '\x02')
-
-        # Repeat expansions in a loop to ensure all complex embeddings
-        # get resolved
-
-        while (next != prev):
-            prev = next
-
-            next = Env.__expand_explicit_patterns(
-                next, argc, args, keep_unknown)
-
-            next = Env.__expand_conditional_patterns(
-                next, argc, args, argc, keep_unknown)
-
-        # Unhide escaped characters
-
-        next = next\
-            .replace('\x02', r'\$')\
-            .replace(r'\x01', r'\\')
-
-        return next
-
-    ###########################################################################
-
-    @staticmethod
-    def __expand_conditional_patterns(input: str, arg_cnt: int, args: list[str] = None, keep_unknown: bool = False) -> str:
-        """
-        Return given string expanded in a single pass with the environment
-        variables' conditional pattern and, optionally, conditional arguments'
-        pattern
-        
-        :param input: Input string to expand
-        :type input: str
-        :param args: List of arguments to expand from $1, ...
-        :type input: str
-        :return: Expanded string
-        :rtype: str
-        """
-
-        # Initialize the previous and current value of the string being expanded
-
-        next_pos = 0
+        quote_type = EnvQuoteType.NONE
         result = input
 
-        # Loop until there is no more change in the string being expanded
+        # If unquoting requested, do that treating a single-quoted input
+        # as literal (no further expansion) if required
 
-        while True:
-            # Search again and break if nothing found
+        if (flags & EnvExpandFlags.REMOVE_QUOTES):
+            result, quote_type = Env.unquote(result)
 
-            match = Env.CONDITIONAL_RE.search(result, pos=next_pos)
+            if ((quote_type == EnvQuoteType.SINGLE) and \
+                (flags & EnvExpandFlags.SKIP_SINGLE_QUOTED)):
+                return result
 
-            if (match is None):
-                break
+        # Remove line comment if required
 
-            # Get the full pattern found, the key/index and position for
-            # the next check
+        if ((quote_type == EnvQuoteType.NONE) and \
+            (flags & EnvExpandFlags.REMOVE_LINE_COMMENT)):
+            result = Env.remove_line_comment(result)
 
-            found = match.group(0)
-            key = match.group(1)
-            next_pos = match.start(0)
+        # If the user indicator is found, expand the string
 
-            # Try to parse the index
+        if ('~' in result):
+            result = os.path.expanduser(result)
 
-            arg_idx = None if (args is None) else Env.__try_parse_int(key)
+        # Expand arguments, then the environment variables if the respective
+        # prefix is found in the string
 
-            if (arg_idx is None):
-                value, key = Env.__get_var(key, keep_unknown)
-            else:
-                value = Env.__get_arg(args, arg_idx, arg_cnt, keep_unknown)
+        if (('$' in result) or (Env.IS_WINDOWS and ('%' in result))):
+            result = Env.expandargs(result, args)
+            result = os.path.expandvars(result)
 
-            # Get the action (question mark, equal sign, plus or minus) as
-            # well as the empty-value-as-None flag (colon)
+        # Expand escaped characters like \t, \n, \xNN, \uNNNN if needed
 
-            action = match.group(3)
-            has_colon = True if (match.group(2)) else False
-
-            # Set the flag indicating whether the alternative value should
-            # be used or not
-
-            use_alt = \
-                (has_colon and (not value)) or \
-                ((not has_colon) and (value is None))
-
-            # Get the alternative value if needed
-
-            alt_val = match.group(4) if (use_alt) else ''
-
-            # Do not expand if the substitution is not found, and the matched
-            # pattern should be kept unchanged
-
-            if ((value is None) and keep_unknown):
-                next_pos += len(found)
-
-                if (use_alt and (action == '?')):
-                    print(alt_val, file=sys.stderr)
-
-                continue
-
-            # Set the value depending on action and the above flags
-
-            match action:
-                case '?':
-                    if (use_alt):
-                        print(alt_val, file=sys.stderr)
-                        value = ''
-                case '=':
-                    if (use_alt):
-                        value = alt_val
-                        if (key):
-                            os.environ[key] = value
-                case '-':
-                    if (use_alt):
-                        value = alt_val
-                case '+':
-                    if (not use_alt):
-                        value = alt_val
-
-            # Perform the actual expansion
-
-            result = result.replace(found, value)
-            next_pos += len(value) - len(found)
+        if ((flags & EnvExpandFlags.DECODE_ESCAPED) and ('\\' in result)):
+            result = result.encode().decode('unicode_escape')
 
         return result
 
     ###########################################################################
 
     @staticmethod
-    def __expand_explicit_patterns(
-        input: str, arg_cnt: int,
-        args: list[str] = None, keep_unknown: bool = False) -> str:
+    def expandargs(input: str, args: list[str] = None) -> str:
         """
-        Return given string expanded in a single pass with the environment
-        variables' plain pattern and, optionally, arguments' plain pattern
+        Expand references to an array of arguments by index
         
-        :param input: Input string to expand
+        :param input: String being expanded
         :type input: str
-        :param args: List of arguments to expand from $1, ...
-        :type args: str
-        :param keep_unknown: If True, do not replace the found patterns with
-                             the empty string
-        :type input: str
-        :return: Expanded string
-        :rtype: str
-        """
-
-        # Initialize the previous and current value of the string being
-        # expanded
-
-        next_pos = 0
-        result = input
-
-        # Loop until there is no more change in the string being expanded
-
-        while True:
-            # Search continuosly until nothing found
-
-            match = Env.EXPLICIT_RE.search(result, pos=next_pos)
-
-            if (match is None):
-                break
-
-            # Get the full pattern found, the key/index and position for
-            # the next check
-
-            end_grp_pos = match.end(1)
-
-            if (end_grp_pos >= 0):
-                found = match.group(1)
-                key = match.group(2)
-            else:
-                end_grp_pos = match.end(3)
-                found = match.group(3)
-                key = match.group(4)
-
-            next_pos = end_grp_pos
-
-            # Try to parse an index if the arguments passed
-
-            arg_idx = None if (arg_cnt <= 0) else Env.__try_parse_int(key)
-
-            # Get the value from the environment or the arguments
-
-            if (arg_idx is None):
-                value, _ = Env.__get_var(key, keep_unknown)
-            else:
-                value = Env.__get_arg(args, arg_idx, arg_cnt, keep_unknown)
-
-            # Perform the actual replacement
-
-            if (value is None):
-                continue
-
-            result = result.replace(found, value)
-            next_pos += len(value) - len(found)
-
-        return result
-
-    ###########################################################################
-
-    @staticmethod
-    def __get_arg(
-        args: list[str], index: int, count: int,
-        keep_unknown: bool = False) -> str:
-        """
-        Soft argument getter: if index was not found, return None or the empty
-        string depending on keep_unknown
-        
-        :param args: The list of arguments
+        :param args: List of arguments to refer to
         :type args: list[str]
-        :param keep_unknown: If True, and the index is not in bounds,
-                             return None. Otherwise, if the index is not in
-                             bounds, return the empty string
-        :type keep_unknown: bool
-        :return: The value of the environment variable if found, or None/empty,
-                 depending on keep_unknown
+        :return: Expanded string
         :rtype: str
         """
 
-        # If index is out of bounds key, return None or the empty string
-        # depending on keep_unknown
+        if (not input):
+            return ''
 
-        if ((index < 1) or (index > count)):
-            return None if (keep_unknown) else ''
+        arg_cnt = len(args)
 
-        # If the index is in boundsm, return the value
+        def matcher(match):
+            idx_str = match.group(1) or match.group(2)
 
-        return args[index - 1]
+            if ((not idx_str) and Env.IS_WINDOWS):
+                idx_str = match.group(3)
 
-    ###########################################################################
+                if (not idx_str):
+                    return match.group(0)
 
-    @staticmethod
-    def __get_var(key: str, keep_unknown: bool = False) -> tuple[str, str]:
-        """
-        Soft environment variable getter: if key was not found, return None
-        or the empty string depending on keep_unknown; if key starts with
-        the exclamation mark, retrieve the value of the variable by reduced
-        key, then use it as a key to get another value
-        
-        :param key: The name of the variable
-        :type key: str
-        :param keep_unknown: If True, and the key is not present, return None
-                             Otherwise, if the key is not present, return empty
-        :type keep_unknown: bool
-        :return: The value of the environment variable if found, or None/empty,
-                 depending on keep_unknown as well as the alternative key or None
-                 depending on whether the original one had the exclamation mark
-                 as prefix or not
-        :rtype: tuple[str, str]
-        """
+            idx_int = int(idx_str) - 1
 
-        alt_key: str = None
+            if ((idx_int >= 0) and (idx_int < arg_cnt)):
+                return args[idx_int]
 
-        # If key is prefixed with the exclamation mark, exclude it and retrieve
-        # the value, then set that as a key to another value
+            return match.group(0)
 
-        if ((len(key) > 1) and (key[0] == '!')):
-            key = key[1:]
-            key = os.environ[key] if (key in os.environ) else None
-            alt_key = key
-
-        # If key is None or empty, return None or the empty string depending on
-        # keep_unknown
-
-        if (not key):
-            return (None if (keep_unknown) else '', alt_key)
-
-        # If key is found, return the value. Otherwise, if keep_unknown,
-        # return None
-
-        if (key in os.environ):
-            return (os.environ[key], alt_key)
-        elif (keep_unknown):
-            return (None, alt_key)
-
-        # If got here, return the empty string
-
-        return ('', alt_key)
+        return Env.ARGS_RE.sub(matcher, input)
 
     ###########################################################################
 
     @staticmethod
-    def __try_parse_int(input: str) -> int | None:
+    def remove_line_comment(input: str) -> tuple[str, EnvQuoteType]:
         """
-        Return integer parsed from a string or None if that is impossible
+        Remove the input's line comment: from # outside the quotes to the
+        end of the first line, and return the result. If the input is a
+        multi-line string, only the first line will be reduced, and the rest
+        appended
         
-        :param input: String to parse
+        :param input: String being truncated
         :type input: str
-        :return: Result of parsing or None
-        :rtype: int
+        :return: string with the line comment removed, and an indicator of
+                 what type of quote was encountered
+        :rtype: (str, EnvQuote)
         """
 
-        try:
-            return int(input)
-        except:
-            return None
+        # If input is None or empty, return the empty string
+
+        if (not input):
+            return ''
+
+        # Find the start of a line comment in the input, and
+        # return the input unchanged if a line comment was not
+        # found
+
+        beg_pos = input.find('#')
+
+        if (beg_pos < 0):
+            return input
+
+        # Find the end of a line considering either POSIX or Windows
+        # line breaks
+
+        end_pos = input.find('\n')
+
+        if ((end_pos >= 2) and input[end_pos - 2] == '\r'):
+            end_pos = end_pos - 1
+
+        # Set result to the substring from the beginning to the line comment
+        # start, then append everything beyond the line end if found
+
+        result = input[0:beg_pos].rstrip()
+
+        if ((end_pos >= 0) and (end_pos < len(input) - 1)):
+            result += input[end_pos:]
+
+        # Return the result with the trailing spaces removed
+
+        return result
+
+    ###########################################################################
+
+    @staticmethod
+    def unquote(input: str) -> tuple[str, EnvQuoteType]:
+        """
+        Remove the input's embracing quotes. Neither leading, nor trailing
+        white spaces removed before checking the leading quotes. Use .strip()
+        yourself before calling this method if needed.
+        
+        :param input: String being expanded
+        :type input: str
+        :return: Unquoted string, and a number indicating the level of quoting:
+                 0 = not quoted, 1 = single-quoted, 2 = double-quoted
+        :rtype: str
+        """
+
+        # If input is None or empty, return the empty string
+
+        if (not input):
+            return ('', EnvQuoteType.NONE)
+
+        # Initialise result to be returned as well as the first character
+
+        result = input
+        c1 = result[0]
+
+        # Validate and unquote a single-quoted input, then return the
+        # result if required
+
+        if (c1 == "'"):
+            end_pos = input.find(c1, 1)
+
+            if (end_pos < 0):
+                raise ValueError(f'Unterminated single-quoted string: {input}')
+
+            return (input[1:end_pos], EnvQuoteType.SINGLE)
+
+        # Validate and unquote a double-quoted input as well as replace
+        # escaped double-quotes with the plain ones
+
+        if (c1 == '"'):
+            result = result.replace('\\"', '\x01')
+            end_pos = result.find(c1, 1)
+
+            if (end_pos < 0):
+                raise ValueError(f'Unterminated double-quoted string: {input}')
+
+            result = result[1:end_pos].replace('\x01', '"')
+            
+            return (result, EnvQuoteType.DOUBLE)
+
+        return (result, EnvQuoteType.NONE)
 
 ###############################################################################

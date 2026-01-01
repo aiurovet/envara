@@ -1,6 +1,6 @@
 # envara (C) Alexander Iurovetski 2025
 
-## A library to expand environment variables and program arguments in a string, parse general and OS-specific .env  files
+## A library to expand environment variables, program arguments and special characters in a string, as well as parse general and OS-specific .env  files
 
 This library allows to expand environment variables and program arguments in a string, parse general and OS-specific .env  files.
 

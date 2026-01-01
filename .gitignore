@@ -1,0 +1,20 @@
+.coverage
+.idea
+.vs/
+
+# Python
+__pycache__/
+.pytest_cache
+.venv
+*.pyc
+*.pyd
+*.pyo
+
+# Distributions and packaging
+.Python
+build/
+dist/
+wheels/
+*.egg-info/
+*.egg
+
