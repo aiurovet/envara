@@ -7,10 +7,9 @@
 ###############################################################################
 
 import os
-import sys
 import pytest
 
-from src.envara.env import Env, EnvExpandFlags, EnvQuoteType
+from env import Env, EnvExpandFlags, EnvQuoteType
 
 ###############################################################################
 

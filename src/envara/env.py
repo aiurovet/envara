@@ -1,61 +1,24 @@
 ###############################################################################
 # svg2many (C) Alexander Iurovetski 2025
 #
-# A class to read series of key=value lines from a text file and set those
-# as environment variables.
+# A class to expand environment variables, user info (~), arguments from a
+# list and escaped characters (\t, \n, etc.) in a string. As well as remove
+# line comments if needed
 #
-# Differs from the standard dotenv.load_dotenv by the ability to expand
-# existing environment variables in the new values before these are added.
+# Additionally, accepts bit flags to control what and hopw to expand
 #
 # This class also allows to avoid unnecessary dependency: easy to implement.
 ###############################################################################
 
 import os
 import re
-from enum import IntEnum, IntFlag
-import sys
 from typing import Final
 
-###############################################################################
-# Flags impacting string expansion behaviour
-###############################################################################
-
-class EnvExpandFlags(IntFlag):
-    # No flag set
-    NONE = 0
-
-    # Expand escaped characters: \\ or `\`, \n or `n, \uNNNN or `uNNNN`, etc.
-    # (depends on NATIVE_ESCAPE flag)
-    DECODE_ESCAPED = (1<<0)
-
-    # Remove hash '#' (outside the quotes if found) and everything beyond that
-    REMOVE_LINE_COMMENT = (1<<2)
-
-    # Remove leading and trailing quote, don't expand single-quoted str: '...'
-    REMOVE_QUOTES = (1<<3)
-
-    # If a string is embraced in apostrophes, don't expand it
-    SKIP_SINGLE_QUOTED = (1<<4)
-
-    # Default set of flags
-    DEFAULT = (DECODE_ESCAPED | REMOVE_LINE_COMMENT | \
-               REMOVE_QUOTES | SKIP_SINGLE_QUOTED)
+from env_expand_flags import EnvExpandFlags
+from env_quote_type import EnvQuoteType
 
 ###############################################################################
 
-class EnvQuoteType(IntEnum):
-    # String with no leading quote
-    NONE = 0,
-
-    # Single-quoted string
-    SINGLE = 1,
-
-    # Double-quoted string
-    DOUBLE = 2
-
-###############################################################################
-# Implementation
-###############################################################################
 
 class Env:
     """

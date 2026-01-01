@@ -39,12 +39,79 @@ class DotEnv:
     ###########################################################################
 
     @staticmethod
-    def get_content(opts: Namespace, path: Path) -> str:
+    def load_from_file(opts: Namespace, path: Path):
         """
-        Load environment variables from a .env-compliant files: in the directory
-        of user-defined file or config file (otherwise), will first load .env,
-        then any.env, then <platform>.env, then the fallback ones, then the one
-        passed (if not None)
+        Load environment variables from a .env-compliant file
+
+        :param path: a file to load from
+        :type path: Path
+        """
+
+        DotEnv.load_from_str(DotEnv.read_text(opts, path))
+
+    ###########################################################################
+
+    @staticmethod
+    def load_from_str(data: str):
+        """
+        Load environment variables from a string
+
+        :param data: a string to load from
+        :type data: str
+        """
+
+        # Split data into lines and loop through every line
+
+        for line in data.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+            # Remove comments
+
+            m = DotEnv.COMMENTS_RE.match(line)
+            line = (m.group(1) + m.group(2)) if (m) else line
+
+            # Split key and value, then trim the key
+
+            parts = DotEnv.KEY_VALUE_RE.split(line)
+            key = parts[0].strip()
+
+            # If the key is empty, silently continue
+
+            if not key or (len(parts) < 2):
+                continue
+
+            # Trim the value and get its length
+
+            value = parts[1].strip()
+            length = len(value)
+            can_expand = True  # allow expansion by default
+
+            # If the value is double-quoted, unquote it
+            # If the value is single-quoted, unquote it and disallow expansion
+
+            if length >= 2:
+                if (value[0] == '"') and (value[length - 1] == '"'):
+                    value = value[1 : length - 1]
+                elif (value[0] == "'") and (value[length - 1] == "'"):
+                    value = value[1 : length - 1]
+                    can_expand = False
+
+            # Expand escaped characters and environment variables if allowed
+
+            if can_expand:
+                value = os.path.expandvars(value.encode().decode(DotEnv.ESCAPING))
+
+            # Add new environment variable or override the existing one
+
+            os.environ[key] = value
+
+    ###########################################################################
+
+    @staticmethod
+    def read_text(opts: Namespace, path: Path) -> str:
+        """
+        Load environment variables from .env-compliant files: in the directory
+        of the user-defined file or in the current one otherwise, it will first
+        load .env, then any.env, then <platform>.env, then the fallback ones,
+        then the one passed (if not None)
 
         :param path: a path to a custom file to load from
         :type path: Path
@@ -131,73 +198,6 @@ class DotEnv:
             DotEnv._loaded.append(_path_str)
 
         return content
-
-    ###########################################################################
-
-    @staticmethod
-    def load_from_file(opts: Namespace, path: Path):
-        """
-        Load environment variables from a .env-compliant file
-
-        :param path: a file to load from
-        :type path: Path
-        """
-
-        DotEnv.load_from_str(DotEnv.get_content(opts, path))
-
-    ###########################################################################
-
-    @staticmethod
-    def load_from_str(data: str):
-        """
-        Load environment variables from a string
-
-        :param data: a string to load from
-        :type data: str
-        """
-
-        # Split data into lines and loop through every line
-
-        for line in data.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
-            # Remove comments
-
-            m = DotEnv.COMMENTS_RE.match(line)
-            line = (m.group(1) + m.group(2)) if (m) else line
-
-            # Split key and value, then trim the key
-
-            parts = DotEnv.KEY_VALUE_RE.split(line)
-            key = parts[0].strip()
-
-            # If the key is empty, silently continue
-
-            if not key or (len(parts) < 2):
-                continue
-
-            # Trim the value and get its length
-
-            value = parts[1].strip()
-            length = len(value)
-            can_expand = True  # allow expansion by default
-
-            # If the value is double-quoted, unquote it
-            # If the value is single-quoted, unquote it and disallow expansion
-
-            if length >= 2:
-                if (value[0] == '"') and (value[length - 1] == '"'):
-                    value = value[1 : length - 1]
-                elif (value[0] == "'") and (value[length - 1] == "'"):
-                    value = value[1 : length - 1]
-                    can_expand = False
-
-            # Expand escaped characters and environment variables if allowed
-
-            if can_expand:
-                value = os.path.expandvars(value.encode().decode(DotEnv.ESCAPING))
-
-            # Add new environment variable or override the existing one
-
-            os.environ[key] = value
 
 
 ###############################################################################

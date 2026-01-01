@@ -7,5 +7,8 @@
   "[python]": {
     "editor.tabSize": 4,
     "editor.insertSpaces": true
-  }
+  },
+  "python.analysis.extraPaths": [
+    "./src/envara"
+  ]
 }
