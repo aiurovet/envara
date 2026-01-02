@@ -12,15 +12,15 @@ This example can be used to generate all launcher icons for a _Flutter_ project.
 
 1. Install _envara_ from _PyPI_
 
-2. In your _.py_ file(s), add the following:
+2. In a _.py_ file, try the following:
 
    ```py
    from pathlib import Path
    from envara import Env
    ...
-   Env.expand("Home ${HOME:-$USERPROFILE}, arg #1: $1", plain_args)
+   Env.expand("Home $HOME, arg #1: $1", plain_args)
    ...
-   Env.load_from_file(Path('/path/to/.my.env'), with_defaults=True, default_dir='/home/user/local/bin')
+   DotEnv.load_from_file(Path('/path/to/.my.env'), default_dir='/home/user/local/bin')
    ```
 
 ### How to Expand Environment Variables and Arguments in a String
@@ -33,7 +33,7 @@ __*Env.expand (input: str, args: list\[str\] = None, flags: EnvExpandFlags = Env
 
 2. A list of command-line arguments (optional)
 
-   These could be plain arguments left after parsing command-line options
+   These could be plain arguments left after parsing command-line options.
 
 3. A bitwise combination of flags listed under the _EnvExpandFlags_ enumeration:
 
@@ -42,9 +42,13 @@ __*Env.expand (input: str, args: list\[str\] = None, flags: EnvExpandFlags = Env
    - _REMOVE\_LINE\_COMMENT_: remove hash _#_ (outside the quotes if found) and everything beyond that
    - _REMOVE\_QUOTES_: remove leading and trailing quotes
    - _SKIP\_ENVIRON_: do not expand environment variables
-   - _SKIP\_SINGLE\_QUOTED_: if a string is embraced in apostrophes, don't expand it
+   - _SKIP\_SINGLE\_QUOTED_: if a string is embraced in apostrophes, don't expand it.
 
-4. Return value
+4. Directory to locate the default files
+
+   If not specified, the directory of the first parameter will be used (a parent of a file if file, or itself if directory). If the first parameter is not specified either, the current directory will be used.
+
+5. Return value
 
    A copy of the first parameter expanded as described above.
 
@@ -56,21 +60,21 @@ __*Env.expandargs (input: str, args: list\[str\] = None) -> str*__
 
 2. A list of command-line arguments (optional, although a bit pointless)
 
-   These could be plain arguments left after parsing command-line options
+   These could be plain arguments left after parsing command-line options.
 
 3. Return value
 
-   A copy of the first parameter expanded as described above
+   A copy of the first parameter expanded as described above.
 
 __*Env.quote (input: str, type: EnvQuoteType = EnvQuoteType.DOUBLE) -> str*__
 
 1. A string to enclose in quotes
 
-   Might contain an escape character _\\_ and/or internal similar quotes, all of those will be escaped with another _\\_
+   Might contain an escape character _\\_ and/or internal similar quotes, all of those will be escaped with another _\\_.
 
 2. A quote type
 
-   One of the following _EnvQuoteType_ values: _NONE_, _SINGLE_ or _DOUBLE_
+   One of the following _EnvQuoteType_ values: _NONE_, _SINGLE_ or _DOUBLE_.
 
 3. Return value
 
@@ -84,7 +88,7 @@ __*Env.remove_line_comment (input: str) -> str*__
 
 2. Return value
 
-   A copy of the first parameter with everything beyond the first encountered outside string literals hash symbol _#_
+   A copy of the first parameter with everything beyond the first encountered outside string literals hash symbol _#_.
 
 __*Env.unquote (input: str) -> tuple[str, EnvQuoteType]*__
 
@@ -107,55 +111,55 @@ __*DotEnv.load\_from\_file(path: Path, file_flags: DotEnvFileFlags, expand_flags
 2. A bitwise combination of flags:
 
    - _NONE_: none of the below (default)
-   - _RESET_: discard internally accumulated list of files already loaded
+   - _RESET_: discard internally accumulated list of loaded files
    - _SKIP\_DEFAULT\_FILES_: do not load any default file
    - _VISIBLE\_FILES_: do not prepend default filenames with a dot
 
 3. Default directory _default\_dir_
 
-   Directory to look for the default files in. If not specified, the directory of the first parameter will be used if passed, or the current directory otherwise
+   Directory to look for the default files in. If not specified, the directory of the first parameter will be used if passed, or the current directory otherwise.
 
 ### The Default .env Files
 
 These files will be loaded in the noted order before the custom one. This happens in _DotEnv.read\_text()_, which is called by _DotEnv.load\_from\_file()_.
 
-The placeholder _system_ is the lowercased value returned by the _platform.system()_ call
+The placeholder _system_ is the lowercased value returned by the _platform.system()_ call.
 
 - _[.]env_, then _[.]any.env_
 
-  Always
+  Always.
 
 - _[.]posix.env_
 
-  When _system_ contains one of the following: _aix_, _bsd_, _darwin_, _linux_, _cygwin_, _java_, _MSYS_
+  When _system_ contains one of the following: _aix_, _bsd_, _darwin_, _linux_, _cygwin_, _java_, _MSYS_.
 
 - _[.]bsd.env_
 
-  When _system_ contains _bsd_ or _darwin_
+  When _system_ contains _bsd_ or _darwin_.
 
 - _[.]linux.env_
 
-  When _system_ contains one of the following: _linux_, _cygwin_, _java_, _MSYS_
+  When _system_ contains one of the following: _linux_, _cygwin_, _java_, _MSYS_.
 
 - _[.]darwin.env_
 
-  When _system_ contains _darwin_ or _macos_ or _ios_ or _ipados_
+  When _system_ contains _darwin_ or _macos_ or _ios_ or _ipados_.
 
 - _[.]macos.env_
 
-  When _system_ contains _darwin_ or _macos_
+  When _system_ contains _darwin_ or _macos_.
 
 - _[.]vms.env_
 
-  When _system_ contains _vms_
+  When _system_ contains _vms_.
 
 - _[.]windows.env_
 
-  When _system_ starts with _win_
+  When _system_ starts with _win_.
 
 - _[.]\<system\>.env_
 
-  Where _\<system\>_ is the actual value of _system_
+  Always: _\<system\>_ is the actual value of _system_.
 
 ### How to Utilise the Stack of Default _.env_ Files
 

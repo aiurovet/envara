@@ -72,7 +72,8 @@ class DotEnv:
     def load_from_file(
         path: Path,
         file_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT,
-        expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS
+        expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
+        default_dir: str = None
     ) -> str:
         """
         Load environment variables from a .env-compliant file
@@ -81,7 +82,7 @@ class DotEnv:
         :type path: Path
         """
 
-        content = DotEnv.read_text(path, file_flags)
+        content = DotEnv.read_text(path, file_flags, default_dir)
         DotEnv.load_from_str(content, expand_flags)
 
     ###########################################################################
@@ -123,7 +124,8 @@ class DotEnv:
     @staticmethod
     def read_text(
         path: Path,
-        file_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT
+        file_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT,
+        default_dir: Path = None
     ) -> str:
         """
         Load environment variables from .env-compliant files: in the directory
@@ -155,7 +157,12 @@ class DotEnv:
         if (not (file_flags & DotEnvFileFlags.SKIP_DEFAULT_FILES)):
             # Get directory that should contain all files to read
 
-            dir = path if (is_dir) else path.parent
+            if (default_dir):
+                dir = default_dir
+            elif (is_dir):
+                dir = path
+            else:
+                dir = path.parent
 
             # Get platform name to build the hierarchy of files to read
 
@@ -197,7 +204,7 @@ class DotEnv:
         # file that was not loaded yet
 
         if (not is_dir) and path and path.exists():
-            item_path_str = str(path) if (path) else ''
+            item_path_str = str(path)
 
             if item_path_str not in DotEnv._loaded:
                 content += f'{path.read_text()}\n'

@@ -114,7 +114,7 @@ class TestDotEnv:
         DotEnv.load_from_file(path)
 
         # Assert
-        mock_read.assert_called_once_with(path, DotEnvFileFlags.DEFAULT)
+        mock_read.assert_called_once_with(path, DotEnvFileFlags.DEFAULT, None)
         mock_load_str.assert_called_once_with("K=V", DotEnv.DEFAULT_EXPAND_FLAGS)
 
 

@@ -8,7 +8,7 @@
       "name": "Python Debugger: Main File",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/src/svg2many/__main__.py",
+      "program": "${workspaceFolder}/src/envara/__main__.py",
       "console": "integratedTerminal",
       "args": [
         "-h",
