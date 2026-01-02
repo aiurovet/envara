@@ -12,12 +12,13 @@ from enum import IntEnum
 
 class EnvQuoteType(IntEnum):
     # String with no leading quote
-    NONE = 0,
+    NONE = 0
 
     # Single-quoted string
-    SINGLE = 1,
+    SINGLE = 1
 
     # Double-quoted string
     DOUBLE = 2
+
 
 ###############################################################################

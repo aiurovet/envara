@@ -1,5 +1,5 @@
 ###############################################################################
-# svg2many (C) Alexander Iurovetski 2025
+# envara (C) Alexander Iurovetski 2026
 #
 # A class to expand environment variables, user info (~), arguments from a
 # list and escaped characters (\t, \n, etc.) in a string. As well as remove
@@ -28,34 +28,45 @@ class Env:
     # Regex to find references to arguments ($n or ${n} or %n) by 1-based index
     # % though will work under Windows only
     ARGS_RE: Final = re.compile(
-        r'\$(\d+)|\${(\d+)}|%(\d+)', flags=(re.DOTALL | re.UNICODE))
+        r'\$(\d+)|\${(\d+)}|%(\d+)', flags=(re.DOTALL | re.UNICODE)
+    )
+
+    # POSIX escape character
+    ESCAPE: Final = '\\'
+
+    # POSIX escape character escaped
+    ESCAPE_ESCAPED: Final = f'{ESCAPE}{ESCAPE}'
 
     # Flag indicating whether the script is running under Windows or not
-    IS_WINDOWS: Final = os.sep == '\\'
+    IS_WINDOWS: Final = os.sep == ESCAPE
 
     ###########################################################################
 
     @staticmethod
     def expand(
-        input: str, args: list[str] = None,
-        flags: EnvExpandFlags = EnvExpandFlags.DEFAULT):
+        input: str,
+        args: list[str] = None,
+        flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
+    ) -> str:
         """
         Unquote the input if required, remove trailing line comment if
         required, expand the result with the arguments if required, expand
         the result with the environment variables' values. The method follows
         minimal POSIX conventions: $ABC and ${ABC}, as well as %ABC% on Windows
-        
+
         :param input: Input string to expand
         :type input: str
         :param args: List of arguments to expand from $1, ...
-        :type input: str
+        :type args: str
+        :param flags: Flags controlling what/how to expand input
+        :type flags: EnvExpandFlags
         :return: Expanded string
         :rtype: str
         """
 
         # For input as None or the empty string, return empty string
 
-        if (not input):
+        if not input:
             return ''
 
         # If the user indicator is found, expand the string
@@ -66,11 +77,12 @@ class Env:
         # If unquoting requested, do that treating a single-quoted input
         # as literal (no further expansion) if required
 
-        if (flags & EnvExpandFlags.REMOVE_QUOTES):
+        if flags & EnvExpandFlags.REMOVE_QUOTES:
             result, quote_type = Env.unquote(result)
 
-            if ((quote_type == EnvQuoteType.SINGLE) and \
-                (flags & EnvExpandFlags.SKIP_SINGLE_QUOTED)):
+            if (quote_type == EnvQuoteType.SINGLE) and (
+                flags & EnvExpandFlags.SKIP_SINGLE_QUOTED
+            ):
                 return result
 
         # Remove line comment if required
@@ -81,30 +93,38 @@ class Env:
 
         # If the user indicator is found, expand the string
 
-        if ('~' in result):
+        if '~' in result:
             result = os.path.expanduser(result)
 
-        # Expand arguments, then the environment variables if the respective
-        # prefix is found in the string
+        # If the sought prefix found in the string, expand arguments
+        # if the list of those passed, then expand the environment
+        # variables if allowed
 
-        if (('$' in result) or (Env.IS_WINDOWS and ('%' in result))):
-            result = Env.expandargs(result, args)
-            result = os.path.expandvars(result)
+        if ('$' in result) or (Env.IS_WINDOWS and ('%' in result)):
+            if (args):
+                result = Env.expandargs(result, args)
+            if (not (flags & EnvExpandFlags.SKIP_ENVIRON)):
+                result = os.path.expandvars(result)
 
         # Expand escaped characters like \t, \n, \xNN, \uNNNN if needed
 
-        if ((flags & EnvExpandFlags.DECODE_ESCAPED) and ('\\' in result)):
+        if (flags & EnvExpandFlags.DECODE_ESCAPED) and ('\\' in result):
             result = result.encode().decode('unicode_escape')
+
+        # Return the final result
 
         return result
 
     ###########################################################################
 
     @staticmethod
-    def expandargs(input: str, args: list[str] = None) -> str:
+    def expandargs(
+        input: str,
+        args: list[str] = None
+    ) -> str:
         """
-        Expand references to an array of arguments by index
-        
+        Expand references to an array of arguments by its indices
+
         :param input: String being expanded
         :type input: str
         :param args: List of arguments to refer to
@@ -113,39 +133,101 @@ class Env:
         :rtype: str
         """
 
-        if (not input):
+        # If input is None or empty, return empty string
+    
+        if not input:
             return ''
 
-        arg_cnt = len(args)
+        # Get how many args and return input intact if no arg passed
+
+        arg_cnt = len(args) if args else 0
+
+        if (arg_cnt <= 0):
+            return input
+
+        # Define regex match evaluator
 
         def matcher(match):
             idx_str = match.group(1) or match.group(2)
 
-            if ((not idx_str) and Env.IS_WINDOWS):
+            if (not idx_str) and Env.IS_WINDOWS:
                 idx_str = match.group(3)
 
-                if (not idx_str):
+                if not idx_str:
                     return match.group(0)
 
             idx_int = int(idx_str) - 1
 
-            if ((idx_int >= 0) and (idx_int < arg_cnt)):
+            if (idx_int >= 0) and (idx_int < arg_cnt):
                 return args[idx_int]
 
             return match.group(0)
+
+        # Run the substitution
 
         return Env.ARGS_RE.sub(matcher, input)
 
     ###########################################################################
 
     @staticmethod
-    def remove_line_comment(input: str) -> tuple[str, EnvQuoteType]:
+    def quote(
+        input: str,
+        type: EnvQuoteType = EnvQuoteType.DOUBLE
+    ) -> str:
         """
-        Remove the input's line comment: from # outside the quotes to the
-        end of the first line, and return the result. If the input is a
-        multi-line string, only the first line will be reduced, and the rest
-        appended
-        
+        Embrace input with quotes. Neither leading, nor trailing white spaces
+        removed before checking the leading quotes. Use .strip() yourself
+        before calling this method if needed.
+
+        :param input: String being expanded
+        :type input: str
+        :return: Quoted string with possible quotes and escape characters from
+                 the inside being escaped
+        :rtype: str
+        """
+
+        # Initialise the result
+
+        result = '' if (input is None) else input
+
+        # Define the quote being used
+
+        if (type == EnvQuoteType.SINGLE):
+            quote = "'"
+        elif (type == EnvQuoteType.DOUBLE):
+            quote = '"'
+        else:
+            quote = ''
+
+        # If quote is empty, return the input itself
+
+        if (not quote):
+            return result
+
+        # If input is not empty, escape the escape character, then the
+        # internal quote(s), then embrace the result in desired quotes
+        # and return
+
+        if (result and (quote in result)):
+            if (Env.ESCAPE in result):
+                result = result.replace(Env.ESCAPE, Env.ESCAPE_ESCAPED)
+            result = result.replace(quote, f'{Env.ESCAPE}{quote}')
+
+        return f'{quote}{result}{quote}'
+
+    ###########################################################################
+
+    @staticmethod
+    def remove_line_comment(
+        input: str
+    ) -> str:
+        """
+        Remove the input's line comment: from # (hash symbol) outside the
+        quotes (if any) to the end of the whole string, as the input is
+        treated as a single line. The point is that in case of a multi-line
+        processing, it is inevitable to break the input into separate lines
+        and process those independently.
+
         :param input: String being truncated
         :type input: str
         :return: string with the line comment removed, and an indicator of
@@ -155,47 +237,42 @@ class Env:
 
         # If input is None or empty, return the empty string
 
-        if (not input):
-            return ''
+        if not input:
+            return ""
 
         # Find the start of a line comment in the input, and
         # return the input unchanged if a line comment was not
         # found
 
-        beg_pos = input.find('#')
+        beg_pos = input.find("#")
 
-        if (beg_pos < 0):
+        if beg_pos < 0:
             return input
 
         # Find the end of a line considering either POSIX or Windows
         # line breaks
 
-        end_pos = input.find('\n')
+        end_pos = input.find("\n")
 
-        if ((end_pos >= 2) and input[end_pos - 2] == '\r'):
+        if (end_pos >= 2) and input[end_pos - 2] == "\r":
             end_pos = end_pos - 1
 
         # Set result to the substring from the beginning to the line comment
-        # start, then append everything beyond the line end if found
+        # start, then remove trailing blanks and return the result
 
-        result = input[0:beg_pos].rstrip()
-
-        if ((end_pos >= 0) and (end_pos < len(input) - 1)):
-            result += input[end_pos:]
-
-        # Return the result with the trailing spaces removed
-
-        return result
+        return input[0:beg_pos].rstrip()
 
     ###########################################################################
 
     @staticmethod
-    def unquote(input: str) -> tuple[str, EnvQuoteType]:
+    def unquote(
+        input: str
+    ) -> tuple[str, EnvQuoteType]:
         """
         Remove the input's embracing quotes. Neither leading, nor trailing
         white spaces removed before checking the leading quotes. Use .strip()
         yourself before calling this method if needed.
-        
+
         :param input: String being expanded
         :type input: str
         :return: Unquoted string, and a number indicating the level of quoting:
@@ -205,8 +282,8 @@ class Env:
 
         # If input is None or empty, return the empty string
 
-        if (not input):
-            return ('', EnvQuoteType.NONE)
+        if not input:
+            return ("", EnvQuoteType.NONE)
 
         # Initialise result to be returned as well as the first character
 
@@ -216,28 +293,29 @@ class Env:
         # Validate and unquote a single-quoted input, then return the
         # result if required
 
-        if (c1 == "'"):
+        if c1 == "'":
             end_pos = input.find(c1, 1)
 
-            if (end_pos < 0):
-                raise ValueError(f'Unterminated single-quoted string: {input}')
+            if end_pos < 0:
+                raise ValueError(f"Unterminated single-quoted string: {input}")
 
             return (input[1:end_pos], EnvQuoteType.SINGLE)
 
         # Validate and unquote a double-quoted input as well as replace
         # escaped double-quotes with the plain ones
 
-        if (c1 == '"'):
-            result = result.replace('\\"', '\x01')
+        if c1 == '"':
+            result = result.replace('\\"', "\x01")
             end_pos = result.find(c1, 1)
 
-            if (end_pos < 0):
-                raise ValueError(f'Unterminated double-quoted string: {input}')
+            if end_pos < 0:
+                raise ValueError(f"Unterminated double-quoted string: {input}")
 
-            result = result[1:end_pos].replace('\x01', '"')
-            
+            result = result[1:end_pos].replace("\x01", '"')
+
             return (result, EnvQuoteType.DOUBLE)
 
         return (result, EnvQuoteType.NONE)
+
 
 ###############################################################################

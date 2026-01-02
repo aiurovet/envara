@@ -1,78 +1,91 @@
 #!/usr/bin/env python3
 
 ###############################################################################
-# svg2many (C) Alexander Iurovetski 2025
+# envara (C) Alexander Iurovetski 2026
 #
-# Application to export an SVG file to raster image files of multiple sizes
-# and optionally, split into background and foreground images
-#
-# Entry point
-#
-# See README.md for more details
-#
-# Build:
-#
-# cd <project-dir>
-# python3 -m build
-#
-# Upload:
-#
-# cd <project-dir>
-# python3 -m twine upload -r testpypi dist/*
-# python3 -m twine upload -r pypi dist/*
+# Main module to present a minimal help
 ###############################################################################
 
-from argparse import Namespace
-
-from svg2many.cli import Cli
-from svg2many.config import Config
-from svg2many.logger import LogLevel, Logger
-
-###############################################################################
-
-
-def run(logger: Logger):
-    """
-    Application start
-    """
-    try:
-        opts, args = parse_args(logger)
-
-        c = Config(__file__, logger)
-        c.process_from_file(opts, args)
-
-        return 0
-    except Exception as ex:
-        logger.err(f"\n*** ERROR: ***\n\n{ex}\n")
-        return 1
-
-
-###############################################################################
-
-
-def main():
-    return run(Logger())
-
-
-###############################################################################
-
-
-def parse_args(logger: Logger) -> tuple[Namespace, list[str]]:
-    result = Cli.parse()
-    opts = result[0]
-
-    logger.level = (
-        LogLevel.DBG
-        if (opts.verbose)
-        else LogLevel.NIL if (opts.quiet) else logger.level
-    )
-
-    return result
-
-
-###############################################################################
 
 if __name__ == "__main__":
-    exit(main())
+
+    print("""
+
+Envara (c) Alexander Iurovetski 2026
+
+A library to expand environment variables, user home, application arguments
+and escaped characters in arbitrary strings, as well as to load stacked
+dot-env files, remove line comments, unquote and and expand values as above
+(if the input was unquoted or enclosed in single quotes), then extend the
+environment.
+
+class Env:
+    .expand()
+    .expandargs()
+    .quote()
+    .remove_line_comment()
+    .unquote()
+          
+class DotEnv:
+    .load_from_file()
+    .load_from_str()
+    .read_text()
+
+See README.md for more details about these calls
+          
+Dot-env files the latter method will look for (the leading dot is optional,
+each file loaded once):
+
+Any OS:
+    [.]env
+    [.]any.env
+Android, Linux:
+    [.]posix.env
+    [.]linux.env
+    [.]<system>.env
+BSD-like:
+    [.]posix.env
+    [.]bsd.env
+    [.]<system>.env
+iOS, iPadOS, macOS:
+    [.]posix.env
+    [.]bsd.env
+    [.]darwin.env
+    [.]<system>.env
+VMS:
+    [.]vms.env
+    [.]<system>.env (e.g., [.]openvms.env)
+Windows, OS/2:
+    [.]windows.env
+    [.]<system>.env (i.e. [.]win32.env or [.]os2.env)
+
+Where <system> is the lowercased result of platform.system()
+
+None of these files is required, and will be picked only if found and verified
+to be relevant to the system you are running under. The system includes not
+only OSes, but also Java, Cygwin and MSYS as well as such artefact OSes as AIX,
+RiscOS, OpenVMS, OS/2, etc.
+
+This allows you to define extra environment variables to make your application
+portable. For instance, you are going to call Google Chrome from your script
+in headless mode to save some screenshots. In that case, you can define a
+variable CMD_CHROME as follows:
+
+    .env:
+        PROJECT_NAME=$1 # need to pass a list command-line arguments
+        VERSION="${2}_$3"
+        ARG_HEADLESS="--headless --disable-gpu --default-background-color=00000000 --window-size={w},{h} --screenshot={o} file://{i}"
+    .linux.env:
+        CMD_CHROME="google-chrome $ARG_HEADLESS"
+    .bsd.env
+        CMD_CHROME="chrome $ARG_HEADLESS"
+    .macos.env
+        CMD_CHROME="\\\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\\\" $ARG_HEADLESS"
+    .windows.env
+        CMD_CHROME="chrome $ARG_HEADLESS"
+""")
+
+    exit(0)
+
 
 ###############################################################################

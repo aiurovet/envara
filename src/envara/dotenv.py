@@ -1,45 +1,79 @@
 ###############################################################################
-# svg2many (C) Alexander Iurovetski 2025
+# envara (C) Alexander Iurovetski 2026
 #
-# A class to read series of key=value lines from a text file and set those
-# as environment variables.
+# A class to read series of key=value lines from a text file, remove line
+# comments, expand environment values and arguments, expand escaped characters
+# and set or update those as environment variables
 #
-# Differs from the standard dotenv.load_dotenv by the ability to expand
-# existing environment variables in the new values before these are added.
+# It also allows hierarchical OS-specific stacking of such files, as for
+# instance, locations and filenames of executables like Google Chrome are
+# quite specific to Linux, macOS and Windows. As a result, it is possible
+# confine OS-specific things to such files making the application portable
 #
-# This class also allows to avoid unnecessary dependency: easy to implement.
 ###############################################################################
 
-from argparse import Namespace
 import os
 from pathlib import Path
 import platform
 import re
+from typing import Final
+
+from dotenv_file_flags import DotEnvFileFlags
+from env import Env
+from env_expand_flags import EnvExpandFlags
 
 ###############################################################################
 # Implementation
 ###############################################################################
 
-#
-# Discover simple env var patterns
-#
-# (\$([A-Z][A-Z_0-9]*))|(\${([^{}]*)})
-#
+
 class DotEnv:
-    DEF_FILE_TYPE: str = ".env"
-    ESCAPING: str = "unicode_escape"
 
-    COMMENTS_RE: re.Pattern = re.compile(
-        r'(^.*".*"|^.*x.*x|^[^"x]*)(\s*[^#]*)#.*'.replace("x", "'"), flags=re.MULTILINE
-    )
-    KEY_VALUE_RE: re.Pattern = re.compile(r"\s*=\s*")
+    # Default set of string expansion flags
+    DEFAULT_EXPAND_FLAGS: Final = \
+        EnvExpandFlags.DECODE_ESCAPED | \
+        EnvExpandFlags.REMOVE_LINE_COMMENT | \
+        EnvExpandFlags.REMOVE_QUOTES | \
+        EnvExpandFlags.SKIP_SINGLE_QUOTED
 
+    # Default dit-env file type without leading extension separator
+    DEFAULT_FILE_TYPE: Final = 'env'
+
+    # Regex to split a string into key and value
+    KEY_VALUE_RE: Final = re.compile(r'\s*=\s*')
+
+    # Internal list of files that were loaded already
     _loaded: list[str] = []
+
+    # Internal dictionary: regex => list-of-system-names
+    _plat_map: dict[str, list[str]] = {
+        '': ['', 'any'],
+        '^aix': ['posix', 'aix'],
+        'android': ['posix', 'linux', 'android'],
+        '^atheos': ['posix', 'atheos'],
+        'beos|haiku': ['posix', 'beos', 'haiku'],
+        'bsd': ['posix', 'bsd'],
+        'audioos|bridgeos|ios|ipados|macos|tvos|visionos|watchos': [
+            'posix',
+            'bsd',
+            'darwin',
+        ],
+        '^(java|linux|cygwin|msys)': ['posix', 'linux'],
+        '^riscos': ['riscos'],  # os.sep == ':'
+        'solaris': ['posix', 'solaris'],
+        'vms': ['vms'],
+        '^win': ['windows'],
+        '.*': ['*'],  # the actual system name, lowercased
+    }
 
     ###########################################################################
 
     @staticmethod
-    def load_from_file(opts: Namespace, path: Path):
+    def load_from_file(
+        path: Path,
+        file_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT,
+        expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS
+    ) -> str:
         """
         Load environment variables from a .env-compliant file
 
@@ -47,66 +81,50 @@ class DotEnv:
         :type path: Path
         """
 
-        DotEnv.load_from_str(DotEnv.read_text(opts, path))
+        content = DotEnv.read_text(path, file_flags)
+        DotEnv.load_from_str(content, expand_flags)
 
     ###########################################################################
 
     @staticmethod
-    def load_from_str(data: str):
+    def load_from_str(
+        data: str,
+        args: list[str] = None,
+        expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS
+    ) -> str:
         """
         Load environment variables from a string
 
-        :param data: a string to load from
+        :param data: a string to parse, then load env variables from
         :type data: str
+        :param args: a list of arguments (e.g. application args) to expand
+                     placeholders like $1, ${2}, ...
+        :type args: list[str]
         """
 
         # Split data into lines and loop through every line
 
-        for line in data.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
-            # Remove comments
+        environ = os.environ
 
-            m = DotEnv.COMMENTS_RE.match(line)
-            line = (m.group(1) + m.group(2)) if (m) else line
+        for line in data.replace('\r\n', '\n').replace('\r', '\n').split('\n'):
+            # Break into key and value and skip if can't
 
-            # Split key and value, then trim the key
+            key, val = DotEnv.KEY_VALUE_RE.split(line, maxsplit=1)
 
-            parts = DotEnv.KEY_VALUE_RE.split(line)
-            key = parts[0].strip()
+            # Expand the value and add to the dict of enviroment variables
 
-            # If the key is empty, silently continue
-
-            if not key or (len(parts) < 2):
-                continue
-
-            # Trim the value and get its length
-
-            value = parts[1].strip()
-            length = len(value)
-            can_expand = True  # allow expansion by default
-
-            # If the value is double-quoted, unquote it
-            # If the value is single-quoted, unquote it and disallow expansion
-
-            if length >= 2:
-                if (value[0] == '"') and (value[length - 1] == '"'):
-                    value = value[1 : length - 1]
-                elif (value[0] == "'") and (value[length - 1] == "'"):
-                    value = value[1 : length - 1]
-                    can_expand = False
-
-            # Expand escaped characters and environment variables if allowed
-
-            if can_expand:
-                value = os.path.expandvars(value.encode().decode(DotEnv.ESCAPING))
-
-            # Add new environment variable or override the existing one
-
-            os.environ[key] = value
+            if val:
+                environ[key] = Env.expand(val, args, expand_flags)
+            elif key and key in environ:
+                del environ[key]
 
     ###########################################################################
 
     @staticmethod
-    def read_text(opts: Namespace, path: Path) -> str:
+    def read_text(
+        path: Path,
+        file_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT
+    ) -> str:
         """
         Load environment variables from .env-compliant files: in the directory
         of the user-defined file or in the current one otherwise, it will first
@@ -117,85 +135,75 @@ class DotEnv:
         :type path: Path
         """
 
-        # Get the default directory (should be validated already)
+        # Initialise
+        # If required, discard information about the files already loaded
 
-        content = ""
+        content = ''
 
-        is_dir = True if ((not path) or path.is_dir()) else False
-        dir = (
-            Path(opts.config).parent
-            if (path is None)
-            else (path if (is_dir) else path.parent)
-        )
+        if file_flags & DotEnvFileFlags.RESET:
+            DotEnv._loaded = []
 
-        plat_name = platform.system().lower()
+        # Set is_dir indicating the custom file is a directory,
+        # and resolve an empty path
 
-        # Try loading the file for the following platforms in the specified order if the
-        # right side is empty, or represents a part of the current platform name
+        if not path:
+            path = Path.cwd()
+            is_dir = True
+        else:
+            is_dir = path.is_dir()
 
-        x = DotEnv.DEF_FILE_TYPE
+        if (not (file_flags & DotEnvFileFlags.SKIP_DEFAULT_FILES)):
+            # Get directory that should contain all files to read
 
-        for plat_pairs in [
-            "",
-            "any:",
-            "unix:aix",
-            "bsd",
-            "unix:bsd",
-            "unix:linux",
-            "bsd:darwin",
-            "bsd:macos",
-            "macos:darwin",
-            "darwin:macos",
-            "windows",
-        ]:
-            # Break text into the base platform name, and the current platform's substring
+            dir = path if (is_dir) else path.parent
 
-            parts = plat_pairs.split(":")
-            count = len(parts)
+            # Get platform name to build the hierarchy of files to read
 
-            plat_base = parts[0]
-            plat_like = parts[1 if (count > 1) else 0]
+            plat_name = platform.system().lower()
+            prefix = '' if (file_flags & DotEnvFileFlags.VISIBLE_FILES) else os.extsep
 
-            # If the platform pattern is not empty, and the current one doesn't match
+            # Try loading the file for the following platforms in the specified order if the
+            # right side is empty, or represents a part of the current platform name
 
-            if plat_like and (plat_like not in plat_name) or (count > 2):
-                continue
+            x = DotEnv.DEFAULT_FILE_TYPE
 
-            # Load the environment from the current base platform and add it to the list
-            # of the loaded ones
+            for key, plat_names in DotEnv._plat_map.items():
+                # Break text into the base platform name, and the current platform's substring
 
-            _path = dir / f"{plat_base}{x}"
-            _path_str = str(_path)
+                if key and (not re.search(key, plat_name, re.IGNORECASE | re.UNICODE)):
+                    continue
 
-            if (_path_str not in DotEnv._loaded) and _path.exists():
-                content += f"{_path.read_text()}\n"
-                DotEnv._loaded.append(_path_str)
+                for item_plat_name in plat_names:
+                    # If the platform name is a placeholder, take the running one
 
-            # Check whether the current platform matches the templates and load the
-            # respective file if so
+                    if item_plat_name == '*':
+                        item_plat_name = plat_name
 
-            if (not plat_base) or (not plat_like) or (plat_like == plat_base):
-                continue
+                    # Get path object and string to load the respective file
 
-            _path = dir / f"{plat_like}{x}"
-            _path_str = str(_path)
+                    item_name = f'{item_plat_name}.{x}' if item_plat_name else x
+                    item_path = dir / f'{prefix}{item_name}'
+                    item_path_str = str(item_path)
 
-            if (_path_str not in DotEnv._loaded) and _path.exists():
-                content += f"{_path.read_text()}\n"
-                DotEnv._loaded.append(_path_str)
+                    # If the file of that path wasn't loaded yet, and the file
+                    # exists, load it
 
-        # Finally, load the one passed by the user if not covered yet
+                    if (item_path_str not in DotEnv._loaded) and item_path.exists():
 
-        _path_str = str(path) if (path) else ""
+                        content += f'{item_path.read_text()}\n'
+                        DotEnv._loaded.append(item_path_str)
 
-        if (
-            (not is_dir)
-            and _path_str
-            and (_path_str not in DotEnv._loaded)
-            and path.exists()
-        ):
-            content += f"{path.read_text()}\n"
-            DotEnv._loaded.append(_path_str)
+        # Finally, load the one passed by the user if it is an existing
+        # file that was not loaded yet
+
+        if (not is_dir) and path and path.exists():
+            item_path_str = str(path) if (path) else ''
+
+            if item_path_str not in DotEnv._loaded:
+                content += f'{path.read_text()}\n'
+                DotEnv._loaded.append(item_path_str)
+
+        # Return full content
 
         return content
 
