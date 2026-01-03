@@ -15,6 +15,35 @@ from env_platform_stack_flags import EnvPlatformStackFlags
 ###############################################################################
 
 
+class TestDecodeEscaped:
+    """Test suite for Env.decode_escaped method"""
+
+    @pytest.mark.parametrize(
+        "input, expected",
+        [
+            (None, ""),
+            ("", ""),
+            ("A b c", "A b c"),
+            ("A\\tb\\tc", "A\tb\tc"),
+            ("A\\ \\N\\+\\u0042b\\a\\x41c", "A N+Bb\aAc"),
+        ],
+    )
+    def test_decode_escaped(
+        self,
+        input: str,
+        expected: str,
+    ):
+
+        # Call the method
+        result = Env.decode_escaped(input)
+
+        # Verify result matches expected
+        assert result == expected
+
+
+###############################################################################
+
+
 class TestExpand:
     """Test suite for Env.expand method"""
 
@@ -37,6 +66,26 @@ class TestExpand:
                 "a A2 efg1",
             ),
             (
+                "'a $2 $a \\${b}'",
+                {"a": "efg1", "b": "xx"},
+                ["A1", "A2"],
+                EnvExpandFlags.REMOVE_LINE_COMMENT
+                | EnvExpandFlags.DECODE_ESCAPED
+                | EnvExpandFlags.REMOVE_QUOTES
+                | EnvExpandFlags.SKIP_SINGLE_QUOTED,
+                "a $2 $a \\${b}",
+            ),
+            (
+                '"a $2 ~ $a \\${b}"',
+                {"a": "efg1", "b": "xx"},
+                ["A1", "A2"],
+                EnvExpandFlags.REMOVE_LINE_COMMENT
+                | EnvExpandFlags.DECODE_ESCAPED
+                | EnvExpandFlags.REMOVE_QUOTES
+                | EnvExpandFlags.SKIP_SINGLE_QUOTED,
+                "a A2 ~ efg1 ${b}",
+            ),
+            (
                 "'a $2 $a #${b}'",
                 {"a": "efg1", "b": "xx"},
                 ["A1", "A2"],
@@ -45,6 +94,26 @@ class TestExpand:
                 | EnvExpandFlags.REMOVE_QUOTES
                 | EnvExpandFlags.SKIP_SINGLE_QUOTED,
                 "a $2 $a #${b}",
+            ),
+            (
+                "~/abc",
+                {"a": "efg1", "b": "xx"},
+                ["A1", "A2"],
+                EnvExpandFlags.REMOVE_LINE_COMMENT
+                | EnvExpandFlags.DECODE_ESCAPED
+                | EnvExpandFlags.REMOVE_QUOTES
+                | EnvExpandFlags.SKIP_SINGLE_QUOTED,
+                os.path.expanduser("~/abc"),
+            ),
+            (
+                f"~{os.sep}$a{os.sep}${{b}}",
+                {"a": "efg1", "b": "xx"},
+                ["A1", "A2"],
+                EnvExpandFlags.REMOVE_LINE_COMMENT
+                | EnvExpandFlags.DECODE_ESCAPED
+                | EnvExpandFlags.REMOVE_QUOTES
+                | EnvExpandFlags.SKIP_SINGLE_QUOTED,
+                os.path.expanduser("~") + f"{os.sep}efg1{os.sep}xx",
             ),
         ],
     )
@@ -322,10 +391,12 @@ class TestUnquote:
             ("", "", EnvQuoteType.NONE),
             ("abc d", "abc d", EnvQuoteType.NONE),
             ("'abc d'", "abc d", EnvQuoteType.SINGLE),
+            ("'abc d\\'", "abc d", EnvQuoteType.SINGLE),
             ('"abc d"', "abc d", EnvQuoteType.DOUBLE),
+            ('"abc d\\\\"', "abc d\\", EnvQuoteType.DOUBLE),
             ("'abc' d", "abc", EnvQuoteType.SINGLE),
             ('"abc" d', "abc", EnvQuoteType.DOUBLE),
-            ("'abc\\' d", "abc\\", EnvQuoteType.SINGLE),
+            ("'abc\\' d", "abc", EnvQuoteType.SINGLE),
             ('"abc\\" d"', 'abc" d', EnvQuoteType.DOUBLE),
         ],
     )
@@ -341,6 +412,7 @@ class TestUnquote:
         "input",
         [
             ('"abc d'),
+            ('"abc d\\"'),
             ("'abc d"),
         ],
     )

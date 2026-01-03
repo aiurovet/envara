@@ -27,17 +27,17 @@ class Env:
     Class for string expansions
     """
 
-    # Regex to find references to arguments ($n or ${n} or %n) by 1-based index
-    # % though will work under Windows only
-    ARGS_RE: Final[re.Pattern] = re.compile(
-        r"\$(\d+)|\${(\d+)}|%(\d+)", flags=(re.DOTALL | re.UNICODE)
-    )
-
     # POSIX escape character
     ESCAPE: Final[str] = "\\"
 
     # POSIX escape character escaped
     ESCAPE_ESCAPED: Final[str] = f"{ESCAPE}{ESCAPE}"
+
+    # Characters used for a temporary hiding of printable characters
+    # that affect search/replace
+    HIDE_01: Final[str] = "\x01"
+    HIDE_02: Final[str] = "\x02"
+    HIDE_03: Final[str] = "\x03"
 
     # Flag indicating whether the script is running under Windows or not
     IS_POSIX: Final[bool] = os.sep == "/"
@@ -56,6 +56,17 @@ class Env:
 
     # A text indicating the running platform
     PLATFORM_THIS: Final[str] = sys.platform.lower()
+
+    # Regex to find references to arguments ($n or ${n} or %n) by 1-based index
+    # % though will work under Windows only
+    RE_ARGS: Final[re.Pattern] = re.compile(
+        r"\$(\d+)|\${(\d+)}|%(\d+)", flags=(re.DOTALL | re.UNICODE)
+    )
+
+    # Regex to safely drop escape character in favour of the following one
+    RE_DROP_ESCAPE: Final[re.Pattern] = re.compile(
+        r"\\([^abfnrtuvx]|$)", flags=(re.DOTALL | re.UNICODE)
+    )
 
     # Internal dictionary: regex => list-of-platform-names
     __platform_map: dict[str, list[str]] = {
@@ -80,6 +91,30 @@ class Env:
         "^win": [PLATFORM_WINDOWS],
         ".+": [PLATFORM_THIS],
     }
+
+    ###########################################################################
+
+    @staticmethod
+    def decode_escaped(input: str) -> str:
+        """
+        Decode '\\t', '\\n', etc.
+
+        :param input: Input string to decode
+        :type input: str
+        :return: Decoded string
+        :rtype: str
+        """
+
+        if not input:
+            return ""
+
+        if Env.ESCAPE not in input:
+            return input
+
+        def matcher(x: re.Match):
+            return x.group(1)
+
+        return Env.RE_DROP_ESCAPE.sub(matcher, input).encode().decode("unicode_escape")
 
     ###########################################################################
 
@@ -110,48 +145,68 @@ class Env:
         if not input:
             return ""
 
-        # If the user indicator is found, expand the string
+        # Initialise
 
-        quote_type = EnvQuoteType.NONE
-        result = input
+        result = (
+            input.replace(f"{Env.ESCAPE}$", Env.HIDE_01)
+            .replace(f'{Env.ESCAPE}"', Env.HIDE_02)
+            .replace(Env.ESCAPE_ESCAPED, Env.HIDE_03)
+        )
 
-        # If unquoting requested, do that treating a single-quoted input
+        # Simplify flags
+
+        is_decode_escaped: bool = flags & EnvExpandFlags.DECODE_ESCAPED
+        is_remove_line_comment: bool = flags & EnvExpandFlags.REMOVE_LINE_COMMENT
+        is_remove_quotes: bool = flags & EnvExpandFlags.REMOVE_QUOTES
+        is_skip_environ: bool = flags & EnvExpandFlags.SKIP_ENVIRON
+        is_skip_single_quoted: bool = flags & EnvExpandFlags.SKIP_SINGLE_QUOTED
+
+        # Prepare for the unquoting and further unhiding
+
+        quote_type: EnvQuoteType = EnvQuoteType.NONE
+        unhide_escape = Env.ESCAPE
+
+        # If the unquoting requested, do that treating a single-quoted input
         # as literal (no further expansion) if required
 
-        if flags & EnvExpandFlags.REMOVE_QUOTES:
-            result, quote_type = Env.unquote(result)
-
-            if (quote_type == EnvQuoteType.SINGLE) and (
-                flags & EnvExpandFlags.SKIP_SINGLE_QUOTED
-            ):
-                return result
+        if is_remove_quotes:
+            result, quote_type = Env.unquote(result, decode_escaped=False)
 
         # Remove line comment if required
 
-        if (quote_type == EnvQuoteType.NONE) and (
-            flags & EnvExpandFlags.REMOVE_LINE_COMMENT
-        ):
+        if (quote_type == EnvQuoteType.NONE) and is_remove_line_comment:
             result = Env.remove_line_comment(result)
 
-        # If the user indicator is found, expand the string
+        # If not a single-quoted string, try expanding user and vars
 
-        if "~" in result:
-            result = os.path.expanduser(result)
+        if not is_skip_single_quoted or (quote_type != EnvQuoteType.SINGLE):
 
-        # If the sought prefix found in the string, expand arguments
-        # if the list of those passed, then expand the environment
-        # variables if allowed
+            # If the user indicator is found, expand the string
 
-        if ("$" in result) or (Env.IS_WINDOWS and ("%" in result)):
-            if args:
-                result = Env.expandargs(result, args)
-            if not (flags & EnvExpandFlags.SKIP_ENVIRON):
-                result = os.path.expandvars(result)
+            if "~" in result:
+                result = os.path.expanduser(result)
 
-        # Expand escaped characters like \t, \n, \xNN, \uNNNN if needed
+            # If the sought indicator found in the string, expand arguments
+            # if the list of those passed, then expand the environment
+            # variables if allowed
 
-        if (flags & EnvExpandFlags.DECODE_ESCAPED) and ("\\" in result):
-            result = result.encode().decode("unicode_escape")
+            if ("$" in result) or (Env.IS_WINDOWS and ("%" in result)):
+                if args:
+                    result = Env.expandargs(result, args)
+                if not is_skip_environ:
+                    result = os.path.expandvars(result)
+
+            # If decoding escaped characters, shouldn't restore the escape
+
+            if is_decode_escaped:
+                unhide_escape = ""
+                result = Env.decode_escaped(result)
+
+        result = (
+            result.replace(Env.HIDE_01, f"{unhide_escape}$")
+            .replace(Env.HIDE_02, f'{unhide_escape}"')
+            .replace(Env.HIDE_03, f"{unhide_escape}{Env.ESCAPE}")
+        )
 
         # Return the final result
 
@@ -204,7 +259,7 @@ class Env:
 
         # Run the substitution
 
-        return Env.ARGS_RE.sub(matcher, input)
+        return Env.RE_ARGS.sub(matcher, input)
 
     ###########################################################################
 
@@ -386,7 +441,7 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def unquote(input: str) -> tuple[str, EnvQuoteType]:
+    def unquote(input: str, decode_escaped: bool = True) -> tuple[str, EnvQuoteType]:
         """
         Remove the input's embracing quotes. Neither leading, nor trailing
         white spaces removed before checking the leading quotes. Use .strip()
@@ -394,6 +449,9 @@ class Env:
 
         :param input: String being expanded
         :type input: str
+        :param decode_escaped: If True, and input is not single-quoted, decode
+                               escaped characters
+        :type decode_escaped: bool
         :return: Unquoted string, and a number indicating the level of quoting:
                  0 = not quoted, 1 = single-quoted, 2 = double-quoted
         :rtype: str
@@ -404,37 +462,68 @@ class Env:
         if not input:
             return ("", EnvQuoteType.NONE)
 
-        # Initialise result to be returned as well as the first character
+        # Initialise result string to be returned, and the first character
 
+        prefix = "" if (decode_escaped) else Env.ESCAPE
         result = input
         c1 = result[0]
 
-        # Validate and unquote a single-quoted input, then return the
-        # result if required
+        # Initialise quote_type
 
         if c1 == "'":
-            end_pos = input.find(c1, 1)
+            prefix = Env.ESCAPE
+            quote_type = EnvQuoteType.SINGLE
+        elif c1 == '"':
+            quote_type = EnvQuoteType.DOUBLE
+        else:
+            c1 = ""
+            quote_type = EnvQuoteType.NONE
+
+        # Hide interfering characters if needed
+
+        was_protected = Env.HIDE_01 in result
+
+        if not was_protected:
+            result = result.replace(Env.ESCAPE_ESCAPED, Env.HIDE_01)
+            if quote_type != EnvQuoteType.SINGLE:
+                result = result.replace(f'{Env.ESCAPE}"', Env.HIDE_02)
+
+        if quote_type == EnvQuoteType.SINGLE:
+
+            # Validate and unquote a single-quoted input
+
+            end_pos = result.find(c1, 1)
 
             if end_pos < 0:
                 raise ValueError(f"Unterminated single-quoted string: {input}")
 
-            return (input[1:end_pos], EnvQuoteType.SINGLE)
+            result = result[1:end_pos]
+            quote_type = EnvQuoteType.SINGLE
 
-        # Validate and unquote a double-quoted input as well as replace
-        # escaped double-quotes with the plain ones
+        elif quote_type == EnvQuoteType.DOUBLE:
 
-        if c1 == '"':
-            result = result.replace('\\"', "\x01")
+            # Validate and unquote a double-quoted input
+
             end_pos = result.find(c1, 1)
 
             if end_pos < 0:
                 raise ValueError(f"Unterminated double-quoted string: {input}")
 
-            result = result[1:end_pos].replace("\x01", '"')
+            result = result[1:end_pos]
 
-            return (result, EnvQuoteType.DOUBLE)
+        # Decode escaped characters if needed
 
-        return (result, EnvQuoteType.NONE)
+        if decode_escaped:
+            result = Env.decode_escaped(result)
+
+        # Unhide interfering characters if needed
+
+        if not was_protected:
+            if quote_type != EnvQuoteType.SINGLE:
+                result = result.replace(Env.HIDE_02, f"{prefix}{c1}")
+            result = result.replace(Env.HIDE_01, f"{prefix}{Env.ESCAPE}")
+
+        return (result, quote_type)
 
 
 ###############################################################################

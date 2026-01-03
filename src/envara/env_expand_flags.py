@@ -30,7 +30,7 @@ class EnvExpandFlags(IntFlag):
     SKIP_SINGLE_QUOTED = 1 << 5
 
     # Default set of flags
-    DEFAULT = NONE
+    DEFAULT = DECODE_ESCAPED | REMOVE_QUOTES | SKIP_SINGLE_QUOTED
 
 
 ###############################################################################

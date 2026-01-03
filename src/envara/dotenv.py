@@ -41,7 +41,7 @@ class DotEnv:
     DEFAULT_EXT: Final[str] = "env"
 
     # Regex to split a string into key and value
-    KEY_VALUE_RE: Final[re.Pattern] = re.compile(r"\s*=\s*")
+    RE_KEY_VALUE: Final[re.Pattern] = re.compile(r"\s*=\s*")
 
     # Internal list of files that were loaded already
     _loaded: list[str] = []
@@ -93,7 +93,7 @@ class DotEnv:
         for line in data.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
             # Break into key and value and skip if can't
 
-            parts = DotEnv.KEY_VALUE_RE.split(line, maxsplit=1)
+            parts = DotEnv.RE_KEY_VALUE.split(line, maxsplit=1)
             if len(parts) < 2:
                 continue
 

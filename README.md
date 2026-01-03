@@ -42,7 +42,7 @@ __*Env.expand*__ _(input: str, args: list\[str\] = None, flags: EnvExpandFlags =
    - _REMOVE\_LINE\_COMMENT_: remove hash _#_ (outside the quotes if found) and everything beyond that
    - _REMOVE\_QUOTES_: remove leading and trailing quotes
    - _SKIP\_ENVIRON_: do not expand environment variables
-   - _SKIP\_SINGLE\_QUOTED_: if a string is embraced in apostrophes, don't expand it.
+   - _SKIP\_SINGLE\_QUOTED_: if a string is enclosed in apostrophes, don't expand it.
 
 4. _default\_dir_: directory to locate the default files
 
@@ -66,7 +66,7 @@ __*Env.expandargs*__ _(input: str, args: list\[str\] = None) -> str_
 
    A copy of the first parameter expanded as described above.
 
-__*Env.get_platform_stack*__ _(flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT, prefix: str = None, suffix: str = None) -> list[str]_
+__*Env.get_platform_stack*__ _(flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT, prefix: str = None, suffix: str = None) -> list\[str\]_
 
 1. Param _flags_
 
@@ -114,13 +114,17 @@ __*Env.remove_line_comment*__ _(input: str) -> str_
 
    A copy of the first parameter with everything beyond the first encountered outside string literals hash symbol _#_.
 
-__*Env.unquote*__ _(input: str) -> tuple[str, EnvQuoteType]_
+__*Env.unquote*__ _(input: str, decode\_escaped: bool = True) -> tuple[str, EnvQuoteType]_
 
 1. Param _input_
 
-   A string to remove quotes from. Might contain escaped characters like _\\t_, _\\n_, _\\uNNNN_, etc., as well as escaped similar quote. All of those will be converted to the respected unescaped characters in case of a double-quoted string. A single-quoted one will remain intact: just the enclosing quotes removed. If the string doesn't start with the expected quote, it will be returned as-is. If no closing quote found, a _ValueError_ will be raised.
+   A string to remove enclosing quotes from. Might contain escaped characters like _\\t_, _\\n_, _\\uNNNN_, etc., as well as escaped similar quote. All of those will be converted to the respected unescaped characters in case of a double-quoted _input_, and _decode\_escaped_ set. A single-quoted one will remain intact: just the enclosing quotes removed. If the string doesn't start with the expected quote, only decoding of escaped characters might be performed. If no closing quote found, a _ValueError_ will be raised.
 
-2. Return value
+2. Param _decode\_escaped_
+
+   If True, and _input_ is not single-quoted, then decode escaped characters (see _input_ for more detail).
+
+3. Return value
 
    A tuple of the first parameter unquoted, and the type of quotes encountered. This can be used to determine which quotes the string had were before.
 
@@ -153,7 +157,7 @@ __*DotEnv.load\_from\_file*__ _(path: Path, file\_flags: DotEnvFileFlags = DotEn
 
 These files will be loaded in the noted order before the custom one. This happens in _DotEnv.read\_text()_, which is called by _DotEnv.load\_from\_file()_.
 
-The placeholder _platform_ is the lowercased value returned by _sys.platform_.
+All comparisons are case-insensitive.
 
 - _[.]env_, then _[.]any.env_
 
@@ -161,35 +165,35 @@ The placeholder _platform_ is the lowercased value returned by _sys.platform_.
 
 - _[.]posix.env_
 
-  When _platform_ contains one of the following: _aix_, _bsd_, _darwin_, _hp-ux_, _linux_, _sunos_, _cygwin_, _java_, _MSYS_.
+  When _sys.platform_ contains one of the following: _aix_, _bsd_, _darwin_, _hp-ux_, _linux_, _sunos_, _java_ (on POSIX OS), _cygwin_, _MSYS_.
 
 - _[.]bsd.env_
 
-  When _platform_ contains _bsd_ or _darwin_.
+  When _sys.platform_ contains _bsd_ or _darwin_.
 
 - _[.]linux.env_
 
-  When _platform_ contains one of the following: _linux_, _cygwin_, _java_, _MSYS_.
+  When _sys.platform_ contains _linux_.
 
 - _[.]darwin.env_
 
-  When _platform_ contains _darwin_ or _macos_, or starts with _ios_ (the latter also applies to iPadOS).
+  When _sys.platform_ contains _darwin_ or _macos_, or starts with _ios_ (the latter also applies to iPadOS).
 
 - _[.]macos.env_
 
-  When _platform_ contains _darwin_ or _macos_.
+  When _sys.platform_ contains _darwin_ or _macos_.
 
 - _[.]vms.env_
 
-  When _platform_ contains _vms_.
+  When _sys.platform_ contains _vms_.
 
 - _[.]windows.env_
 
-  When _platform_ starts with _win_.
+  When _sys.platform_ starts with _win_ or contains _java_ that is running on Windows.
 
 - _[.]\<platform\>.env_
 
-  Always: _\<platform\>_ is the actual value of _platform_.
+  Always: _\<platform\>_ is the actual value of _sys.platform_ converted to lower case.
 
 ### How to Utilise the Stack of Default _.env_ Files
 
