@@ -17,10 +17,10 @@ class EnvExpandFlags(IntFlag):
     # (depends on NATIVE_ESCAPE flag)
     DECODE_ESCAPED = 1 << 0
 
-    # Remove hash '#' (outside the quotes if found) and everything beyond that
+    # Remove hash "#" (outside the quotes if found) and everything beyond that
     REMOVE_LINE_COMMENT = 1 << 2
 
-    # Remove leading and trailing quote, don't expand single-quoted str: '...'
+    # Remove leading and trailing quote, don't expand single-quoted str: "..."
     REMOVE_QUOTES = 1 << 3
 
     # Do not expand environment variables
@@ -31,5 +31,6 @@ class EnvExpandFlags(IntFlag):
 
     # Default set of flags
     DEFAULT = NONE
+
 
 ###############################################################################

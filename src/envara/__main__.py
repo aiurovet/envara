@@ -9,7 +9,8 @@
 
 if __name__ == "__main__":
 
-    print("""
+    print(
+        """
 
 Envara (c) Alexander Iurovetski 2026
 
@@ -59,7 +60,7 @@ Windows, OS/2:
     [.]windows.env
     [.]<system>.env (i.e. [.]win32.env or [.]os2.env)
 
-Where <system> is the lowercased result of platform.system()
+Where <system> is the lowercased result of sys.platform
 
 None of these files is required, and will be picked only if found and verified
 to be relevant to the system you are running under. The system includes not
@@ -83,7 +84,8 @@ variable CMD_CHROME as follows:
         CMD_CHROME="\\\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\\\" $ARG_HEADLESS"
     .windows.env
         CMD_CHROME="chrome $ARG_HEADLESS"
-""")
+"""
+    )
 
     exit(0)
 

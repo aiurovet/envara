@@ -12,9 +12,11 @@
 
 import os
 import re
+import sys
 from typing import Final
 
 from env_expand_flags import EnvExpandFlags
+from env_platform_stack_flags import EnvPlatformStackFlags
 from env_quote_type import EnvQuoteType
 
 ###############################################################################
@@ -27,18 +29,57 @@ class Env:
 
     # Regex to find references to arguments ($n or ${n} or %n) by 1-based index
     # % though will work under Windows only
-    ARGS_RE: Final = re.compile(
-        r'\$(\d+)|\${(\d+)}|%(\d+)', flags=(re.DOTALL | re.UNICODE)
+    ARGS_RE: Final[re.Pattern] = re.compile(
+        r"\$(\d+)|\${(\d+)}|%(\d+)", flags=(re.DOTALL | re.UNICODE)
     )
 
     # POSIX escape character
-    ESCAPE: Final = '\\'
+    ESCAPE: Final[str] = "\\"
 
     # POSIX escape character escaped
-    ESCAPE_ESCAPED: Final = f'{ESCAPE}{ESCAPE}'
+    ESCAPE_ESCAPED: Final[str] = f"{ESCAPE}{ESCAPE}"
 
     # Flag indicating whether the script is running under Windows or not
-    IS_WINDOWS: Final = os.sep == ESCAPE
+    IS_POSIX: Final[bool] = os.sep == "/"
+
+    # Flag indicating whether the script is running under Windows or not
+    IS_WINDOWS: Final[bool] = os.sep == ESCAPE
+
+    # A text indicating any platform, but not empty
+    PLATFORM_ANY: Final[str] = "any"
+
+    # A text indicating a POSIX-compatible platform
+    PLATFORM_POSIX: Final[str] = "posix"
+
+    # A text indicating a Windows-compatible platform
+    PLATFORM_WINDOWS: Final[str] = "windows"
+
+    # A text indicating the running platform
+    PLATFORM_THIS: Final[str] = sys.platform.lower()
+
+    # Internal dictionary: regex => list-of-platform-names
+    __platform_map: dict[str, list[str]] = {
+        "": ["", PLATFORM_ANY, PLATFORM_POSIX],
+        "^aix": ["aix"],
+        "android": ["linux", "android"],
+        "^atheos": ["atheos"],
+        "^beos|haiku": ["beos", "haiku"],
+        "bsd": ["bsd"],
+        "cygwin": ["cygwin"],
+        "hp-ux": ["hp-ux"],
+        "darwin|macos": ["bsd", "darwin", "macos"],
+        "^ios|ipados": ["bsd", "ios"],
+        "java": [PLATFORM_POSIX, PLATFORM_WINDOWS],  # only one will fit
+        "^linux": ["linux"],
+        "^os2": ["os2"],
+        "^msys": ["msys"],
+        "^riscos": ["riscos"],
+        "sunos": ["sunos"],
+        "unix": ["unix"],
+        "vms": ["vms"],
+        "^win": [PLATFORM_WINDOWS],
+        ".+": [PLATFORM_THIS],
+    }
 
     ###########################################################################
 
@@ -67,7 +108,7 @@ class Env:
         # For input as None or the empty string, return empty string
 
         if not input:
-            return ''
+            return ""
 
         # If the user indicator is found, expand the string
 
@@ -87,29 +128,30 @@ class Env:
 
         # Remove line comment if required
 
-        if ((quote_type == EnvQuoteType.NONE) and \
-            (flags & EnvExpandFlags.REMOVE_LINE_COMMENT)):
+        if (quote_type == EnvQuoteType.NONE) and (
+            flags & EnvExpandFlags.REMOVE_LINE_COMMENT
+        ):
             result = Env.remove_line_comment(result)
 
         # If the user indicator is found, expand the string
 
-        if '~' in result:
+        if "~" in result:
             result = os.path.expanduser(result)
 
         # If the sought prefix found in the string, expand arguments
         # if the list of those passed, then expand the environment
         # variables if allowed
 
-        if ('$' in result) or (Env.IS_WINDOWS and ('%' in result)):
-            if (args):
+        if ("$" in result) or (Env.IS_WINDOWS and ("%" in result)):
+            if args:
                 result = Env.expandargs(result, args)
-            if (not (flags & EnvExpandFlags.SKIP_ENVIRON)):
+            if not (flags & EnvExpandFlags.SKIP_ENVIRON):
                 result = os.path.expandvars(result)
 
         # Expand escaped characters like \t, \n, \xNN, \uNNNN if needed
 
-        if (flags & EnvExpandFlags.DECODE_ESCAPED) and ('\\' in result):
-            result = result.encode().decode('unicode_escape')
+        if (flags & EnvExpandFlags.DECODE_ESCAPED) and ("\\" in result):
+            result = result.encode().decode("unicode_escape")
 
         # Return the final result
 
@@ -118,10 +160,7 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def expandargs(
-        input: str,
-        args: list[str] = None
-    ) -> str:
+    def expandargs(input: str, args: list[str] = None) -> str:
         """
         Expand references to an array of arguments by its indices
 
@@ -134,15 +173,15 @@ class Env:
         """
 
         # If input is None or empty, return empty string
-    
+
         if not input:
-            return ''
+            return ""
 
         # Get how many args and return input intact if no arg passed
 
         arg_cnt = len(args) if args else 0
 
-        if (arg_cnt <= 0):
+        if arg_cnt <= 0:
             return input
 
         # Define regex match evaluator
@@ -170,10 +209,94 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def quote(
-        input: str,
-        type: EnvQuoteType = EnvQuoteType.DOUBLE
-    ) -> str:
+    def get_platform_stack(
+        flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT,
+        prefix: str = None,
+        suffix: str = None,
+    ) -> list[str]:
+        """
+        Get the stack (list) of platforms from more generic to more specific
+        ones
+
+        :param flags: Controls which items will be added to the stack
+        :type flags: EnvPlatformStackFlags
+        :param prefix: A string to prepend every platform name with
+        :type prefix: str
+        :param suffix: A string to append to every platform name
+        :type suffix: str
+        :return: A list of all relevant platforms with an optional decoration
+        :rtype: list[str]
+        """
+
+        # Adjust parameters
+
+        prefix: str = "" if (prefix is None) else prefix
+        suffix: str = "" if (suffix is None) else suffix
+
+        is_decorated: bool = True if (prefix or suffix) else False
+
+        # Initialize the return value
+
+        result: list[str] = []
+
+        # Traverse the {pattern: list-of-relevant-platforms} dictionary and
+        # append those where the pattern matches the running platform
+
+        re_flags = re.IGNORECASE | re.UNICODE
+
+        for pattern, platforms in Env.__platform_map.items():
+
+            # If the platform doesn't match the running one, skip it
+
+            if pattern:
+                if not re.search(pattern, Env.PLATFORM_THIS, re_flags):
+                    continue
+
+            # Append every platform from the current list if eligible
+
+            for platform in platforms:
+
+                # Perform extra checks
+
+                if not platform:
+                    if (flags & EnvPlatformStackFlags.ADD_EMPTY) == 0:
+                        continue
+                elif platform == Env.PLATFORM_ANY:
+                    if (flags & EnvPlatformStackFlags.ADD_ANY) == 0:
+                        continue
+                elif platform == Env.PLATFORM_THIS:
+                    if (flags & EnvPlatformStackFlags.ADD_CURRENT) == 0:
+                        continue
+                elif platform == Env.PLATFORM_POSIX:
+                    if not Env.IS_POSIX:
+                        continue
+                elif platform == Env.PLATFORM_WINDOWS:
+                    if not Env.IS_WINDOWS:
+                        continue
+
+                # Decorate the platform name if needed
+                # If the platform name is empty, and suffix starts with prefix
+                # (like "." and ".env"), take suffix alone (i.e. merge)
+
+                if is_decorated:
+                    if (not platform) and suffix.startswith(prefix):
+                        platform = suffix
+                    else:
+                        platform = f"{prefix}{platform}{suffix}"
+
+                # If the platform name was not added yet, add it
+
+                if platform not in result:
+                    result.append(platform)
+
+        # Return the accumulated list
+
+        return result
+
+    ###########################################################################
+
+    @staticmethod
+    def quote(input: str, type: EnvQuoteType = EnvQuoteType.DOUBLE) -> str:
         """
         Embrace input with quotes. Neither leading, nor trailing white spaces
         removed before checking the leading quotes. Use .strip() yourself
@@ -188,39 +311,37 @@ class Env:
 
         # Initialise the result
 
-        result = '' if (input is None) else input
+        result = "" if (input is None) else input
 
         # Define the quote being used
 
-        if (type == EnvQuoteType.SINGLE):
+        if type == EnvQuoteType.SINGLE:
             quote = "'"
-        elif (type == EnvQuoteType.DOUBLE):
+        elif type == EnvQuoteType.DOUBLE:
             quote = '"'
         else:
-            quote = ''
+            quote = ""
 
         # If quote is empty, return the input itself
 
-        if (not quote):
+        if not quote:
             return result
 
         # If input is not empty, escape the escape character, then the
         # internal quote(s), then embrace the result in desired quotes
         # and return
 
-        if (result and (quote in result)):
-            if (Env.ESCAPE in result):
+        if result and (quote in result):
+            if Env.ESCAPE in result:
                 result = result.replace(Env.ESCAPE, Env.ESCAPE_ESCAPED)
-            result = result.replace(quote, f'{Env.ESCAPE}{quote}')
+            result = result.replace(quote, f"{Env.ESCAPE}{quote}")
 
-        return f'{quote}{result}{quote}'
+        return f"{quote}{result}{quote}"
 
     ###########################################################################
 
     @staticmethod
-    def remove_line_comment(
-        input: str
-    ) -> str:
+    def remove_line_comment(input: str) -> str:
         """
         Remove the input's line comment: from # (hash symbol) outside the
         quotes (if any) to the end of the whole string, as the input is
@@ -265,9 +386,7 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def unquote(
-        input: str
-    ) -> tuple[str, EnvQuoteType]:
+    def unquote(input: str) -> tuple[str, EnvQuoteType]:
         """
         Remove the input's embracing quotes. Neither leading, nor trailing
         white spaces removed before checking the leading quotes. Use .strip()

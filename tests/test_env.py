@@ -10,6 +10,7 @@ import os
 import pytest
 
 from env import Env, EnvExpandFlags, EnvQuoteType
+from env_platform_stack_flags import EnvPlatformStackFlags
 
 ###############################################################################
 
@@ -102,6 +103,160 @@ class TestExpandargs:
 ###############################################################################
 
 
+class TestGetPlatformStack:
+    """Test suite for Env.expandargs method"""
+
+    @pytest.mark.parametrize(
+        "type, platform, flags, prefix, suffix, expected",
+        [
+            ("P", "linux3", EnvPlatformStackFlags.NONE, None, None, "posix, linux"),
+            (
+                "P",
+                "linux3",
+                EnvPlatformStackFlags.ADD_EMPTY,
+                None,
+                None,
+                ", posix, linux",
+            ),
+            (
+                "P",
+                "linux3",
+                EnvPlatformStackFlags.ADD_ANY,
+                None,
+                None,
+                "any, posix, linux",
+            ),
+            (
+                "P",
+                "linux3",
+                EnvPlatformStackFlags.ADD_ANY | EnvPlatformStackFlags.ADD_EMPTY,
+                None,
+                None,
+                ", any, posix, linux",
+            ),
+            (
+                "P",
+                "linux3",
+                EnvPlatformStackFlags.ADD_CURRENT,
+                None,
+                None,
+                "posix, linux, linux3",
+            ),
+            (
+                "P",
+                "linux3",
+                EnvPlatformStackFlags.ADD_MAX,
+                None,
+                None,
+                ", any, posix, linux, linux3",
+            ),
+            (
+                "P",
+                "linux3",
+                EnvPlatformStackFlags.ADD_MAX,
+                ".",
+                ".env",
+                ".env, .any.env, .posix.env, .linux.env, .linux3.env",
+            ),
+            (
+                "P",
+                "darwin",
+                EnvPlatformStackFlags.ADD_MAX,
+                ".",
+                ".env",
+                ".env, .any.env, .posix.env, .bsd.env, .darwin.env, .macos.env",
+            ),
+            (
+                "P",
+                "macos",
+                EnvPlatformStackFlags.ADD_MAX,
+                ".",
+                ".env",
+                ".env, .any.env, .posix.env, .bsd.env, .darwin.env, .macos.env",
+            ),
+            (
+                "P",
+                "ios",
+                EnvPlatformStackFlags.ADD_MAX,
+                None,
+                None,
+                ", any, posix, bsd, ios",
+            ),
+            (
+                "P",
+                "aix5",
+                EnvPlatformStackFlags.ADD_MAX,
+                None,
+                None,
+                ", any, posix, aix, aix5",
+            ),
+            (
+                "P",
+                "cygwin",
+                EnvPlatformStackFlags.ADD_MAX,
+                None,
+                None,
+                ", any, posix, cygwin",
+            ),
+            (
+                "P",
+                "msys",
+                EnvPlatformStackFlags.ADD_MAX,
+                None,
+                None,
+                ", any, posix, msys",
+            ),
+            (
+                "P",
+                "java",
+                EnvPlatformStackFlags.ADD_MAX,
+                None,
+                None,
+                ", any, posix, java",
+            ),
+            (
+                "W",
+                "java",
+                EnvPlatformStackFlags.ADD_MAX,
+                None,
+                None,
+                ", any, windows, java",
+            ),
+            ("", "vms", EnvPlatformStackFlags.ADD_MAX, None, None, ", any, vms"),
+            (
+                "W",
+                "windows",
+                EnvPlatformStackFlags.ADD_MAX,
+                None,
+                None,
+                ", any, windows",
+            ),
+        ],
+    )
+    def test_get_platform_stack(
+        self,
+        type: str,
+        platform: str,
+        flags: EnvPlatformStackFlags,
+        prefix: str,
+        suffix: str,
+        expected: str,
+    ):
+        Env.IS_POSIX = True if (type == "P") else False
+        Env.IS_WINDOWS = True if (type == "W") else False
+        Env.PLATFORM_THIS = platform
+        Env._Env__platform_map[".+"] = [platform]
+
+        # Call the method
+        result: list[str] = Env.get_platform_stack(flags, prefix, suffix)
+
+        # Verify result matches expected
+        assert ", ".join(result) == expected
+
+
+###############################################################################
+
+
 class TestQuote:
     """Test suite for Env.quote method"""
 
@@ -111,13 +266,13 @@ class TestQuote:
             (None, EnvQuoteType.NONE, ""),
             (None, EnvQuoteType.SINGLE, "''"),
             (None, EnvQuoteType.DOUBLE, '""'),
-            ('', EnvQuoteType.NONE, ''),
-            ('', EnvQuoteType.SINGLE, "''"),
-            ('', EnvQuoteType.DOUBLE, '""'),
-            (' a "b\'  c   ', EnvQuoteType.NONE, ' a "b\'  c   '),
-            (' a "b\'  c   ', EnvQuoteType.SINGLE, '\' a "b\\\'  c   \''),
-            (' a \\"b\\\'  c   ', EnvQuoteType.SINGLE, '\' a \\\\"b\\\\\\\'  c   \''),
-            (' a \\"b\\\'  c   ', EnvQuoteType.DOUBLE, '" a \\\\\\"b\\\\\'  c   "'),
+            ("", EnvQuoteType.NONE, ""),
+            ("", EnvQuoteType.SINGLE, "''"),
+            ("", EnvQuoteType.DOUBLE, '""'),
+            (" a \"b'  c   ", EnvQuoteType.NONE, " a \"b'  c   "),
+            (" a \"b'  c   ", EnvQuoteType.SINGLE, "' a \"b\\'  c   '"),
+            (" a \\\"b\\'  c   ", EnvQuoteType.SINGLE, "' a \\\\\"b\\\\\\'  c   '"),
+            (" a \\\"b\\'  c   ", EnvQuoteType.DOUBLE, '" a \\\\\\"b\\\\\'  c   "'),
         ],
     )
     def test_quote(self, input: str, type: str, expected: str):

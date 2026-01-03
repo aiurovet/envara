@@ -6,116 +6,279 @@
 # Tests for DotEnv
 ###############################################################################
 
-import os
-from unittest.mock import Mock
 from pathlib import Path
-from dotenv import DotEnv, DotEnvFileFlags
-from env import Env
+from dotenv import DotEnv
+from dotenv_file_flags import DotEnvFileFlags
+from env_expand_flags import EnvExpandFlags
 
 ###############################################################################
 
 
-class TestDotEnv:
-    """Test suite for DotEnv class"""
+class TestLoadFromStr:
+    """Test suite for DotEnv.load_from_str method"""
 
-    def test_load_from_str(self, mocker: Mock):
+    def test_load_from_str_basic(self, mocker):
         # Arrange
-        data = "KEY1=VAL1\nKEY2=VAL2\nKEY3="
-        mocker.patch.dict(os.environ, {"KEY3": "OLD_VAL"}, clear=True)
-        mock_expand = mocker.patch.object(Env, "expand", side_effect=lambda v, a, f: v)
+        m_environ = mocker.patch("os.environ", {})
+        data = "KEY1=VALUE1\nKEY2=VALUE2"
 
         # Act
-        DotEnv.load_from_str(data, DotEnv.DEFAULT_EXPAND_FLAGS)
+        result = DotEnv.load_from_str(data)
 
         # Assert
-        assert os.environ["KEY1"] == "VAL1"
-        assert os.environ["KEY2"] == "VAL2"
-        assert "KEY3" not in os.environ
-        assert mock_expand.call_count == 2
+        assert m_environ["KEY1"] == "VALUE1"
+        assert m_environ["KEY2"] == "VALUE2"
+        assert result == data
 
-    def test_load_from_str_complex_line_endings(self, mocker: Mock):
+    def test_load_from_str_skip_empty_lines(self, mocker):
         # Arrange
-        data = "K1=V1\rK2=V2\r\nK3=V3"
-        mocker.patch.dict(os.environ, {}, clear=True)
-        mocker.patch.object(Env, "expand", side_effect=lambda v, a, f: v)
+        m_environ = mocker.patch("os.environ", {})
+        data = "KEY1=VALUE1\n\n  \nKEY2=VALUE2"
 
         # Act
         DotEnv.load_from_str(data)
 
         # Assert
-        assert os.environ["K1"] == "V1"
-        assert os.environ["K2"] == "V2"
-        assert os.environ["K3"] == "V3"
+        assert m_environ["KEY1"] == "VALUE1"
+        assert m_environ["KEY2"] == "VALUE2"
+        assert len(m_environ) == 2
 
-    def test_read_text_reset(self, mocker: Mock):
+    def test_load_from_str_deletion(self, mocker):
         # Arrange
-        DotEnv._loaded = ["some_file"]
-        mocker.patch("platform.system", return_value="Linux")
-        mocker.patch.object(Path, "exists", return_value=False)
-        mocker.patch.object(Path, "cwd", return_value=Path("/tmp"))
+        m_environ = mocker.patch("os.environ", {"KEY1": "OLD_VALUE", "KEY2": "STAY"})
+        data = "KEY1="
 
         # Act
-        DotEnv.read_text(None, DotEnvFileFlags.RESET)
+        DotEnv.load_from_str(data)
 
         # Assert
-        assert DotEnv._loaded == []
+        assert "KEY1" not in m_environ
+        assert m_environ["KEY2"] == "STAY"
 
-    def test_read_text_hierarchy(self, mocker: Mock):
+    def test_load_from_str_with_args(self, mocker):
         # Arrange
-        mocker.patch("platform.system", return_value="Linux")
-        mocker.patch.object(Path, "cwd", return_value=Path("/app"))
+        m_environ = mocker.patch("os.environ", {})
+        data = "KEY1=$1\nKEY2=${2}"
+        args = ["arg1", "arg2"]
 
-        # Mock Path.exists to return True for specific files
-        def mock_exists(self):
-            return str(self) in ["/app/.env", "/app/.linux.env", "/app/custom.env"]
+        # Act
+        DotEnv.load_from_str(data, args=args)
 
-        mocker.patch.object(Path, "exists", autospec=True, side_effect=mock_exists)
+        # Assert
+        assert m_environ["KEY1"] == "arg1"
+        assert m_environ["KEY2"] == "arg2"
 
-        # Mock Path.read_text
-        def mock_read_text(self):
-            return f"content_of_{self.name}"
+    def test_load_from_str_sequential_expansion(self, mocker):
+        # Arrange
+        m_environ = mocker.patch("os.environ", {})
+        data = "KEY1=VALUE1\nKEY2=$KEY1"
 
-        mocker.patch.object(
-            Path, "read_text", autospec=True, side_effect=mock_read_text
-        )
+        # Act
+        DotEnv.load_from_str(data)
 
+        # Assert
+        assert m_environ["KEY1"] == "VALUE1"
+        assert m_environ["KEY2"] == "VALUE1"
+
+    def test_load_from_str_comments(self, mocker):
+        # Arrange
+        m_environ = mocker.patch("os.environ", {})
+        data = "KEY1=VALUE1 # basic comment\nKEY2='VAL#UE2' # quoted comment\n# Full line comment\nKEY3=VALUE3"
+
+        # Act
+        DotEnv.load_from_str(data)
+
+        # Assert
+        assert m_environ["KEY1"] == "VALUE1"
+        assert m_environ["KEY2"] == "VAL#UE2"
+        assert m_environ["KEY3"] == "VALUE3"
+
+
+class TestReadText:
+    """Test suite for DotEnv.read_text method"""
+
+    def setup_method(self):
         DotEnv._loaded = []
 
-        # Act
-        content = DotEnv.read_text(Path("/app/custom.env"), DotEnvFileFlags.DEFAULT)
-
-        # Assert
-        # Linux plat_map: ["posix", "linux"]
-        # Expected files in order:
-        # .any.env (not exists)
-        # .posix.env (not exists)
-        # .linux.env (exists)
-        # .env (exists - actually it is listed first in loop usually but let's check order)
-        # custom.env (exists)
-
-        # In DotEnv._plat_map:
-        # "": ["", "any"] -> .env, .any.env
-        # "^(java|linux|cygwin|msys)": ["posix", "linux"] -> .posix.env, .linux.env
-
-        assert "content_of_.env" in content
-        assert "content_of_.linux.env" in content
-        assert "content_of_custom.env" in content
-        assert "/app/.env" in DotEnv._loaded
-        assert "/app/.linux.env" in DotEnv._loaded
-        assert "/app/custom.env" in DotEnv._loaded
-
-    def test_load_from_file(self, mocker: Mock):
+    def test_read_text_skip_defaults(self, mocker):
         # Arrange
-        path = Path("test.env")
-        mock_read = mocker.patch.object(DotEnv, "read_text", return_value="K=V")
-        mock_load_str = mocker.patch.object(DotEnv, "load_from_str")
+        m_path = mocker.MagicMock(spec=Path)
+        m_path.is_dir.return_value = False
+        m_path.exists.return_value = True
+        m_path.read_text.return_value = "KEY=VAL"
+        m_path.is_absolute.return_value = True
+        m_path.absolute.return_value = m_path
+        m_path.__str__.return_value = "/path/to/file.env"
+        m_path.parent.__truediv__.return_value = m_path
 
         # Act
-        DotEnv.load_from_file(path)
+        content = DotEnv.read_text(
+            m_path, file_flags=DotEnvFileFlags.SKIP_DEFAULT_FILES
+        )
 
         # Assert
-        mock_read.assert_called_once_with(path, DotEnvFileFlags.DEFAULT, None)
-        mock_load_str.assert_called_once_with("K=V", DotEnv.DEFAULT_EXPAND_FLAGS)
+        assert content == "KEY=VAL\n"
+        assert "/path/to/file.env" in DotEnv._loaded
+
+    def test_read_text_reset_flag(self, mocker):
+        # Arrange
+        DotEnv._loaded = ["/already/loaded"]
+        m_path = mocker.MagicMock(spec=Path)
+        m_path.is_dir.return_value = False
+        m_path.exists.return_value = False
+        m_path.is_absolute.return_value = True
+        m_path.absolute.return_value = m_path
+
+        # Act
+        DotEnv.read_text(
+            m_path,
+            file_flags=DotEnvFileFlags.RESET | DotEnvFileFlags.SKIP_DEFAULT_FILES,
+        )
+
+        # Assert
+        assert "/already/loaded" not in DotEnv._loaded
+
+    def test_read_text_with_platform_stack(self, mocker):
+        # Arrange
+        m_get_stack = mocker.patch(
+            "dotenv.Env.get_platform_stack", return_value=[".env", ".linux.env"]
+        )
+
+        mock_paths = {}
+
+        def get_mock_path(path_str):
+            if path_str not in mock_paths:
+                m = mocker.MagicMock(spec=Path)
+                m.exists.return_value = False
+                m.read_text.return_value = f"CONTENT_OF_{path_str}"
+                m.__str__.return_value = path_str
+                m.is_absolute.return_value = True
+                m.absolute.return_value = m
+                m.__truediv__.side_effect = lambda other: get_mock_path(
+                    f"{path_str}/{other}"
+                )
+                mock_paths[path_str] = m
+            return mock_paths[path_str]
+
+        m_cwd = get_mock_path("/cwd")
+        mocker.patch.object(Path, "cwd", return_value=m_cwd)
+
+        get_mock_path("/cwd/.env").exists.return_value = True
+        get_mock_path("/cwd/.linux.env").exists.return_value = True
+
+        # Act
+        content = DotEnv.read_text(None)
+
+        # Assert
+        assert "CONTENT_OF_/cwd/.env" in content
+        assert "CONTENT_OF_/cwd/.linux.env" in content
+        m_get_stack.assert_called_once()
+
+    def test_read_text_alt_ext(self, mocker):
+        # Arrange
+        m_get_stack = mocker.patch(
+            "dotenv.Env.get_platform_stack", return_value=[".myenv"]
+        )
+        m_cwd = mocker.MagicMock(spec=Path)
+        m_cwd.is_absolute.return_value = True
+        m_cwd.absolute.return_value = m_cwd
+        mocker.patch.object(Path, "cwd", return_value=m_cwd)
+
+        m_file = mocker.MagicMock(spec=Path)
+        m_cwd.__truediv__.return_value = m_file
+        m_file.exists.return_value = True
+        m_file.read_text.return_value = "ALT_CONTENT"
+        m_file.__str__.return_value = "/cwd/.myenv"
+
+        # Act
+        content = DotEnv.read_text(None, alt_ext="myenv")
+
+        # Assert
+        assert "ALT_CONTENT" in content
+        m_get_stack.assert_called_once_with(mocker.ANY, ".", ".myenv")
+
+    def test_read_text_visible_files_flag(self, mocker):
+        # Arrange
+        m_get_stack = mocker.patch(
+            "dotenv.Env.get_platform_stack", return_value=["env"]
+        )
+        m_cwd = mocker.MagicMock(spec=Path)
+        m_cwd.is_absolute.return_value = True
+        m_cwd.absolute.return_value = m_cwd
+        mocker.patch.object(Path, "cwd", return_value=m_cwd)
+
+        m_file = mocker.MagicMock(spec=Path)
+        m_cwd.__truediv__.return_value = m_file
+        m_file.exists.return_value = True
+        m_file.read_text.return_value = "VISIBLE_CONTENT"
+        m_file.__str__.return_value = "/cwd/env"
+
+        # Act
+        DotEnv.read_text(None, file_flags=DotEnvFileFlags.VISIBLE_FILES)
+
+        # Assert
+        # When VISIBLE_FILES is set, prefix passed to get_platform_stack should be ""
+        m_get_stack.assert_called_once_with(mocker.ANY, "", mocker.ANY)
+
+    def test_read_text_persistence_and_reset(self, mocker):
+        # Arrange
+        mocker.patch("dotenv.Env.get_platform_stack", return_value=[".env"])
+        m_cwd = mocker.MagicMock(spec=Path)
+        m_cwd.is_absolute.return_value = True
+        m_cwd.absolute.return_value = m_cwd
+        mocker.patch.object(Path, "cwd", return_value=m_cwd)
+
+        m_file = mocker.MagicMock(spec=Path)
+        m_cwd.__truediv__.return_value = m_file
+        m_file.exists.return_value = True
+        m_file.read_text.return_value = "A=B"
+        m_file.__str__.return_value = "/cwd/.env"
+
+        # Act 1: First load
+        content1 = DotEnv.read_text(None)
+        assert "A=B" in content1
+        assert "/cwd/.env" in DotEnv._loaded
+
+        # Act 2: Second load without reset - should not load again
+        content2 = DotEnv.read_text(None)
+        assert content2 == ""
+
+        # Act 3: Third load with reset - should load again
+        content3 = DotEnv.read_text(None, file_flags=DotEnvFileFlags.RESET)
+        assert "A=B" in content3
 
 
-###############################################################################
+class TestLoadFromFile:
+    """Test suite for DotEnv.load_from_file method"""
+
+    def test_load_from_file(self, mocker):
+        # Arrange
+        m_read_text = mocker.patch("dotenv.DotEnv.read_text", return_value="KEY=VAL")
+        m_load_from_str = mocker.patch("dotenv.DotEnv.load_from_str")
+        m_path = mocker.MagicMock(spec=Path)
+
+        # Act
+        result = DotEnv.load_from_file(m_path)
+
+        # Assert
+        m_read_text.assert_called_once()
+        # Ensure expand_flags is passed correctly as keyword
+        m_load_from_str.assert_called_once_with(
+            "KEY=VAL", expand_flags=DotEnv.DEFAULT_EXPAND_FLAGS
+        )
+        assert result == "KEY=VAL"
+
+    def test_load_from_file_with_default_dir(self, mocker):
+        # Arrange
+        m_read_text = mocker.patch("dotenv.DotEnv.read_text", return_value="KEY=VAL")
+        mocker.patch("dotenv.DotEnv.load_from_str")
+        m_path = mocker.MagicMock(spec=Path)
+
+        # Act
+        DotEnv.load_from_file(m_path, default_dir="/some/path")
+
+        # Assert
+        args, _ = m_read_text.call_args
+        # args[2] is default_dir
+        assert isinstance(args[2], Path)
+        assert str(args[2]) == "/some/path"
