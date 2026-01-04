@@ -198,9 +198,9 @@ Note that _sys.platform_ is converted to lowercase, all comparisons are case-ins
 
 For instance, you are going to call _Google Chrome_ from your script in headless mode to save some screenshots. In that case, you can define variables _ARG\_HEADLESS_ and _CMD\_CHROME_ as follows:
 
-- _.env_:
+- _.env_ (need to pass a list of command-line arguments):
 
-  APP_NAME = $1 # need to pass a list of command-line arguments
+  APP_NAME = $1
   APP_VERSION = "${2}_$3"
   PROJECT_PATH = ~/Projects/$APP_NAME
   ARG_HEADLESS = "--headless --disable-gpu --default-background-color=00000000 --window-size={w},{h} --screenshot={o} file://{i}"
