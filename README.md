@@ -156,7 +156,7 @@ __*DotEnv.read\_text*__ _(path: Path, file\_flags: DotEnvFileFlags = DotEnvFileF
    - _NONE_: none of the below (default)
    - _RESET_: discard internally accumulated list of loaded files
    - _SKIP\_DEFAULT\_FILES_: do not load any default file
-   - _VISIBLE\_FILES_: do not prepend default filenames with a dot
+   - _VISIBLE\_FILES_: do not prepend default filenames with a dot, except _.env_
 
 3. Param _default\_dir_
 
