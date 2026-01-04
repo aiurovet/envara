@@ -39,7 +39,7 @@ Here is an incomplete list of dot-env files the latter method will look for
 Note that the leading dot is optional, except for .env, extension can be
 changed, <sys.platform> lowercased, each file loaded once:
 
-Any platform:
+For any platform:
     .env
     [.]any.env
 
@@ -63,7 +63,7 @@ VMS:
 Windows:
     [.]windows.env
 
-Any platform again:
+For any platform again:
     [.]<sys.platform>.env
 
 None of these files is required, and will be picked only if found and verified

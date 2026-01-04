@@ -160,7 +160,7 @@ Note that _sys.platform_ is converted to lowercase, all comparisons are case-ins
 
 - _.env_ (always hidden), then _[.]any.env_
 
-  Always.
+  For any _sys.platform_.
 
 - _[.]posix.env_
 
@@ -192,7 +192,7 @@ Note that _sys.platform_ is converted to lowercase, all comparisons are case-ins
 
 - _[.]\<sys.platform\>.env_
 
-  Always.
+  For any _sys.platform_ again.
 
 ### How to Utilise the Stack of Default _.env_ Files
 
