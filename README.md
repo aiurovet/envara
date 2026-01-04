@@ -77,7 +77,6 @@ __*Env.get_platform_stack*__ _(flags: EnvPlatformStackFlags = EnvPlatformStackFl
    - _ADD\_CURRENT_: add current platform, relevant to any platform
    - _ADD\_MAX_: add maximum platforms
 
-
 2. Param _prefix_
 
    An optional free text to put in front of every platform name in the resulting list; in a call from _DotEnv.read\_text()_, is set to a dot when needed.
