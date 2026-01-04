@@ -20,7 +20,7 @@ class TestLoadFromStr:
     def test_load_from_str_basic(self, mocker):
         # Arrange
         m_environ = mocker.patch("os.environ", {})
-        data = "KEY1=VALUE1\nKEY2=VALUE2"
+        data = "KEY1 =   VALUE1\nKEY2\t=\t\tVALUE2"
 
         # Act
         result = DotEnv.load_from_str(data)
@@ -33,7 +33,7 @@ class TestLoadFromStr:
     def test_load_from_str_skip_empty_lines(self, mocker):
         # Arrange
         m_environ = mocker.patch("os.environ", {})
-        data = "KEY1=VALUE1\n\n  \nKEY2=VALUE2"
+        data = "KEY1 = VALUE1\n\n  \nKEY2=VALUE2"
 
         # Act
         DotEnv.load_from_str(data)

@@ -200,26 +200,26 @@ For instance, you are going to call _Google Chrome_ from your script in headless
 
 - _.env_:
 
-  PROJECT_NAME=$1 # need to pass a list command-line arguments
+  PROJECT_PATH = "~/Projects/$1" # need to pass a list of command-line arguments
 
-  VERSION="${2}_$3"
+  VERSION = ${2}_$3
 
-  ARG_HEADLESS="--headless --disable-gpu --default-background-color=00000000 --window-size={w},{h} --screenshot={o} file://{i}"
+  ARG_HEADLESS = "--headless --disable-gpu --default-background-color=00000000 --window-size={w},{h} --screenshot={o} file://{i}"
 
 - _.linux.env_:
 
-    CMD_CHROME="google-chrome $ARG_HEADLESS"
+    CMD_CHROME = "google-chrome $ARG_HEADLESS"
 
 - _.bsd.env_:
 
-    CMD_CHROME="chrome $ARG_HEADLESS"
+    CMD_CHROME = "chrome $ARG_HEADLESS"
 
 - _.macos.env_:
 
-    CMD_CHROME="\\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\\" $ARG_HEADLESS"
+    CMD_CHROME = "\\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\\" $ARG_HEADLESS"
 
 - _.windows.env_:
 
-    CMD_CHROME="chrome $ARG_HEADLESS"
+    CMD_CHROME = "chrome $ARG_HEADLESS"
 
 ## __Good Luck!__
