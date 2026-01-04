@@ -193,7 +193,7 @@ All comparisons are case-insensitive.
 
 - _[.]\<platform\>.env_
 
-  Always: _\<platform\>_ is the actual value of _sys.platform_ converted to lower case.
+  Always, and _\<platform\>_ is the actual value of _sys.platform_ converted to lower case.
 
 ### How to Utilise the Stack of Default _.env_ Files
 
