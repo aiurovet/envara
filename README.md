@@ -157,7 +157,7 @@ __*DotEnv.load\_from\_file*__ _(path: Path, file\_flags: DotEnvFileFlags = DotEn
 
 These files will be loaded in the noted order before the custom one. This happens in _DotEnv.read\_text()_, which is called by _DotEnv.load\_from\_file()_.
 
-All comparisons are case-insensitive.
+Note that _sys.platform_ is converted to lowercase, and all comparisons are case-insensitive.
 
 - _.env_ (always hidden), then _[.]any.env_
 
@@ -191,9 +191,9 @@ All comparisons are case-insensitive.
 
   When _sys.platform_ starts with _win_ or contains _java_ that is running on Windows.
 
-- _[.]\<platform\>.env_
+- _[.]\<sys.platform\>.env_
 
-  Always, and _\<platform\>_ is the actual value of _sys.platform_ converted to lower case.
+  Always.
 
 ### How to Utilise the Stack of Default _.env_ Files
 
