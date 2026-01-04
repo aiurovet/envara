@@ -157,7 +157,7 @@ __*DotEnv.load\_from\_file*__ _(path: Path, file\_flags: DotEnvFileFlags = DotEn
 
 These files will be loaded in the noted order before the custom one. This happens in _DotEnv.read\_text()_, which is called by _DotEnv.load\_from\_file()_.
 
-Note that _sys.platform_ is converted to lowercase, and all comparisons are case-insensitive, file extension can be changed.
+Note that _sys.platform_ is converted to lowercase, all comparisons are case-insensitive, file extension can be changed.
 
 - _.env_ (always hidden), then _[.]any.env_
 
