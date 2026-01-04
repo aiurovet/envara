@@ -12,8 +12,8 @@ def test_main_output(capsys):
 
     # Check output
     captured = capsys.readouterr()
-    assert "Envara (c) Alexander Iurovetski 2026" in captured.out
+    assert "envara (c) Alexander Iurovetski 2026" in captured.out
     assert "class Env:" in captured.out
     assert "class DotEnv:" in captured.out
     assert "See README.md for more details" in captured.out
-    assert "Dot-env files" in captured.out
+    assert "Here is an incomplete list of dot-env files" in captured.out

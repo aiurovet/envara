@@ -12,7 +12,7 @@ if __name__ == "__main__":
     print(
         """
 
-Envara (c) Alexander Iurovetski 2026
+envara (c) Alexander Iurovetski 2026
 
 A library to expand environment variables, user home, application arguments
 and escaped characters in arbitrary strings, as well as to load stacked
@@ -34,36 +34,40 @@ class DotEnv:
 
 See README.md for more details about these calls
           
-Dot-env files the latter method will look for (the leading dot is optional,
-each file loaded once):
+Here is an incomplete list of dot-env files the latter method will look for
 
-Any OS:
-    [.]env
+Note that the leading dot is optional, except for .env, extension can be
+changed, <sys.platform> lowercased, each file loaded once:
+
+Any platform:
+    .env
     [.]any.env
+
 Android, Linux:
     [.]posix.env
     [.]linux.env
-    [.]<system>.env
 BSD-like:
     [.]posix.env
     [.]bsd.env
-    [.]<system>.env
+Cygwin, MSYS:
+    [.]posix.env
 iOS, iPadOS, macOS:
     [.]posix.env
     [.]bsd.env
     [.]darwin.env
-    [.]<system>.env
+Java:
+    [.]posix.env (on POSIX platforms)
+    [.]windows.env (on Windows)
 VMS:
     [.]vms.env
-    [.]<system>.env (e.g., [.]openvms.env)
-Windows, OS/2:
+Windows:
     [.]windows.env
-    [.]<system>.env (i.e. [.]win32.env or [.]os2.env)
 
-Where <system> is the lowercased result of sys.platform
+Any platform again:
+    [.]<sys.platform>.env
 
 None of these files is required, and will be picked only if found and verified
-to be relevant to the system you are running under. The system includes not
+to be relevant to the platform you are running under. The platform includes not
 only OSes, but also Java, Cygwin and MSYS as well as such artefact OSes as AIX,
 RiscOS, OpenVMS, OS/2, etc.
 

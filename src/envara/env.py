@@ -334,8 +334,10 @@ class Env:
                 # (like "." and ".env"), take suffix alone (i.e. merge)
 
                 if is_decorated:
-                    if (not platform) and suffix.startswith(prefix):
-                        platform = suffix
+                    if ((not platform) and prefix and suffix and (
+                        suffix[len(prefix) - 1] == prefix[0]
+                    )):
+                        platform = f"{prefix}{platform}{suffix[1:]}"
                     else:
                         platform = f"{prefix}{platform}{suffix}"
 

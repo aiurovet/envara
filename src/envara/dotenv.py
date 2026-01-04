@@ -150,27 +150,16 @@ class DotEnv:
         if default_dir and not isinstance(default_dir, Path):
             default_dir = Path(default_dir)
 
-        # Initialise loaded content of files
+        # Initialise
 
         content = ""
-        is_dir = False
         dir = None
+        is_dir = False
 
         # If required, discard information about the files already loaded
 
         if file_flags & DotEnvFileFlags.RESET:
             DotEnv._loaded = []
-
-        # Get platform hierarchy as a list of dot-env files if needed
-
-        if file_flags & DotEnvFileFlags.SKIP_DEFAULT_FILES:
-            item_names = []
-        else:
-            item_names = Env.get_platform_stack(
-                EnvPlatformStackFlags.ADD_MAX,
-                "" if (file_flags & DotEnvFileFlags.VISIBLE_FILES) else ext_sep,
-                suffix,
-            )
 
         # Set is_dir indicating the custom file is a directory, resolve path
         # in several cases and append the custom path if it is not directory
@@ -188,9 +177,6 @@ class DotEnv:
 
         path = path.absolute()
 
-        if not is_dir:
-            item_names.append(str(path))
-
         # Get directory that should contain all default files to read
 
         if default_dir:
@@ -199,6 +185,27 @@ class DotEnv:
             dir = path
         else:
             dir = path.parent
+
+        # Get platform hierarchy as a list of dot-env files if needed
+
+        if file_flags & DotEnvFileFlags.SKIP_DEFAULT_FILES:
+            item_names = []
+        else:
+            if (file_flags & DotEnvFileFlags.VISIBLE_FILES):
+                prefix = ""
+            else:
+                prefix = ext_sep
+
+            item_names = Env.get_platform_stack(
+                EnvPlatformStackFlags.ADD_MAX,
+                prefix,
+                suffix,
+            )
+
+        # Add custom path if passed
+
+        if not is_dir:
+            item_names.append(str(path))
 
         for item_name in item_names:
             # Get path object and string to load the respective file

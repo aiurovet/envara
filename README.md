@@ -1,4 +1,4 @@
-# Envara (C) Alexander Iurovetski 2026
+# envara (C) Alexander Iurovetski 2026
 
 ## A library to expand environment variables, program arguments and special characters in a string, as well as parse general and OS-specific .env  files
 
@@ -159,7 +159,7 @@ These files will be loaded in the noted order before the custom one. This happen
 
 All comparisons are case-insensitive.
 
-- _[.]env_, then _[.]any.env_
+- _.env_ (always hidden), then _[.]any.env_
 
   Always.
 

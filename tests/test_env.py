@@ -48,24 +48,15 @@ class TestExpand:
     """Test suite for Env.expand method"""
 
     @pytest.mark.parametrize(
-        "input, env, args, flags, expected",
+        "platform, input, env, args, flags, expected",
         [
-            ("", {}, [], EnvExpandFlags.NONE, ""),
-            ("a$1b", {}, ["x"], EnvExpandFlags.NONE, "axb"),
-            ("a${1}b", None, ["x"], EnvExpandFlags.NONE, "axb"),
-            ("a$a${b}", {"a": "efg1"}, [], EnvExpandFlags.NONE, "aefg1${b}"),
-            ("a#$a${b}", {"a": "efg1"}, [], EnvExpandFlags.REMOVE_LINE_COMMENT, "a"),
+            ("", "", {}, [], EnvExpandFlags.NONE, ""),
+            ("", "a$1b", {}, ["x"], EnvExpandFlags.NONE, "axb"),
+            ("", "a${1}b", None, ["x"], EnvExpandFlags.NONE, "axb"),
+            ("", "a$a${b}", {"a": "efg1"}, [], EnvExpandFlags.NONE, "aefg1${b}"),
+            ("", "a#$a${b}", {"a": "efg1"}, [], EnvExpandFlags.REMOVE_LINE_COMMENT, "a"),
             (
-                "a $2 $a #${b}",
-                {"a": "efg1", "b": "xx"},
-                ["A1", "A2"],
-                EnvExpandFlags.REMOVE_LINE_COMMENT
-                | EnvExpandFlags.DECODE_ESCAPED
-                | EnvExpandFlags.REMOVE_QUOTES
-                | EnvExpandFlags.SKIP_SINGLE_QUOTED,
-                "a A2 efg1",
-            ),
-            (
+                "posix",
                 "'a $2 $a \\${b}'",
                 {"a": "efg1", "b": "xx"},
                 ["A1", "A2"],
@@ -76,6 +67,7 @@ class TestExpand:
                 "a $2 $a \\${b}",
             ),
             (
+                "posix",
                 '"a $2 ~ $a \\${b}"',
                 {"a": "efg1", "b": "xx"},
                 ["A1", "A2"],
@@ -86,6 +78,40 @@ class TestExpand:
                 "a A2 ~ efg1 ${b}",
             ),
             (
+                "windows",
+                "a %2 $a #${b}",
+                {"a": "efg1", "b": "xx"},
+                ["A1", "A2"],
+                EnvExpandFlags.REMOVE_LINE_COMMENT
+                | EnvExpandFlags.DECODE_ESCAPED
+                | EnvExpandFlags.REMOVE_QUOTES
+                | EnvExpandFlags.SKIP_SINGLE_QUOTED,
+                "a A2 efg1",
+            ),
+            (
+                "windows",
+                '"a %20 ~ $a \\${b}"',
+                {"a": "efg1", "b": "xx"},
+                ["A1", "A2"],
+                EnvExpandFlags.REMOVE_LINE_COMMENT
+                | EnvExpandFlags.DECODE_ESCAPED
+                | EnvExpandFlags.REMOVE_QUOTES
+                | EnvExpandFlags.SKIP_SINGLE_QUOTED,
+                "a %20 ~ efg1 ${b}",
+            ),
+            (
+                "posix",
+                '"a $1 ~ $xyz \\${b}"',
+                {"a": "efg1", "b": "xx"},
+                ["A1", "A2"],
+                EnvExpandFlags.REMOVE_LINE_COMMENT
+                | EnvExpandFlags.DECODE_ESCAPED
+                | EnvExpandFlags.REMOVE_QUOTES
+                | EnvExpandFlags.SKIP_SINGLE_QUOTED,
+                "a A1 ~ $xyz ${b}",
+            ),
+            (
+                "posix",
                 "'a $2 $a #${b}'",
                 {"a": "efg1", "b": "xx"},
                 ["A1", "A2"],
@@ -96,6 +122,7 @@ class TestExpand:
                 "a $2 $a #${b}",
             ),
             (
+                "posix",
                 "~/abc",
                 {"a": "efg1", "b": "xx"},
                 ["A1", "A2"],
@@ -106,6 +133,7 @@ class TestExpand:
                 os.path.expanduser("~/abc"),
             ),
             (
+                "posix",
                 f"~{os.sep}$a{os.sep}${{b}}",
                 {"a": "efg1", "b": "xx"},
                 ["A1", "A2"],
@@ -119,6 +147,7 @@ class TestExpand:
     )
     def test_expand(
         self,
+        platform: str,
         input: str,
         env: dict[str, str],
         args: list[str],
@@ -130,6 +159,16 @@ class TestExpand:
         keys_to_clear = list((env or {}).keys())
         for k, v in (env or {}).items():
             os.environ[k] = v
+
+        if (platform == "posix"):
+            Env.IS_POSIX = True
+            Env.IS_WINDOWS = False
+        elif (platform == "windows"):
+            Env.IS_POSIX = False
+            Env.IS_WINDOWS = True
+        else:
+            Env.IS_POSIX = False
+            Env.IS_WINDOWS = False
 
         # Call the method
         result = Env.expand(input, args, flags)
