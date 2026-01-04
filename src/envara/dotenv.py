@@ -31,7 +31,7 @@ class DotEnv:
 
     # Default set of string expansion flags
     DEFAULT_EXPAND_FLAGS: Final[EnvExpandFlags] = (
-        EnvExpandFlags.DECODE_ESCAPED
+        EnvExpandFlags.UNESCAPE
         | EnvExpandFlags.REMOVE_LINE_COMMENT
         | EnvExpandFlags.REMOVE_QUOTES
         | EnvExpandFlags.SKIP_SINGLE_QUOTED

@@ -38,11 +38,11 @@ __*Env.expand*__ _(input: str, args: list\[str\] = None, flags: EnvExpandFlags =
 3. _flags_: a bitwise combination of flags listed under the _EnvExpandFlags_ enumeration:
 
    - _NONE_: none of the below (default)
-   - _DECODE\_ESCAPED_: expand escaped characters: _\\\\_, _\\n_, _\\uNNNN_, etc.
    - _REMOVE\_LINE\_COMMENT_: remove hash _#_ (outside the quotes if found) and everything beyond that
    - _REMOVE\_QUOTES_: remove leading and trailing quotes
    - _SKIP\_ENVIRON_: do not expand environment variables
-   - _SKIP\_SINGLE\_QUOTED_: if a string is enclosed in apostrophes, don't expand it.
+   - _SKIP\_SINGLE\_QUOTED_: if a string is enclosed in apostrophes, don't expand it (default in _DotEnv.read\_text()_).
+   - _UNESCAPE_: expand escaped characters: _\\\\_, _\\n_, _\\uNNNN_, etc.
 
 4. _default\_dir_: directory to locate the default files
 
@@ -113,15 +113,15 @@ __*Env.remove_line_comment*__ _(input: str) -> str_
 
    A copy of the first parameter with everything beyond the first encountered outside string literals hash symbol _#_.
 
-__*Env.unquote*__ _(input: str, decode\_escaped: bool = True) -> tuple[str, EnvQuoteType]_
+__*Env.unquote*__ _(input: str, unescape: bool = True) -> tuple[str, EnvQuoteType]_
 
 1. Param _input_
 
-   A string to remove enclosing quotes from. Might contain escaped characters like _\\t_, _\\n_, _\\uNNNN_, etc., as well as escaped similar quote. All of those will be converted to the respected unescaped characters in case of a double-quoted _input_, and _decode\_escaped_ set. A single-quoted one will remain intact: just the enclosing quotes removed. If the string doesn't start with the expected quote, only decoding of escaped characters might be performed. If no closing quote found, a _ValueError_ will be raised.
+   A string to remove enclosing quotes from. Might contain escaped characters like _\\t_, _\\n_, _\\uNNNN_, etc., as well as escaped similar quote. All of those will be converted to the respected unescaped characters in case of a double-quoted _input_, and _unescape_ set. A single-quoted one will remain intact: just the enclosing quotes removed. If the string doesn't start with the expected quote, only decoding of escaped characters might be performed. If no closing quote found, a _ValueError_ will be raised.
 
-2. Param _decode\_escaped_
+2. Param _unescape_
 
-   If True, and _input_ is not single-quoted, then decode escaped characters (see _input_ for more detail).
+   If True, and _input_ is not single-quoted, then unescape escaped characters (see _input_ for more detail).
 
 3. Return value
 
@@ -130,6 +130,20 @@ __*Env.unquote*__ _(input: str, decode\_escaped: bool = True) -> tuple[str, EnvQ
 ### How to Load .env file
 
 __*DotEnv.load\_from\_file*__ _(path: Path, file\_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT, expand\_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT\_EXPAND\_FLAGS, default\_dir: str = None, alt\_ext: str = None) -> str_
+
+A mere wrapper calling _DotEnv.read\_text()_, then  _DotEnv.load\_from\_str()_. See more detail there.
+
+__*DotEnv.load\_from\_str*__ _(data: Path, expand\_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT) -> str_
+
+1. Param _data_
+
+   The input to expand. _DotEnv.load\_from\_file()_ loads content from file(s), then passes that buffer as this parameter.
+
+2. Param _expand\_flags_
+
+   A bitwise combination, see _flags_ under _Env.expand()_ for more detail.
+
+__*DotEnv.read\_text*__ _(path: Path, file\_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT, default\_dir: str = None, alt\_ext: str = None) -> str_
 
 1. Param _path_
 

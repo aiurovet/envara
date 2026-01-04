@@ -95,30 +95,6 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def decode_escaped(input: str) -> str:
-        """
-        Decode '\\t', '\\n', etc.
-
-        :param input: Input string to decode
-        :type input: str
-        :return: Decoded string
-        :rtype: str
-        """
-
-        if not input:
-            return ""
-
-        if Env.ESCAPE not in input:
-            return input
-
-        def matcher(x: re.Match):
-            return x.group(1)
-
-        return Env.RE_DROP_ESCAPE.sub(matcher, input).encode().decode("unicode_escape")
-
-    ###########################################################################
-
-    @staticmethod
     def expand(
         input: str,
         args: list[str] = None,
@@ -155,11 +131,11 @@ class Env:
 
         # Simplify flags
 
-        is_decode_escaped: bool = flags & EnvExpandFlags.DECODE_ESCAPED
         is_remove_line_comment: bool = flags & EnvExpandFlags.REMOVE_LINE_COMMENT
         is_remove_quotes: bool = flags & EnvExpandFlags.REMOVE_QUOTES
         is_skip_environ: bool = flags & EnvExpandFlags.SKIP_ENVIRON
         is_skip_single_quoted: bool = flags & EnvExpandFlags.SKIP_SINGLE_QUOTED
+        is_unescape: bool = flags & EnvExpandFlags.UNESCAPE
 
         # Prepare for the unquoting and further unhiding
 
@@ -170,7 +146,7 @@ class Env:
         # as literal (no further expansion) if required
 
         if is_remove_quotes:
-            result, quote_type = Env.unquote(result, decode_escaped=False)
+            result, quote_type = Env.unquote(result, unescape=False)
 
         # Remove line comment if required
 
@@ -198,9 +174,9 @@ class Env:
 
             # If decoding escaped characters, shouldn't restore the escape
 
-            if is_decode_escaped:
+            if is_unescape:
                 unhide_escape = ""
-                result = Env.decode_escaped(result)
+                result = Env.unescape(result)
 
         result = (
             result.replace(Env.HIDE_01, f"{unhide_escape}$")
@@ -443,7 +419,31 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def unquote(input: str, decode_escaped: bool = True) -> tuple[str, EnvQuoteType]:
+    def unescape(input: str) -> str:
+        """
+        Unescape '\\t', '\\n', etc.
+
+        :param input: Input string to unescape escaped characters in
+        :type input: str
+        :return: Unescaped string
+        :rtype: str
+        """
+
+        if not input:
+            return ""
+
+        if Env.ESCAPE not in input:
+            return input
+
+        def matcher(x: re.Match):
+            return x.group(1)
+
+        return Env.RE_DROP_ESCAPE.sub(matcher, input).encode().decode("unicode_escape")
+
+    ###########################################################################
+
+    @staticmethod
+    def unquote(input: str, unescape: bool = True) -> tuple[str, EnvQuoteType]:
         """
         Remove the input's embracing quotes. Neither leading, nor trailing
         white spaces removed before checking the leading quotes. Use .strip()
@@ -451,9 +451,9 @@ class Env:
 
         :param input: String being expanded
         :type input: str
-        :param decode_escaped: If True, and input is not single-quoted, decode
-                               escaped characters
-        :type decode_escaped: bool
+        :param unescape: If True, and input is not single-quoted, unescape
+                         escaped characters
+        :type unscape: bool
         :return: Unquoted string, and a number indicating the level of quoting:
                  0 = not quoted, 1 = single-quoted, 2 = double-quoted
         :rtype: str
@@ -466,7 +466,7 @@ class Env:
 
         # Initialise result string to be returned, and the first character
 
-        prefix = "" if (decode_escaped) else Env.ESCAPE
+        prefix = "" if (unescape) else Env.ESCAPE
         result = input
         c1 = result[0]
 
@@ -513,10 +513,10 @@ class Env:
 
             result = result[1:end_pos]
 
-        # Decode escaped characters if needed
+        # Unescape escaped characters if needed
 
-        if decode_escaped:
-            result = Env.decode_escaped(result)
+        if unescape:
+            result = Env.unescape(result)
 
         # Unhide interfering characters if needed
 

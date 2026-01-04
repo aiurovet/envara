@@ -15,7 +15,7 @@ class EnvExpandFlags(IntFlag):
 
     # Expand escaped characters: \\ or `\`, \n or `n, \uNNNN or `uNNNN`, etc.
     # (depends on NATIVE_ESCAPE flag)
-    DECODE_ESCAPED = 1 << 0
+    UNESCAPE = 1 << 0
 
     # Remove hash "#" (outside the quotes if found) and everything beyond that
     REMOVE_LINE_COMMENT = 1 << 2
@@ -30,7 +30,7 @@ class EnvExpandFlags(IntFlag):
     SKIP_SINGLE_QUOTED = 1 << 5
 
     # Default set of flags
-    DEFAULT = DECODE_ESCAPED | REMOVE_QUOTES | SKIP_SINGLE_QUOTED
+    DEFAULT = UNESCAPE | REMOVE_QUOTES | SKIP_SINGLE_QUOTED
 
 
 ###############################################################################
