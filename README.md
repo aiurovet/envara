@@ -121,7 +121,7 @@ __*Env.unquote*__ _(input: str, unescape: bool = True) -> tuple[str, EnvQuoteTyp
 
 2. Param _unescape_
 
-   If True, and _input_ is not single-quoted, then unescape escaped characters (see _input_ for more detail).
+   If True, and _input_ is not single-quoted, then unescape escaped characters (see Param _input_ for more detail).
 
 3. Return value
 
@@ -129,7 +129,7 @@ __*Env.unquote*__ _(input: str, unescape: bool = True) -> tuple[str, EnvQuoteTyp
 
 ### How to Load .env file
 
-__*DotEnv.load\_from\_file*__ _(path: Path, file\_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT, expand\_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT\_EXPAND\_FLAGS, default\_dir: str = None, alt\_ext: str = None) -> str_
+__*DotEnv.load\_from\_file*__ _(path: Path, file\_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT, expand\_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT, default\_dir: str = None, alt\_ext: str = None) -> str_
 
 A mere wrapper calling _DotEnv.read\_text()_, then  _DotEnv.load\_from\_str()_. See more detail there.
 
@@ -141,7 +141,7 @@ __*DotEnv.load\_from\_str*__ _(data: Path, expand\_flags: EnvExpandFlags = EnvEx
 
 2. Param _expand\_flags_
 
-   A bitwise combination, see _flags_ under _Env.expand()_ for more detail.
+   A bitwise combination. See _flags_ under _Env.expand()_ for more detail.
 
 __*DotEnv.read\_text*__ _(path: Path, file\_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT, default\_dir: str = None, alt\_ext: str = None) -> str_
 
