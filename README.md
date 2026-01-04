@@ -200,10 +200,9 @@ For instance, you are going to call _Google Chrome_ from your script in headless
 
 - _.env_:
 
-  PROJECT_PATH = "~/Projects/$1" # need to pass a list of command-line arguments
-
-  VERSION = ${2}_$3
-
+  APP_NAME = $1 # need to pass a list of command-line arguments
+  APP_VERSION = "${2}_$3"
+  PROJECT_PATH = ~/Projects/$APP_NAME
   ARG_HEADLESS = "--headless --disable-gpu --default-background-color=00000000 --window-size={w},{h} --screenshot={o} file://{i}"
 
 - _.linux.env_:

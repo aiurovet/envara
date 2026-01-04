@@ -77,8 +77,9 @@ in headless mode to save some screenshots. In that case, you can define a
 variable CMD_CHROME as follows:
 
     .env:
-        PROJECT_NAME = "~/Projects/$1" # need to pass a list command-line arguments
-        VERSION = ${2}_$3
+        APP_NAME = $1 # need to pass a list of command-line arguments
+        APP_VERSION = "${2}_$3"
+        PROJECT_PATH = ~/Projects/$APP_NAME
         ARG_HEADLESS = "--headless --disable-gpu --default-background-color=00000000 --window-size={w},{h} --screenshot={o} file://{i}"
     .linux.env:
         CMD_CHROME = "google-chrome $ARG_HEADLESS"
