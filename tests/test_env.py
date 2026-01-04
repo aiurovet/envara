@@ -61,14 +61,14 @@ class TestExpand:
             ),
             (
                 "windows",
-                '"a %20 ~ $a \\${b}"',
+                '"a $20 ~ $a \\${b}"',
                 {"a": "efg1", "b": "xx"},
                 ["A1", "A2"],
                 EnvExpandFlags.REMOVE_LINE_COMMENT
                 | EnvExpandFlags.UNESCAPE
                 | EnvExpandFlags.REMOVE_QUOTES
                 | EnvExpandFlags.SKIP_SINGLE_QUOTED,
-                "a %20 ~ efg1 ${b}",
+                "a $20 ~ efg1 ${b}",
             ),
             (
                 "posix",
@@ -101,7 +101,7 @@ class TestExpand:
                 | EnvExpandFlags.UNESCAPE
                 | EnvExpandFlags.REMOVE_QUOTES
                 | EnvExpandFlags.SKIP_SINGLE_QUOTED,
-                os.path.expanduser("~/abc"),
+                os.path.expanduser(f"~{os.sep}abc"),
             ),
             (
                 "posix",
