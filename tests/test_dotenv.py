@@ -273,12 +273,13 @@ class TestLoadFromFile:
         m_read_text = mocker.patch("dotenv.DotEnv.read_text", return_value="KEY=VAL")
         mocker.patch("dotenv.DotEnv.load_from_str")
         m_path = mocker.MagicMock(spec=Path)
+        dir = Path("/some/path")
 
         # Act
-        DotEnv.load_from_file(m_path, default_dir="/some/path")
+        DotEnv.load_from_file(m_path, default_dir=dir)
 
         # Assert
         args, _ = m_read_text.call_args
         # args[2] is default_dir
         assert isinstance(args[2], Path)
-        assert str(args[2]) == "/some/path"
+        assert str(args[2]) == str(dir)
