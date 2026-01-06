@@ -13,9 +13,10 @@
 import os
 import re
 import sys
-from typing import Final
+from typing import Any, Final
 
 from env_expand_flags import EnvExpandFlags
+from env_expand_info import EnvExpandInfo
 from env_platform_stack_flags import EnvPlatformStackFlags
 from env_quote_type import EnvQuoteType
 
@@ -27,23 +28,11 @@ class Env:
     Class for string expansions
     """
 
-    # POSIX escape character
-    ESCAPE: Final[str] = "\\"
-
-    # POSIX escape character escaped
-    ESCAPE_ESCAPED: Final[str] = f"{ESCAPE}{ESCAPE}"
-
-    # Characters used for a temporary hiding of printable characters
-    # that affect search/replace
-    HIDE_01: Final[str] = "\x01"
-    HIDE_02: Final[str] = "\x02"
-    HIDE_03: Final[str] = "\x03"
-
     # Flag indicating whether the script is running under Windows or not
     IS_POSIX: Final[bool] = os.sep == "/"
 
     # Flag indicating whether the script is running under Windows or not
-    IS_WINDOWS: Final[bool] = os.sep == ESCAPE
+    IS_WINDOWS: Final[bool] = os.sep == "\\"
 
     # A text indicating any platform, but not empty
     PLATFORM_ANY: Final[str] = "any"
@@ -57,15 +46,30 @@ class Env:
     # A text indicating the running platform
     PLATFORM_THIS: Final[str] = sys.platform.lower()
 
-    # Regex to find references to arguments ($n or ${n} or %n) by 1-based index
-    # % though will work under Windows only
-    RE_ARGS: Final[re.Pattern] = re.compile(
-        r"\$(\d+)|\${(\d+)}|%(\d+)", flags=(re.DOTALL | re.UNICODE)
+    # Expansion/unescaping info - MSDOS-style
+    __msdos_info: EnvExpandInfo = EnvExpandInfo(
+        expand="%",
+        escape="^",
+        pat_esc="(\\^)+(x([\\dA-Fa-f]{2})|u([\\dA-Fa-f]{4})|.)",
+        pat_var="(\\^*)(%)([A-Za-z_][A-Za-z_\\d]*)(%)",
+        pat_arg="(\\^*)(%)([\\d]+)(%)",
     )
 
-    # Regex to safely drop escape character in favour of the following one
-    RE_DROP_ESCAPE: Final[re.Pattern] = re.compile(
-        r"\\([^abfnrtuvx]|$)", flags=(re.DOTALL | re.UNICODE)
+    # Expansion/unescaping info - POSIX-style
+    __posix_info: EnvExpandInfo = EnvExpandInfo(
+        expand="$",
+        escape="\\\\",
+        pat_esc="(\\\\+)(x([\\dA-Fa-f]{2})|u([\\dA-Fa-f]{4})|.)",
+        pat_var="(\\\\*)\\$({?)([A-Za-z_][A-Za-z_\\d]*)(}?)",
+        pat_arg="(\\\\*)\\$({?)([\\d]+)(}?)",
+    )
+
+    __powsh_info: EnvExpandInfo = EnvExpandInfo(
+        expand="$",
+        escape="`",
+        pat_esc="(`+)(x([\\dA-Fa-f]{2})|u([\\dA-Fa-f]{4})|.)",
+        pat_var="(`*)\\$({?)([A-Za-z_][A-Za-z_\\d]*)(}?)",
+        pat_arg="(`*)\\$({?)([\\d]+)(}?)",
     )
 
     # Internal dictionary: regex => list-of-platform-names
@@ -527,5 +531,59 @@ class Env:
 
         return (result, quote_type)
 
+
+    ###########################################################################
+
+    @staticmethod
+    def __parse_escapes(
+        input: str,
+        match: re.Match,
+        min_escape_count: int
+    ) -> tuple[tuple[Any, ...], str, str]:
+        """
+        :param input: The string being scanned
+        :type input: str
+        :param match: Analyze match and return groups as well as unescaped
+                      escapes (twice less) and the immediate string. When the
+                      latter is not None, it tells to return that immediately
+                      from the replacer, as there is nothing to unescape or
+                      expand
+        :type match: re.Match
+        :param min_escape_count: Pass as 0 for env vars' and args' expansions
+                                 (all escapes should compensate each other).
+                                 Pass as 1 for unescapes (there should be 1
+                                 left after the rest of escapes compensate
+                                 each other)
+        :type min_escape_count: int
+        :param expand_info: Rules for expansion and unescaping
+        :type expand_info: EnvExpandInfo
+        :return: (groups, unescaped-escapes, immediate)
+        :rtype: tuple[tuple[Any, ...], str, str]
+        """
+
+        # If the input is void, return the empty string
+
+        if not match:
+            return (None, "", input)
+
+        # Initialise
+
+        groups: tuple[Any, ...] = match.groups()
+        escapes: str = groups[0]
+        esc_len: int = len(escapes)
+        immediate: str = ""
+
+        if (esc_len > 0):
+            escapes = escapes[0] * (esc_len // 2)
+        
+        # If this number of escapes dictate to ignore the rest, set
+        # immediate to the value that should be returned from caller
+
+        if ((esc_len % 2) == min_escape_count):
+            immediate = escapes + match.string[esc_len:]
+
+        # All components are ready, return those
+
+        return (groups, escapes, immediate)
 
 ###############################################################################

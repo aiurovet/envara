@@ -7,6 +7,7 @@
 ###############################################################################
 
 import os
+import re
 import pytest
 
 from env import Env, EnvExpandFlags, EnvQuoteType
@@ -331,6 +332,38 @@ class TestGetPlatformStack:
 
         # Verify result matches expected
         assert ", ".join(result) == expected
+
+
+###############################################################################
+
+msdos = Env._Env__msdos_info
+
+class TestParseEscapes:
+    """Test suite for Env.__parse_escapes method"""
+
+    @pytest.mark.parametrize(
+        "regex, min_esc_count, input, exp_escapes, exp_immediate",
+        [
+            (msdos.RE_VAR, 0, "", "", ""),
+            (msdos.RE_VAR, 0, "abc", "", "abc"),
+            (msdos.RE_VAR, 0, "^%Key%", "", "%Key%"),
+            (msdos.RE_VAR, 0, "^^^%Key%", "^", "^%Key%"),
+            (msdos.RE_VAR, 0, "`%Key%", "", ""),
+            (msdos.RE_VAR, 0, "```%Key%", "", ""),
+        ],
+    )
+    def test_parse_escapes(self, regex, min_esc_count, input, exp_escapes, exp_immediate):
+        # Arrange
+        match = regex.search(input)
+
+        # Call the method
+        groups, escapes, immediate = \
+            Env._Env__parse_escapes(input, match, min_esc_count)
+
+        # Verify result matches expected
+        assert groups is None
+        assert escapes == exp_escapes
+        assert immediate == exp_immediate
 
 
 ###############################################################################
