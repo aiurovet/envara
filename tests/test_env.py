@@ -8,10 +8,20 @@
 
 import os
 import re
+from typing import Final
 import pytest
 
 from env import Env, EnvExpandFlags, EnvQuoteType
+from env_expand_info import EnvExpandInfo
+from env_expand_info_type import EnvExpandInfoType
 from env_platform_stack_flags import EnvPlatformStackFlags
+
+###############################################################################
+
+msdos: Final[EnvExpandInfo] = Env._Env__msdos_info
+posix: Final[EnvExpandInfo] = Env._Env__posix_info
+powsh: Final[EnvExpandInfo] = Env._Env__powsh_info
+vms: Final[EnvExpandInfo] = Env._Env__vms_info
 
 ###############################################################################
 
@@ -183,6 +193,38 @@ class TestExpandargs:
 ###############################################################################
 
 
+class TestGetExpandInfo:
+    """Test suite for Env.get_expand_info method"""
+
+    @pytest.mark.parametrize(
+        "type, is_windows, expected",
+        [
+            (EnvExpandInfoType.POSIX, False, posix),
+            (EnvExpandInfoType.POSIX, True, posix),
+            (EnvExpandInfoType.POWSH, False, powsh),
+            (EnvExpandInfoType.POWSH, True, powsh),
+            (EnvExpandInfoType.MSDOS, False, msdos),
+            (EnvExpandInfoType.MSDOS, True, msdos),
+            (EnvExpandInfoType.VMS, False, vms),
+            (EnvExpandInfoType.VMS, True, vms),
+            (EnvExpandInfoType.SYSTEM, False, posix),
+            (EnvExpandInfoType.SYSTEM, True, powsh),
+        ]
+    )
+    def get_expand_info(self, type, is_windows, expected):
+        # Call the method
+        result = Env.get_expand_info(type)
+
+        # Verify result matches expected
+        assert \
+            Env.IS_VMS or \
+            (Env.IS_WINDOWS != is_windows) or \
+            (result == expected)
+
+
+###############################################################################
+
+
 class TestGetPlatformStack:
     """Test suite for Env.expandargs method"""
 
@@ -324,6 +366,7 @@ class TestGetPlatformStack:
     ):
         Env.IS_POSIX = True if (type == "P") else False
         Env.IS_WINDOWS = True if (type == "W") else False
+        Env.IS_VMS = True if (type == "V") else False
         Env.PLATFORM_THIS = platform
         Env._Env__platform_map[".+"] = [platform]
 
@@ -336,34 +379,70 @@ class TestGetPlatformStack:
 
 ###############################################################################
 
-msdos = Env._Env__msdos_info
-
 class TestParseEscapes:
     """Test suite for Env.__parse_escapes method"""
 
     @pytest.mark.parametrize(
-        "regex, min_esc_count, input, exp_escapes, exp_immediate",
+        "regex, group_count, min_escape_count, input, exp_escapes, exp_no_action",
         [
-            (msdos.RE_VAR, 0, "", "", ""),
-            (msdos.RE_VAR, 0, "abc", "", "abc"),
-            (msdos.RE_VAR, 0, "^%Key%", "", "%Key%"),
-            (msdos.RE_VAR, 0, "^^^%Key%", "^", "^%Key%"),
-            (msdos.RE_VAR, 0, "`%Key%", "", ""),
-            (msdos.RE_VAR, 0, "```%Key%", "", ""),
+            (posix.RE_VAR, 4, 0, "", "", ""),
+            (posix.RE_VAR, 4, 0, "abc", "", "abc"),
+            (posix.RE_VAR, 4, 0, f"\\$Key", "", "$Key"),
+            (posix.RE_VAR, 4, 0, f"\\\\\\$Key", "\\", f"\\$Key"),
+            (posix.RE_VAR, 4, 0, "`$Key", "", ""),
+            (posix.RE_VAR, 4, 0, "```$Key", "", ""),
+            (posix.RE_ESC, 4, 1, "", "", ""),
+            (posix.RE_ESC, 4, 1, "abc", "", "abc"),
+            (posix.RE_ESC, 4, 1, "\\x12", "", ""),
+            (posix.RE_ESC, 4, 1, f"\\\\x12", "\\", f"\\x12"),
+
+            (powsh.RE_VAR, 4, 0, "", "", ""),
+            (powsh.RE_VAR, 4, 0, "abc", "", "abc"),
+            (powsh.RE_VAR, 4, 0, "`$Key", "", "$Key"),
+            (powsh.RE_VAR, 4, 0, "```$Key", "`", "`$Key"),
+            (powsh.RE_VAR, 4, 0, "^$Key", "", ""),
+            (powsh.RE_VAR, 4, 0, "^^^$Key", "", ""),
+            (powsh.RE_ESC, 4, 1, "", "", ""),
+            (powsh.RE_ESC, 4, 1, "abc", "", "abc"),
+            (powsh.RE_ESC, 4, 1, "`x12", "", ""),
+            (powsh.RE_ESC, 4, 1, "``x12", "`", "`x12"),
+
+            (msdos.RE_VAR, 4, 0, "", "", ""),
+            (msdos.RE_VAR, 4, 0, "abc", "", "abc"),
+            (msdos.RE_VAR, 4, 0, "^%Key%", "", "%Key%"),
+            (msdos.RE_VAR, 4, 0, "^^^%Key%", "^", "^%Key%"),
+            (msdos.RE_VAR, 4, 0, "`%Key%", "", ""),
+            (msdos.RE_VAR, 4, 0, "```%Key%", "", ""),
+            (msdos.RE_ESC, 4, 1, "", "", ""),
+            (msdos.RE_ESC, 4, 1, "abc", "", "abc"),
+            (msdos.RE_ESC, 4, 1, "^x12", "", ""),
+            (msdos.RE_ESC, 4, 1, "^^x12", "^", "^x12"),
+
+            (vms.RE_VAR, 4, 0, "", "", ""),
+            (vms.RE_VAR, 4, 0, "abc", "", "abc"),
+            (vms.RE_VAR, 4, 0, "^'Key'", "", "'Key'"),
+            (vms.RE_VAR, 4, 0, "^^^'Key'", "^", "^'Key'"),
+            (vms.RE_VAR, 4, 0, "$'Key'", "", ""),
+            (vms.RE_VAR, 4, 0, "$$$'Key'", "", ""),
+            (vms.RE_ESC, 4, 1, "", "", ""),
+            (vms.RE_ESC, 4, 1, "abc", "", "abc"),
+            (vms.RE_ESC, 4, 1, "^x12", "", ""),
+            (vms.RE_ESC, 4, 1, "^^x12", "^", "^x12"),
         ],
     )
-    def test_parse_escapes(self, regex, min_esc_count, input, exp_escapes, exp_immediate):
+    def test_parse_escapes(self, regex, min_escape_count, group_count, input, exp_escapes, exp_no_action):
         # Arrange
         match = regex.search(input)
 
         # Call the method
-        groups, escapes, immediate = \
-            Env._Env__parse_escapes(input, match, min_esc_count)
+        groups, escapes, no_action = \
+            Env._Env__parse_escapes(input, match, min_escape_count)
+        group_count = len(groups) if (groups) else 0
 
         # Verify result matches expected
-        assert groups is None
+        assert group_count == group_count
         assert escapes == exp_escapes
-        assert immediate == exp_immediate
+        assert no_action == exp_no_action
 
 
 ###############################################################################
@@ -428,26 +507,81 @@ class TestUnescape:
     """Test suite for Env.decode_escaped method"""
 
     @pytest.mark.parametrize(
-        "input, expected",
+        "expand_info, input, expected",
         [
-            (None, ""),
-            ("", ""),
-            ("A b c", "A b c"),
-            ("A\\tb\\tc", "A\tb\tc"),
-            ("A\\ \\N\\+\\u0042b\\a\\x41c", "A N+Bb\aAc"),
+            (posix, None, ""),
+            (posix, "", ""),
+            (posix, "A b c", "A b c"),
+            (posix, "A\\tb\\tc", "A\tb\tc"),
+            (posix, "A\\ \\N\\+\\u0042b\\a\\x41c", "A N+Bb\aAc"),
+
+            (powsh, None, ""),
+            (powsh, "", ""),
+            (powsh, "A b c", "A b c"),
+            (powsh, "A`tb`tc", "A\tb\tc"),
+            (powsh, "A` `N`+`u0042b`a`x41c", "A N+Bb\aAc"),
+
+            (msdos, None, ""),
+            (msdos, "", ""),
+            (msdos, "A b c", "A b c"),
+            (msdos, "A^tb^tc", "A\tb\tc"),
+            (msdos, "A^ ^N^+^u0042b^a^x41c", "A N+Bb\aAc"),
+
+            (vms, None, ""),
+            (vms, "", ""),
+            (vms, "A b c", "A b c"),
+            (vms, "A^tb^tc", "A\tb\tc"),
+            (vms, "A^ ^N^+^u0042b^a^x41c", "A N+Bb\aAc"),
         ],
     )
     def test_unescape(
         self,
+        expand_info: EnvExpandInfo,
         input: str,
         expected: str,
     ):
+        # Call the method
+        result = Env.unescape(input, expand_info)
+
+        # Verify result matches expected
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        "sys_expand_info, input, expected",
+        [
+            (posix, None, ""),
+            (posix, "", ""),
+            (posix, "A b c", "A b c"),
+            (posix, "A\\tb\\tc", "A\tb\tc"),
+            (posix, "A\\ \\N\\+\\u0042b\\a\\x41c", "A N+Bb\aAc"),
+
+            (powsh, None, ""),
+            (powsh, "", ""),
+            (powsh, "A b c", "A b c"),
+            (powsh, "A`tb`tc", "A\tb\tc"),
+            (powsh, "A` `N`+`u0042b`a`x41c", "A N+Bb\aAc"),
+
+            (vms, None, ""),
+            (vms, "", ""),
+            (vms, "A b c", "A b c"),
+            (vms, "A^tb^tc", "A\tb\tc"),
+            (vms, "A^ ^N^+^u0042b^a^x41c", "A N+Bb\aAc"),
+        ],
+    )
+    def test_unescape_system(
+        self,
+        sys_expand_info: EnvExpandInfo,
+        input: str,
+        expected: str,
+    ):
+        # Arrange
+        expand_info = Env.get_expand_info()
 
         # Call the method
         result = Env.unescape(input)
 
         # Verify result matches expected
-        assert result == expected
+        assert (expand_info != sys_expand_info) or (result == expected)
 
 
 ###############################################################################

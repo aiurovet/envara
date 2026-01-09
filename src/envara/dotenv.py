@@ -53,7 +53,7 @@ class DotEnv:
         path: Path,
         file_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT,
         expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
-        default_dir: str = None,
+        default_dir: str | None = None,
     ) -> str:
         """
         Load environment variables from a .env-compliant file
@@ -72,8 +72,8 @@ class DotEnv:
 
     @staticmethod
     def load_from_str(
-        data: str,
-        args: list[str] = None,
+        data: str | None,
+        args: list[str] | None = None,
         expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
     ) -> str:
         """
@@ -112,10 +112,10 @@ class DotEnv:
 
     @staticmethod
     def read_text(
-        path: Path,
+        path: Path | None,
         file_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT,
-        default_dir: Path = None,
-        alt_ext: str = None,
+        default_dir: Path | None = None,
+        alt_ext: str | None = None,
     ) -> str:
         """
         Load environment variables from .env-compliant files taken either from

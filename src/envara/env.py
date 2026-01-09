@@ -17,6 +17,7 @@ from typing import Any, Final
 
 from env_expand_flags import EnvExpandFlags
 from env_expand_info import EnvExpandInfo
+from env_expand_info_type import EnvExpandInfoType
 from env_platform_stack_flags import EnvPlatformStackFlags
 from env_quote_type import EnvQuoteType
 
@@ -34,6 +35,9 @@ class Env:
     # Flag indicating whether the script is running under Windows or not
     IS_WINDOWS: Final[bool] = os.sep == "\\"
 
+    # Flag indicating whether the script is running under VMS-like OS or not
+    IS_VMS: Final[bool] = os.sep == "."
+
     # A text indicating any platform, but not empty
     PLATFORM_ANY: Final[str] = "any"
 
@@ -50,31 +54,39 @@ class Env:
     __msdos_info: EnvExpandInfo = EnvExpandInfo(
         expand="%",
         escape="^",
-        pat_esc="(\\^)+(x([\\dA-Fa-f]{2})|u([\\dA-Fa-f]{4})|.)",
-        pat_var="(\\^*)(%)([A-Za-z_][A-Za-z_\\d]*)(%)",
-        pat_arg="(\\^*)(%)([\\d]+)(%)",
+        pat_esc="([\\^]+)(x([\\dA-Fa-f]{2})|u([\\dA-Fa-f]{4})|.)",
+        pat_var="([\\^]*)(%)([A-Za-z_][A-Za-z_\\d]*)(%)",
+        pat_arg="([\\^]*)(%)([\\d]+)(%)",
     )
 
     # Expansion/unescaping info - POSIX-style
     __posix_info: EnvExpandInfo = EnvExpandInfo(
         expand="$",
-        escape="\\\\",
-        pat_esc="(\\\\+)(x([\\dA-Fa-f]{2})|u([\\dA-Fa-f]{4})|.)",
-        pat_var="(\\\\*)\\$({?)([A-Za-z_][A-Za-z_\\d]*)(}?)",
-        pat_arg="(\\\\*)\\$({?)([\\d]+)(}?)",
+        escape="\\",
+        pat_esc="([\\\\]+)(x([\\dA-Fa-f]{2})|u([\\dA-Fa-f]{4})|.)",
+        pat_var="([\\\\]*)\\$({?)([A-Za-z_][A-Za-z_\\d]*)(}?)",
+        pat_arg="([\\\\]*)\\$({?)([\\d]+)(}?)",
     )
 
     __powsh_info: EnvExpandInfo = EnvExpandInfo(
         expand="$",
         escape="`",
-        pat_esc="(`+)(x([\\dA-Fa-f]{2})|u([\\dA-Fa-f]{4})|.)",
-        pat_var="(`*)\\$({?)([A-Za-z_][A-Za-z_\\d]*)(}?)",
-        pat_arg="(`*)\\$({?)([\\d]+)(}?)",
+        pat_esc="([`]+)(x([\\dA-Fa-f]{2})|u([\\dA-Fa-f]{4})|.)",
+        pat_var="([`]*)\\$({?)([A-Za-z_][A-Za-z_\\d]*)(}?)",
+        pat_arg="([`]*)\\$({?)([\\d]+)(}?)",
+    )
+
+    __vms_info: EnvExpandInfo = EnvExpandInfo(
+        expand="'",
+        escape="^",
+        pat_esc="([\\^]+)(x([\\dA-Fa-f]{2})|u([\\dA-Fa-f]{4})|.)",
+        pat_var="([\\^]*)(')([A-Za-z_][A-Za-z_\\d]*)(')",
+        pat_arg="([\\^]*)(')([\\d]+)(')",
     )
 
     # Internal dictionary: regex => list-of-platform-names
     __platform_map: dict[str, list[str]] = {
-        "": ["", PLATFORM_ANY, PLATFORM_POSIX],
+        "": ["", PLATFORM_ANY, PLATFORM_POSIX], # the latter is checked
         "^aix": ["aix"],
         "android": ["linux", "android"],
         "^atheos": ["atheos"],
@@ -101,7 +113,7 @@ class Env:
     @staticmethod
     def expand(
         input: str,
-        args: list[str] = None,
+        args: list[str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
     ) -> str:
         """
@@ -195,7 +207,7 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def expandargs(input: str, args: list[str] = None) -> str:
+    def expandargs(input: str, args: list[str] | None = None) -> str:
         """
         Expand references to an array of arguments by its indices
 
@@ -244,10 +256,46 @@ class Env:
     ###########################################################################
 
     @staticmethod
+    def get_expand_info(
+        info_type: EnvExpandInfoType = EnvExpandInfoType.SYSTEM
+    ) -> EnvExpandInfo:
+        """
+        Get expand info depending on a system it is required for
+
+        :param info_type: System-related type of the info to return
+        :type info_type:EnvExpandInfoType: type to choose info
+        :return: The info based on the type requested for
+        :rtype: EnvExpandInfo
+        """
+
+        if (info_type == EnvExpandInfoType.SYSTEM):
+            if (Env.IS_POSIX):
+                return Env.__posix_info
+            elif (Env.IS_WINDOWS):
+                return Env.__powsh_info
+            elif (Env.IS_VMS):
+                return Env.__vms_info
+            else:
+                return None
+
+        if (info_type == EnvExpandInfoType.MSDOS):
+            return Env.__msdos_info
+        if (info_type == EnvExpandInfoType.POWSH):
+            return Env.__powsh_info
+        if (info_type == EnvExpandInfoType.POSIX):
+            return Env.__posix_info
+        if (info_type == EnvExpandInfoType.VMS):
+            return Env.__vms_info
+        else:
+            return None
+
+    ###########################################################################
+
+    @staticmethod
     def get_platform_stack(
         flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT,
-        prefix: str = None,
-        suffix: str = None,
+        prefix: str | None = None,
+        suffix: str | None = None,
     ) -> list[str]:
         """
         Get the stack (list) of platforms from more generic to more specific
@@ -423,41 +471,79 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def unescape(input: str) -> str:
+    def unescape(input: str, expand_info: EnvExpandInfo | None = None) -> str:
         """
         Unescape '\\t', '\\n', etc.
 
         :param input: Input string to unescape escaped characters in
         :type input: str
+        :param expand_info: How to expand (default: determine it)
+        :type expand_info: EnvExpandInfo
         :return: Unescaped string
         :rtype: str
         """
 
+        # If input is void, return empty string
+
         if not input:
             return ""
 
-        if Env.ESCAPE not in input:
+        # If expand info is not passed, determine it
+
+        if (expand_info is None):
+            expand_info = Env.get_expand_info()
+            if expand_info is None:
+                return input
+
+        # If input does not contain escape char, then nothing to do
+
+        if expand_info.ESCAPE not in input:
             return input
 
-        def matcher(x: re.Match):
-            return x.group(1)
+        # Define the replacement rule
 
-        return Env.RE_DROP_ESCAPE.sub(matcher, input).encode().decode("unicode_escape")
+        def replacer(x: re.Match):
+            groups, escapes, no_action = Env.__parse_escapes(input, x, 1)
+
+            if (no_action):
+                return no_action
+
+            val: str = groups[1]
+            key: str = val[0]
+            result: str = escapes
+
+            if (key == "x") or (key == "u"):
+                result += chr(int(val[1:], 16))
+            else:
+                if val in EnvExpandInfo.SPECIAL:
+                    result += EnvExpandInfo.SPECIAL[val]
+                else:
+                    result += val
+
+            return result
+
+        # Perform the replacement and return its result
+
+        return expand_info.RE_ESC.sub(replacer, input)
 
     ###########################################################################
 
     @staticmethod
-    def unquote(input: str, unescape: bool = True) -> tuple[str, EnvQuoteType]:
+    def unquote(
+        input: str,
+        unescape: bool | None = None,
+        expand_info: EnvExpandInfo | None = None
+    ) -> tuple[str, EnvQuoteType]:
         """
         Remove the input's embracing quotes. Neither leading, nor trailing
         white spaces removed before checking the leading quotes. Use .strip()
-        yourself before calling this method if needed.
+        yourself before calling this method when needed.
 
-        :param input: String being expanded
+        :param input: String being unquoted
         :type input: str
         :param unescape: If True, and input is not single-quoted, unescape
                          escaped characters
-        :type unscape: bool
+        :type unescape: bool
         :return: Unquoted string, and a number indicating the level of quoting:
                  0 = not quoted, 1 = single-quoted, 2 = double-quoted
         :rtype: str
@@ -468,66 +554,65 @@ class Env:
         if not input:
             return ("", EnvQuoteType.NONE)
 
+        # If expand info is not passed, determine it
+
+        if (expand_info is None):
+            expand_info = Env.get_expand_info()
+            if expand_info is None:
+                return input
+
         # Initialise result string to be returned, and the first character
 
-        prefix = "" if (unescape) else Env.ESCAPE
         result = input
-        c1 = result[0]
+        quote = result[0]
 
-        # Initialise quote_type
+        # If the first character is the variable expansion character,
+        # unescape should not be performed (like '...' in VMS)
 
-        if c1 == "'":
-            prefix = Env.ESCAPE
+        if quote == expand_info.EXPAND:
+            unescape = False
+
+        # Initialise quote_type and define unescape where possible
+
+        if quote == "'":
             quote_type = EnvQuoteType.SINGLE
-        elif c1 == '"':
+            if unescape is None:
+                unescape = False
+        elif quote == '"':
             quote_type = EnvQuoteType.DOUBLE
         else:
-            c1 = ""
+            quote = ""
             quote_type = EnvQuoteType.NONE
 
-        # Hide interfering characters if needed
+        # If unescape is still undefined, default it to True
 
-        was_protected = Env.HIDE_01 in result
+        if (unescape is None):
+            unescape = True
 
-        if not was_protected:
-            result = result.replace(Env.ESCAPE_ESCAPED, Env.HIDE_01)
-            if quote_type != EnvQuoteType.SINGLE:
-                result = result.replace(f'{Env.ESCAPE}"', Env.HIDE_02)
+        # Remove enclosing quotes if found, and report an error if no
+        # closing quote found at the end of the input
 
-        if quote_type == EnvQuoteType.SINGLE:
-
-            # Validate and unquote a single-quoted input
-
-            end_pos = result.find(c1, 1)
+        if (quote_type == EnvQuoteType.SINGLE):
+            end_pos = result.find(quote)
 
             if end_pos < 0:
                 raise ValueError(f"Unterminated single-quoted string: {input}")
 
             result = result[1:end_pos]
-            quote_type = EnvQuoteType.SINGLE
 
-        elif quote_type == EnvQuoteType.DOUBLE:
+        elif (quote_type == EnvQuoteType.DOUBLE):
+            
+            end_pos = len(result) - 1
 
-            # Validate and unquote a double-quoted input
-
-            end_pos = result.find(c1, 1)
-
-            if end_pos < 0:
-                raise ValueError(f"Unterminated double-quoted string: {input}")
+            if (end_pos <= 0) or (result[end_pos] != quote):
+                raise ValueError(f"Unterminated quoted string: {input}")
 
             result = result[1:end_pos]
 
-        # Unescape escaped characters if needed
+        # Unescape the result if needed
 
         if unescape:
             result = Env.unescape(result)
-
-        # Unhide interfering characters if needed
-
-        if not was_protected:
-            if quote_type != EnvQuoteType.SINGLE:
-                result = result.replace(Env.HIDE_02, f"{prefix}{c1}")
-            result = result.replace(Env.HIDE_01, f"{prefix}{Env.ESCAPE}")
 
         return (result, quote_type)
 
@@ -544,7 +629,7 @@ class Env:
         :param input: The string being scanned
         :type input: str
         :param match: Analyze match and return groups as well as unescaped
-                      escapes (twice less) and the immediate string. When the
+                      escapes (twice less) and the no_action string. When the
                       latter is not None, it tells to return that immediately
                       from the replacer, as there is nothing to unescape or
                       expand
@@ -557,7 +642,7 @@ class Env:
         :type min_escape_count: int
         :param expand_info: Rules for expansion and unescaping
         :type expand_info: EnvExpandInfo
-        :return: (groups, unescaped-escapes, immediate)
+        :return: (groups, unescaped-escapes, no_action)
         :rtype: tuple[tuple[Any, ...], str, str]
         """
 
@@ -570,20 +655,22 @@ class Env:
 
         groups: tuple[Any, ...] = match.groups()
         escapes: str = groups[0]
-        esc_len: int = len(escapes)
-        immediate: str = ""
+        escape_count: int = len(escapes)
+        no_action: str = ""
 
-        if (esc_len > 0):
-            escapes = escapes[0] * (esc_len // 2)
+        if (escape_count > 0):
+            escapes = escapes[0] * (escape_count // 2)
         
         # If this number of escapes dictate to ignore the rest, set
-        # immediate to the value that should be returned from caller
+        # no_action to the value that should be returned from caller
+        # without any further interpretation
 
-        if ((esc_len % 2) == min_escape_count):
-            immediate = escapes + match.string[esc_len:]
+        if ((escape_count % 2) != min_escape_count):
+            no_action = escapes + match.string[escape_count:]
 
         # All components are ready, return those
 
-        return (groups, escapes, immediate)
+        return (groups, escapes, no_action)
+
 
 ###############################################################################
