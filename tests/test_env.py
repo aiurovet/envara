@@ -495,43 +495,43 @@ class TestRemoveQuotesOnly:
     """Test suite for Env.remove_quotes_only method"""
 
     @pytest.mark.parametrize(
-        "input, escape, strip_spaces, hard_quotes, stoppers, quote, exp_str, exp_quote_type",
+        "input, escape, strip_spaces, hard_quotes, stoppers, exp_str, exp_quote_type",
         [
-            (None, None, False, None, None, None, "", EnvQuoteType.NONE),
-            (None, None, True, None, None, None, "", EnvQuoteType.NONE),
-            ("", None, False, None, None, None, "", EnvQuoteType.NONE),
-            ("", None, True, None, None, None, "", EnvQuoteType.NONE),
-            (" \t ", None, False, None, None, None, " \t ", EnvQuoteType.NONE),
-            (" \t ", None, True, None, None, None, "", EnvQuoteType.NONE),
-            (' \n " \t " \n ', None, False, None, None, '"', ' \n " \t " \n ', EnvQuoteType.DOUBLE),
-            (' \n " \t " \n ', None, True, None, None, None, " \t ", EnvQuoteType.DOUBLE),
-            ('"\t\\""', "\\", False, None, None, '"', '\t\\"', EnvQuoteType.DOUBLE),
-            (' A\"', "\\", False, None, None, None, ' A\"', EnvQuoteType.NONE),
-            (' A\"', "\\", True, None, None, None, 'A\"', EnvQuoteType.NONE),
-            (' A\"', "\\", True, True, None, None, 'A\"', EnvQuoteType.NONE),
-            ('"\\""', "\\", True, None, None, None, '\\"', EnvQuoteType.DOUBLE),
-            ('"\\\\""', "\\", True, None, None, None, '\\\\', EnvQuoteType.DOUBLE),
-            ('"\\\\\\""', "\\", True, None, None, None, '\\\\\\"', EnvQuoteType.DOUBLE),
-            ("'\\\\\\\"'", "\\", True, None, None, None, '\\\\\\\"', EnvQuoteType.SINGLE),
-            ('"\\\\\\""', "\\", True, '"', None, None, '\\\\\\', EnvQuoteType.DOUBLE),
-            (' Abc # def', "\\", False, None, '#', None, ' Abc ', EnvQuoteType.NONE),
-            (' Abc # def', "\\", True, None, '#', None, 'Abc', EnvQuoteType.NONE),
-            (' "Ab;c" # def', "\\", False, None, '#;', None, ' "Ab', EnvQuoteType.DOUBLE),
-            (' "Ab;c" # def', "\\", True, None, '#;', None, 'Ab;c', EnvQuoteType.DOUBLE),
-            (' "Ab#c" ; def', "\\", False, None, '#;', None, ' "Ab', EnvQuoteType.DOUBLE),
-            (' "Ab#c" ; def', "\\", True, None, '#;', None, 'Ab#c', EnvQuoteType.DOUBLE),
-            (' Ab\\#c # def', "\\", True, None, '#;', None, 'Ab\\#c', EnvQuoteType.NONE),
-            ('"`""', "`", False, None, None, '"', '`"', EnvQuoteType.DOUBLE),
-            ('"`""', "`", True, None, None, None, '`"', EnvQuoteType.DOUBLE),
-            ('"``""', "`", True, None, None, None, '``', EnvQuoteType.DOUBLE),
-            ('"```""', "`", True, None, None, None, '```"', EnvQuoteType.DOUBLE),
-            ("'```\"'", "`", True, None, None, None, '```"', EnvQuoteType.SINGLE),
-            ('"```""', "`", True, '"', None, None, '```', EnvQuoteType.DOUBLE),
+            (None, None, False, None, None, "", EnvQuoteType.NONE),
+            (None, None, True, None, None, "", EnvQuoteType.NONE),
+            ("", None, False, None, None, "", EnvQuoteType.NONE),
+            ("", None, True, None, None, "", EnvQuoteType.NONE),
+            (" \t ", None, False, None, None, " \t ", EnvQuoteType.NONE),
+            (" \t ", None, True, None, None, "", EnvQuoteType.NONE),
+            (' \n " \t " \n ', None, False, None, None, ' \n " \t " \n ', EnvQuoteType.NONE),
+            (' \n " \t " \n ', None, True, None, None, ' \t ', EnvQuoteType.DOUBLE),
+            ('"\t\\""', "\\", False, None, None, '\t\\"', EnvQuoteType.DOUBLE),
+            (' A\"', "\\", False, None, None, ' A\"', EnvQuoteType.NONE),
+            (' A\"', "\\", True, None, None, 'A\"', EnvQuoteType.NONE),
+            (' A\"', "\\", True, True, None, 'A\"', EnvQuoteType.NONE),
+            ('"\\""', "\\", True, None, None, '\\"', EnvQuoteType.DOUBLE),
+            ('"\\\\""', "\\", True, None, None, '\\\\', EnvQuoteType.DOUBLE),
+            ('"\\\\\\""', "\\", True, None, None, '\\\\\\"', EnvQuoteType.DOUBLE),
+            ("'\\\\\\\"'", "\\", True, None, None, '\\\\\\\"', EnvQuoteType.SINGLE),
+            ('"\\\\\\""', "\\", True, '"', None, '\\\\\\', EnvQuoteType.DOUBLE),
+            (' Abc # def', "\\", False, None, "#", ' Abc ', EnvQuoteType.NONE),
+            (' Abc # def', "\\", True, None, "#", 'Abc', EnvQuoteType.NONE),
+            (' "Ab;c" # def', "\\", False, None, "#;", ' "Ab', EnvQuoteType.NONE),
+            (' "Ab;c" # def', "\\", True, None, "#;", 'Ab;c', EnvQuoteType.DOUBLE),
+            (' "Ab#c" ; def', "\\", False, None, "#;", ' "Ab', EnvQuoteType.NONE),
+            (' "Ab#c" ; def', "\\", True, None, "#;", 'Ab#c', EnvQuoteType.DOUBLE),
+            (' Ab\\#c # def', "\\", True, None, "#;", 'Ab\\#c', EnvQuoteType.NONE),
+            ('"`""', "`", False, None, None, '`"', EnvQuoteType.DOUBLE),
+            ('"`""', "`", True, None, None, '`"', EnvQuoteType.DOUBLE),
+            ('"``""', "`", True, None, None, '``', EnvQuoteType.DOUBLE),
+            ('"```""', "`", True, None, None, '```"', EnvQuoteType.DOUBLE),
+            ("'```\"'", "`", True, None, None, '```"', EnvQuoteType.SINGLE),
+            ('"```""', "`", True, '"', None, '```', EnvQuoteType.DOUBLE),
         ],
     )
     def test_remove_quotes_only(
         self, input, escape, strip_spaces, hard_quotes, stoppers,
-        quote, exp_str, exp_quote_type
+        exp_str, exp_quote_type
     ):
         # Call the method
         str, quote_type = Env.remove_quotes_only(
@@ -539,8 +539,7 @@ class TestRemoveQuotesOnly:
             escape=escape,
             strip_spaces=strip_spaces,
             hard_quotes=hard_quotes,
-            stoppers=stoppers,
-            quote=quote
+            stoppers=stoppers
         )
 
         # Verify result matches expected
@@ -548,24 +547,23 @@ class TestRemoveQuotesOnly:
         assert quote_type == exp_quote_type
 
     @pytest.mark.parametrize(
-        "input, escape, strip_spaces, hard_quotes, stoppers, quote, expected",
+        "input, escape, strip_spaces, hard_quotes, stoppers, expected",
         [
-            (' "', "\\", True, None, None, None, 'Unterminated'),
-            (' \t"\\', "\\", True, None, None, None, 'dangling'),
-            (' \t \\"\\\\\\', "\\", True, None, None, None, 'dangling'),
-            ('" \t \\"\\\\#\\"', "\\", True, None, "#", None, 'Unterminated'),
-            ('" \t \\"\\\\#\\', "\\", True, None, "#", None, 'dangling'),
+            (' "', "\\", True, None, None, 'Unterminated'),
+            (' \t"\\', "\\", True, None, None, 'dangling'),
+            (' \t \\"\\\\\\', "\\", True, None, None, 'dangling'),
+            ('" \t \\"\\\\#\\"', "\\", True, None, "#", 'Unterminated'),
+            ('" \t \\"\\\\#\\', "\\", True, None, "#", 'dangling'),
 
-            (' "', "`", True, None, None, None, 'Unterminated'),
-            (' \t"`', "`", True, None, None, None, 'dangling'),
-            (' \t `"```', "`", True, None, None, None, 'dangling'),
-            ('" \t `"``#`"', "`", True, None, "#", None, 'Unterminated'),
-            ('" \t `"``#`', "`", True, None, "#", None, 'dangling'),
+            (' "', "`", True, None, None, 'Unterminated'),
+            (' \t"`', "`", True, None, None, 'dangling'),
+            (' \t `"```', "`", True, None, None, 'dangling'),
+            ('" \t `"``#`"', "`", True, None, "#", 'Unterminated'),
+            ('" \t `"``#`', "`", True, None, "#", 'dangling'),
         ],
     )
     def test_remove_quotes_only_bad(
-        self, input, escape, strip_spaces, hard_quotes, stoppers,
-        quote, expected
+        self, input, escape, strip_spaces, hard_quotes, stoppers, expected
     ):
         # Call the method
         with pytest.raises(ValueError) as ex:
@@ -574,8 +572,7 @@ class TestRemoveQuotesOnly:
                 escape=escape,
                 strip_spaces=strip_spaces,
                 hard_quotes=hard_quotes,
-                stoppers=stoppers,
-                quote=quote
+                stoppers=stoppers
             )
 
         # Verify result matches expected
