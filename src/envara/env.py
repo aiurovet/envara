@@ -21,7 +21,7 @@ from env_expand_info import EnvExpandInfo
 from env_expand_info_type import EnvExpandInfoType
 from env_platform_stack_flags import EnvPlatformStackFlags
 from env_quote_type import EnvQuoteType
-from env_unquote_data import EnvUnquoteData
+from env_unquote_info import EnvUnquoteInfo
 
 ###############################################################################
 
@@ -60,6 +60,12 @@ class Env:
 
     # A text indicating the running platform
     PLATFORM_THIS: Final[str] = sys.platform.lower()
+
+    # Special characters when they follow an odd number of ESCAPEs
+    SPECIAL: Final[dict[str, str]] = {
+        "a": "\a", "b": "\b", "f": "\f", "n": "\n",
+        "r": "\r", "t": "\t", "v": "\v"
+    }
 
     # Expansion/unescaping info - MSDOS-style
     __msdos_info: EnvExpandInfo = EnvExpandInfo(
@@ -267,42 +273,6 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def get_expand_info(
-        info_type: EnvExpandInfoType = EnvExpandInfoType.SYSTEM
-    ) -> EnvExpandInfo:
-        """
-        Get expand info depending on a system it is required for
-
-        :param info_type: System-related type of the info to return
-        :type info_type:EnvExpandInfoType: type to choose info
-        :return: The info based on the type requested for
-        :rtype: EnvExpandInfo
-        """
-
-        if (info_type == EnvExpandInfoType.SYSTEM):
-            if (Env.IS_POSIX):
-                return Env.__posix_info
-            elif (Env.IS_WINDOWS):
-                return Env.__powsh_info
-            elif (Env.IS_VMS):
-                return Env.__vms_info
-            else:
-                return None
-
-        if (info_type == EnvExpandInfoType.MSDOS):
-            return Env.__msdos_info
-        if (info_type == EnvExpandInfoType.POWSH):
-            return Env.__powsh_info
-        if (info_type == EnvExpandInfoType.POSIX):
-            return Env.__posix_info
-        if (info_type == EnvExpandInfoType.VMS):
-            return Env.__vms_info
-        else:
-            return None
-
-    ###########################################################################
-
-    @staticmethod
     def get_platform_stack(
         flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT,
         prefix: str | None = None,
@@ -392,22 +362,33 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def quote(input: str, type: EnvQuoteType = EnvQuoteType.DOUBLE) -> str:
+    def quote(
+        input: str,
+        type: EnvQuoteType = EnvQuoteType.DOUBLE,
+        escape: str = None
+    ) -> str:
         """
-        Embrace input with quotes. Neither leading, nor trailing white spaces
+        Enclose input in quotes. Neither leading, nor trailing whitespaces
         removed before checking the leading quotes. Use .strip() yourself
         before calling this method if needed.
 
         :param input: String being expanded
         :type input: str
+        :param type: Type of quotes to enclose in
+        :type type: EnvQuoteType
+        :param escape: Escape character to use
+        :type escape: str
         :return: Quoted string with possible quotes and escape characters from
                  the inside being escaped
         :rtype: str
         """
 
-        # Initialise the result
+        # Initialise
 
         result = "" if (input is None) else input
+
+        if (not escape):
+            escape = EnvUnquoteInfo.DEFAULT_ESCAPES[0]
 
         # Define the quote being used
 
@@ -428,63 +409,18 @@ class Env:
         # and return
 
         if result and (quote in result):
-            if Env.ESCAPE in result:
-                result = result.replace(Env.ESCAPE, Env.ESCAPE_ESCAPED)
-            result = result.replace(quote, f"{Env.ESCAPE}{quote}")
+            if escape in result:
+                result = result.replace(escape, f"{escape}{escape}")
+            result = result.replace(quote, f"{escape}{quote}")
 
         return f"{quote}{result}{quote}"
 
     ###########################################################################
 
     @staticmethod
-    def remove_line_comment(input: str) -> str:
+    def unescape(input: str, escape: str = None) -> str:
         """
-        Remove the input's line comment: from # (hash symbol) outside the
-        quotes (if any) to the end of the whole string, as the input is
-        treated as a single line. The point is that in case of a multi-line
-        processing, it is inevitable to break the input into separate lines
-        and process those independently.
-
-        :param input: String being truncated
-        :type input: str
-        :return: string with the line comment removed, and an indicator of
-                 what type of quote was encountered
-        :rtype: (str, EnvQuote)
-        """
-
-        # If input is None or empty, return the empty string
-
-        if not input:
-            return ""
-
-        # Find the start of a line comment in the input, and
-        # return the input unchanged if a line comment was not
-        # found
-
-        beg_pos = input.find("#")
-
-        if beg_pos < 0:
-            return input
-
-        # Find the end of a line considering either POSIX or Windows
-        # line breaks
-
-        end_pos = input.find("\n")
-
-        if (end_pos >= 2) and input[end_pos - 2] == "\r":
-            end_pos = end_pos - 1
-
-        # Set result to the substring from the beginning to the line comment
-        # start, then remove trailing blanks and return the result
-
-        return input[0:beg_pos].rstrip()
-
-    ###########################################################################
-
-    @staticmethod
-    def unescape(input: str, expand_info: EnvExpandInfo | None = None) -> str:
-        """
-        Unescape '\\t', '\\n', etc.
+        Unescape '\\t', '\\n', '\\u0022' etc.
 
         :param input: Input string to unescape escaped characters in
         :type input: str
@@ -499,121 +435,173 @@ class Env:
         if not input:
             return ""
 
-        # If expand info is not passed, determine it
+        # If escape character is not known yet, use the default one, and
+        # if input does not contain the default escape char, then finish
 
-        if (expand_info is None):
-            expand_info = Env.get_expand_info()
-            if expand_info is None:
+        if (not escape):
+            escape = EnvUnquoteInfo.DEFAULT_ESCAPES[0]
+            if escape not in input:
                 return input
 
-        # If input does not contain escape char, then nothing to do
+        # Loop through the input and accumulate valid characters in chr_lst
 
-        if expand_info.ESCAPE not in input:
-            return input
+        chr_lst: list[str] = []
+        cur_pos: int = -1
+        esc_pos: int = -1
+        is_escaped: bool = False
 
-        # Define the replacement rule
+        # Start and end of a substring to accumulate for the code-to-string
+        # conversion
 
-        def replacer(x: re.Match):
-            groups, escapes, no_action = Env.__parse_escapes(input, x, 1)
+        acc_beg_pos: int = -1
+        acc_end_pos: int = -1
 
-            if (no_action):
-                return no_action
+        for cur_chr in input:
+            cur_pos = cur_pos + 1
 
-            val: str = groups[1]
-            key: str = val[0]
-            result: str = escapes
+            if (cur_pos >= acc_beg_pos) and (cur_pos < acc_end_pos):
+                if (cur_chr not in string.hexdigits):
+                    Env.__fail_unescape(input, esc_pos, cur_pos)
+                continue
 
-            if (key == "x") or (key == "u"):
-                result += chr(int(val[1:], 16))
-            else:
-                if val in EnvExpandInfo.SPECIAL:
-                    result += EnvExpandInfo.SPECIAL[val]
-                else:
-                    result += val
+            if (cur_pos == acc_end_pos):
+                chr_lst.append(chr(int(input[acc_beg_pos:acc_end_pos], 16)))
+                is_escaped = False
 
-            return result
+            if (cur_chr == escape):
+                is_escaped = not is_escaped
+                esc_pos = cur_pos if (is_escaped) else -1
+                continue
 
-        # Perform the replacement and return its result
+            if (is_escaped):
+                if (cur_chr in Env.SPECIAL):
+                    cur_chr = Env.SPECIAL[cur_chr]
+                elif (cur_chr == "u"):
+                    acc_beg_pos = cur_pos + 1
+                    acc_end_pos = acc_beg_pos + 4
+                    continue
+                elif (cur_chr == "x"):
+                    acc_beg_pos = cur_pos + 1
+                    acc_end_pos = acc_beg_pos + 2
+                    continue
+                is_escaped = False
 
-        return expand_info.RE_ESC.sub(replacer, input)
+            chr_lst.append(cur_chr)
+
+        # If escaped char (by code) is the last one, accumulation
+        # action was missed from the loop: fulfilling here
+
+        if is_escaped:
+            if (acc_end_pos > 0):
+                if (cur_pos >= acc_end_pos - 1):
+                    chr_lst.append(chr(int(input[acc_beg_pos:acc_end_pos], 16)))
+                elif (esc_pos >= 0):
+                    Env.__fail_unescape(input, esc_pos, cur_pos + 1)
+            elif (esc_pos >= 0):
+                Env.__fail_unescape(input, esc_pos, cur_pos + 1)
+
+        # Join all characters and return the resulting string
+
+        return "".join(chr_lst)
 
     ###########################################################################
 
     @staticmethod
     def unquote(
         input: str,
-        strip_spaces: bool = True,
         unescape: bool | None = None,
+        strip_spaces: bool = True,
+        escapes: str = None,
+        expands: str = None,
+        hard_quotes: str = None,
         stoppers: str = None,
-        expand_info: EnvExpandInfo | None = None
-    ) -> tuple[str, EnvQuoteType]:
+    ) -> tuple[str, EnvUnquoteInfo]:
         """
-        Remove the input's embracing quotes. Neither leading, nor trailing
-        white spaces removed before checking the leading quotes. Use .strip()
-        yourself before calling this method when needed.
+        Optionally, remove leading and trailing whitespaces from the copy
+        of the input, then remove enclosing quotes if found, then,
+        optionally, unescape escaped characters and return the result as
+        well as the unquoting info that also contains detected expand
+        character (default: $, or the first of $ or % depending on the
+        running platform)
 
-        :param input: String being unquoted
+        :param input: String to unquote
         :type input: str
-        :param skip_leading_spaces: True = strip leading spaces if quoted
-        :type skip_leading_spaces: bool
-        :param unescape: If True, and input is not single-quoted, unescape
-                         escaped characters
-        :type unescape: bool
+        :param escapes: Escape characters: "\\\\\\\\", "\\\\\\\\%"
+        :type escapes: str
+        :param strip_spaces: True = strip leading and trailing spaces. If
+                             quoted, don't strip again after unquoting
+        :type strip_spaces: bool
+        :param expands: A string of characters where each indicates a start
+                        of an env var or an arg expansion: "$%"
+        :type expands: str
+        :param hard_quotes: A string containing all quote characters that
+                            require to ignore escaping: e.g., a single quote
+        :type hard_quotes: bool
         :param stoppers: A string of characters where each indicates a string
                          end when found non-escaped and either outside quotes
-                         or in an unquoted input (e.g., a line comment: "#")
+                         or in an unquoted input: e.g., a line comment: "#"
         :type stoppers: str
-        :param expand_info: Rules for expansion and unescaping
-        :type expand_info: EnvExpandInfo
-        :return: Unquoted string, and a number indicating the level of quoting:
-                 0 = not quoted, 1 = single-quoted, 2 = double-quoted
-        :rtype: str
+        :return: unquoted and, optionally, unescaped input, as well as
+                 details: see _EnvUnquoteData_
+        :rtype: tuple[str, EnvUnquoteData]
         """
 
-        # If input is None or empty, return the empty string
+        # Unquote the string first
 
-        if not input:
-            return ("", EnvQuoteType.NONE)
+        info: EnvUnquoteInfo
 
-        # If expand info is not passed, determine it
-
-        if expand_info is None:
-            expand_info = Env.get_expand_info()
-
-        # Remove enclosing quotes if found and report an error if no
-        # closing quote found at the end of the input or a dangling
-        # escape found
-
-        result: str
-        quote_type: EnvQuoteType
-
-        result, quote_type = Env.unquote_only(
+        _, info = Env.unquote_only(
             input,
-            escape=expand_info.ESCAPE if expand_info else None,
             strip_spaces=strip_spaces,
+            escapes=escapes,
+            expands=expands,
+            hard_quotes=hard_quotes,
             stoppers=stoppers
         )
 
-        # Unescape the result if needed
+        # If unescape flag is undefined, and input wasn't quoted, override it
 
-        if unescape or (
-           (unescape is None) and (quote_type != EnvQuoteType.SINGLE)
-        ):
-            result = Env.unescape(result, expand_info)
+        if (unescape is None) and (info.quote_type == EnvQuoteType.NONE):
+            unescape = True
 
-        return (result, quote_type)
+        # If no unescape needed, finish
+
+        if not unescape:
+            return (info.result, info)
+
+        # Unescape the result
+
+        info.result = Env.unescape(info.result, info.escape)
+
+        # Don't strip whitespaces again if not needed or if input was quoted
+
+        if (not strip_spaces) or (info.quote_type != EnvQuoteType.NONE):
+            return (info.result, info)
+
+        # Here, result should be stripped of the whitespaces, so do that
+
+        result: str = info.result
+
+        if result and ((result[0] in string.whitespace) or (
+            result[len(result) - 1] in string.whitespace
+        )):
+            info.result = result.strip()
+
+        # Finish
+
+        return (info.result, info)
 
     ###########################################################################
 
     @staticmethod
     def unquote_only(
         input: str,
-        escape: str = None,
         strip_spaces: bool = True,
+        escapes: str = None,
         expands: str = None,
         hard_quotes: str = None,
         stoppers: str = None,
-    ) -> EnvUnquoteData:
+    ) -> tuple[str, EnvUnquoteInfo]:
         """
         Remove enclosing quotes from a string ignoring everything beyond the
         closing quote ignoring escaped quotes. Raise ValueError if a dangling
@@ -625,8 +613,9 @@ class Env:
         
         :param input: String to remove enclosing quotes from
         :type input: str
-        :param escape: Escape character
-        :type escape: str
+        :param escape: Escape characters: whichever comes first in the input
+                       will be returned in the dedicated info
+        :type escapes: str
         :param strip_spaces: True = strip leading and trailing spaces. If
                              quoted, don't strip again after unquoting
         :type strip_spaces: bool
@@ -640,61 +629,50 @@ class Env:
                          end when found non-escaped and either outside quotes
                          or in an unquoted input (e.g., a line comment: "#")
         :type stoppers: str
-        :return: See _EnvUnquoteData_
-        :rtype: EnvUnquoteData
+        :return: unquoted input and details: see _EnvUnquoteData_
+        :rtype: tuple[str, EnvUnquoteData]
         """
+
+        # Initialize
+
+        info = EnvUnquoteInfo(input=input, quote_type=EnvQuoteType.NONE)
 
         # If the input is None or empty, return the empty string
 
-        quote_type: EnvQuoteType = EnvQuoteType.NONE
-
         if (not input):
-            return ("", quote_type, None, None)
+            return (info.result, info)
 
         # Ensure required arguments are populated
 
-        if (not escape):
-            escape = "\\"
+        if (not escapes):
+            escapes = EnvUnquoteInfo.DEFAULT_ESCAPES
         if (not expands):
-            expands = "$%"
+            expands = EnvUnquoteInfo.DEFAULT_EXPANDS
 
         # Initialize position beyond the last character and results
 
         end_pos: int = 0
-        found_escape: str = None
-        found_expand: str = None
-        result: str = input.lstrip() if (strip_spaces) else input
+        info.result = input.lstrip() if (strip_spaces) else input
 
-        if (not result):
-            return (result, quote_type, None, None)
+        if (not info.result):
+            return (info.result, info)
 
         # Initialise quote and determine quote type
 
-        quote: str = result[0]
-        chr_pos: int = "\"'".find(quote)
+        info.quote = info.result[0]
 
-        if (chr_pos == 0):
-            quote_type = EnvQuoteType.DOUBLE
-        elif (chr_pos == 1):
-            quote_type = EnvQuoteType.SINGLE
+        if (info.quote == '"'):
+            info.quote_type = EnvQuoteType.DOUBLE
+        elif (info.quote == "'"):
+            info.quote_type = EnvQuoteType.SINGLE
         else:
-            quote = ""
-
-        # Initialise character checks
-
-        find_str: str = escape + quote + (expands or "$%")
-        beg_pos_escape = 0
-        end_pos_escape = beg_pos_escape + len(escape)
-        beg_pos_quote = end_pos_escape
-        end_pos_quote = beg_pos_quote + len(quote)
-        beg_pos_expand = end_pos_quote
-        end_pos_expand = beg_pos_expand + len(expands)
+            info.quote = ""
 
         # Initialise flags for escaping and quoting
 
         has_stoppers: bool = True if stoppers else False
         is_escaped: bool = False
-        is_quoted: bool = quote_type != EnvQuoteType.NONE
+        is_quoted: bool = info.quote_type != EnvQuoteType.NONE
 
         # Avoid Nones
 
@@ -703,12 +681,12 @@ class Env:
 
         # No escape is relevant if the given quote is the hard one
 
-        if is_quoted and (quote in hard_quotes):
-            escape = ""
+        if is_quoted and (info.quote in hard_quotes):
+            escapes = ""
 
         # Loop through each input character and analyze
 
-        for cur_chr in result:
+        for cur_chr in info.result:
             # Advance the end position and skip opening quote if present
 
             end_pos = end_pos + 1
@@ -716,22 +694,18 @@ class Env:
             if (end_pos == 1) and is_quoted:
                 continue
 
-            # Convert character to int
-
-            chr_pos = find_str.find(cur_chr)
-
             # If an escape encountered, flip the flag and loop
 
-            if (chr_pos >= beg_pos_escape) and (chr_pos < end_pos_escape):
-                found_escape = cur_chr
+            if (cur_chr in escapes):
+                info.escape = cur_chr
                 is_escaped = not is_escaped
                 continue
 
             # When a quote is encountered, if escaped, loop, else,
             # this quote is the closing one, so return the result.
 
-            if (chr_pos >= beg_pos_quote) and (chr_pos < end_pos_quote):
-                if is_quoted and (quote in hard_quotes):
+            if (cur_chr == info.quote):
+                if is_quoted and (info.quote in hard_quotes):
                     is_quoted = False
                     break
                 if (is_escaped):
@@ -745,9 +719,9 @@ class Env:
 
             # Set expand character if found first time
 
-            if (chr_pos >= beg_pos_expand) and (chr_pos < end_pos_expand):
-                if (found_expand is None) and (not is_escaped):
-                    found_expand = cur_chr
+            if (cur_chr in expands):
+                if (not info.expand) and (not is_escaped):
+                    info.expand = cur_chr
 
             # Break out if the stopper character was encountered outside
             # the quotes, and it was not escaped
@@ -771,7 +745,7 @@ class Env:
 
         # Calculate the unquoted substring
 
-        if quote_type == EnvQuoteType.NONE:
+        if info.quote_type == EnvQuoteType.NONE:
             beg_pos = 0
         else:
             beg_pos = 1
@@ -779,18 +753,40 @@ class Env:
 
         # Extract the unquoted substring
 
-        result = result[beg_pos:end_pos]
+        info.result = info.result[beg_pos:end_pos]
 
         # Strip trailing spaces if needed, but only if the original input
         # was not quoted
 
-        if strip_spaces and (quote_type == EnvQuoteType.NONE):
-            result = result.rstrip()
+        if strip_spaces and (info.quote_type == EnvQuoteType.NONE):
+            info.result = info.result.rstrip()
 
         # Return the result
 
-        return (result, quote_type, found_escape, found_expand)
+        return (info.result, info)
 
+    ###########################################################################
+
+    @staticmethod
+    def __fail_unescape(input: str, beg_pos: int, end_pos: int):
+        """
+        Error handler for Env.unescape()
+        
+        :param input: Full string at fault
+        :type input: str
+        :param beg_pos: Starting position of the fragment at fault
+        :type beg_pos: int
+        :param end_pos: Ending position of the fragment at fault
+        :type end_pos: int
+        :return: Raise exception
+        :rtype: None
+        """
+
+        dtl: str = input[beg_pos:end_pos]
+
+        raise ValueError(
+            f"Incomplete escape sequence from [{beg_pos}]: \"{dtl}\" in \"{input}\""
+        )
 
     ###########################################################################
 

@@ -28,7 +28,7 @@ class EnvType(IntEnum):
     # Related to OpenVMS or similar
     # Dir sep: :
     # Escape: same as WINDOWS
-    # Env vars: same as WINDOWS
+    # Env vars: nothing, just the name of a variable defined earlier
     VMS = 3
 
     # Related to Risc OS

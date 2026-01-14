@@ -15,7 +15,7 @@ from env import Env, EnvExpandFlags, EnvQuoteType
 from env_expand_info import EnvExpandInfo
 from env_expand_info_type import EnvExpandInfoType
 from env_platform_stack_flags import EnvPlatformStackFlags
-from env_unquote_data import EnvUnquoteData
+from env_unquote_info import EnvUnquoteInfo
 
 ###############################################################################
 
@@ -180,38 +180,6 @@ class TestExpandArgs:
 
         # Verify result matches expected
         assert result == expected
-
-
-###############################################################################
-
-
-class TestGetExpandInfo:
-    """Test suite for Env.get_expand_info method"""
-
-    @pytest.mark.parametrize(
-        "type, is_windows, expected",
-        [
-            (EnvExpandInfoType.POSIX, False, posix),
-            (EnvExpandInfoType.POSIX, True, posix),
-            (EnvExpandInfoType.POWSH, False, powsh),
-            (EnvExpandInfoType.POWSH, True, powsh),
-            (EnvExpandInfoType.MSDOS, False, msdos),
-            (EnvExpandInfoType.MSDOS, True, msdos),
-            (EnvExpandInfoType.VMS, False, vms),
-            (EnvExpandInfoType.VMS, True, vms),
-            (EnvExpandInfoType.SYSTEM, False, posix),
-            (EnvExpandInfoType.SYSTEM, True, powsh),
-        ]
-    )
-    def get_expand_info(self, type, is_windows, expected):
-        # Call the method
-        result = Env.get_expand_info(type)
-
-        # Verify result matches expected
-        assert \
-            Env.IS_VMS or \
-            (Env.IS_WINDOWS != is_windows) or \
-            (result == expected)
 
 
 ###############################################################################
@@ -466,106 +434,69 @@ class TestQuote:
 ###############################################################################
 
 
-class TestRemoveLineComment:
-    """Test suite for Env.remove_line_comment method"""
-
-    @pytest.mark.parametrize(
-        "input, expected",
-        [
-            (None, ""),
-            ("", ""),
-            ("", ""),
-            (" Abc Def  ", " Abc Def  "),
-            (" Abc # Def  ", " Abc"),
-            (" Abc # Def  \n GH\nIjK", " Abc"),
-        ],
-    )
-    def test_remove_line_comment(self, input, expected):
-
-        # Call the method
-        result = Env.remove_line_comment(input)
-
-        # Verify result matches expected
-        assert result == expected
-
-
-###############################################################################
-
-
 class TestUnescape:
     """Test suite for Env.decode_escaped method"""
 
     @pytest.mark.parametrize(
-        "expand_info, input, expected",
+        "input, escape, expected",
         [
-            (posix, None, ""),
-            (posix, "", ""),
-            (posix, "A b c", "A b c"),
-            (posix, "A\\tb\\tc", "A\tb\tc"),
-            (posix, "A\\ \\N\\+\\u0042b\\a\\x41c", "A N+Bb\aAc"),
+            (None, None, ""),
+            ("", "", ""),
+            ("A b c", None, "A b c"),
+            ("A\\tb\\tc", "", "A\tb\tc"),
+            ("A\\ \\N\\+\\u0042b\\a\\x41c\\x42", "\\", "A N+Bb\aAcB"),
 
-            (powsh, None, ""),
-            (powsh, "", ""),
-            (powsh, "A b c", "A b c"),
-            (powsh, "A`tb`tc", "A\tb\tc"),
-            (powsh, "A` `N`+`u0042b`a`x41c", "A N+Bb\aAc"),
+            (None, None, ""),
+            ("", "", ""),
+            ("A b c", "`", "A b c"),
+            ("A`tb`tc", "`", "A\tb\tc"),
+            ("A` `N`+`u0042b`a`x41c`x42", "`", "A N+Bb\aAcB"),
 
-            (msdos, None, ""),
-            (msdos, "", ""),
-            (msdos, "A b c", "A b c"),
-            (msdos, "A^tb^tc", "A\tb\tc"),
-            (msdos, "A^ ^N^+^u0042b^a^x41c", "A N+Bb\aAc"),
-
-            (vms, None, ""),
-            (vms, "", ""),
-            (vms, "A b c", "A b c"),
-            (vms, "A^tb^tc", "A\tb\tc"),
-            (vms, "A^ ^N^+^u0042b^a^x41c", "A N+Bb\aAc"),
+            (None, None, ""),
+            ("", "", ""),
+            ("A b c", "^", "A b c"),
+            ("A^tb^tc", "^", "A\tb\tc"),
+            ("A^ ^N^+^u0042b^a^x41c^x42", "^", "A N+Bb\aAcB"),
         ],
     )
-    def test_unescape(self, expand_info, input, expected):
+    def test_unescape(self, input, escape, expected):
         # Call the method
-        result = Env.unescape(input, expand_info)
+        result = Env.unescape(input, escape)
 
         # Verify result matches expected
         assert result == expected
 
     @pytest.mark.parametrize(
-        "sys_expand_info, input, expected",
+        "input, escape, exp_beg_pos, exp_bad",
         [
-            (posix, None, ""),
-            (posix, "", ""),
-            (posix, "A b c", "A b c"),
-            (posix, "A\\tb\\tc", "A\tb\tc"),
-            (posix, "A\\ \\N\\+\\u0042b\\a\\x41c", "A N+Bb\aAc"),
+            ("A\\", "\\", 1, "\\"),
+            ("\\xG", "\\", 0, "\\x"),
+            ("\\x0", "\\", 0, "\\x0"),
+            ("\\x0g", "\\", 0, "\\x0"),
+            ("\\u012g", "\\", 0, "\\u012"),
+            ("abc \\xG", "\\", 4, "\\x"),
+            ("abc \\x0", "\\", 4, "\\x0"),
+            ("abc \\x0g", "\\", 4, "\\x0"),
+            ("abc \\u012g", "\\", 4, "\\u012"),
 
-            (powsh, None, ""),
-            (powsh, "", ""),
-            (powsh, "A b c", "A b c"),
-            (powsh, "A`tb`tc", "A\tb\tc"),
-            (powsh, "A` `N`+`u0042b`a`x41c", "A N+Bb\aAc"),
-
-            (vms, None, ""),
-            (vms, "", ""),
-            (vms, "A b c", "A b c"),
-            (vms, "A^tb^tc", "A\tb\tc"),
-            (vms, "A^ ^N^+^u0042b^a^x41c", "A N+Bb\aAc"),
+            ("A^", "^", 1, "^"),
+            ("^xG", "^", 0, "^x"),
+            ("^x0", "^", 0, "^x0"),
+            ("^x0g", "^", 0, "^x0"),
+            ("^u012g", "^", 0, "^u012"),
+            ("abc ^xG", "^", 4, "^x"),
+            ("abc ^x0", "^", 4, "^x0"),
+            ("abc ^x0g", "^", 4, "^x0"),
+            ("abc ^u012g", "^", 4, "^u012"),
         ],
     )
-    def test_unescape_system(
-        self,
-        sys_expand_info: EnvExpandInfo,
-        input: str,
-        expected: str,
-    ):
-        # Arrange
-        expand_info = Env.get_expand_info()
-
+    def test_unescape_bad(self, input, escape, exp_beg_pos, exp_bad):
         # Call the method
-        result = Env.unescape(input)
+        with pytest.raises(ValueError) as ex:
+            Env.unescape(input, escape)
 
         # Verify result matches expected
-        assert (expand_info != sys_expand_info) or (result == expected)
+        assert f"[{exp_beg_pos}]: \"{exp_bad}\" in \"{input}\"" in str(ex.value)
 
 
 ###############################################################################
@@ -575,40 +506,37 @@ class TestUnquote:
     """Test suite for Env.unquote method"""
 
     @pytest.mark.parametrize(
-        "input, expand_info, strip_spaces, unescape, stoppers, exp_str, exp_quote_type",
+        "input, unescape, escapes, strip_spaces, hard_quotes, stoppers, exp_result, exp_quote_type, exp_escape, exp_expand",
         [
-            ("'\\\\\\\"'", posix, True, False, None, '\\\\\\\"', EnvQuoteType.SINGLE),
-            ("'\\\\\\\"'", posix, True, None, None, '\\\\\\\"', EnvQuoteType.SINGLE),
-            ("'\\\\\\\"'", posix, True, True, None, '\\\"', EnvQuoteType.SINGLE),
-            ('"\\\\\\\""', posix, True, True, None, '\\\"', EnvQuoteType.DOUBLE),
-            ('"\\\\\\""', posix, True, False, None, '\\\\\\"', EnvQuoteType.DOUBLE),
-            ('\\x41\\u0042\\"\\N', posix, False, None, None, 'AB\"N', EnvQuoteType.NONE),
-            ('\\a\\b\\f\\n\\r\\t\\v', posix, False, None, None, '\a\b\f\n\r\t\v', EnvQuoteType.NONE),
-            (' "Ab#c" ; def', posix, True, False, '#;', 'Ab#c', EnvQuoteType.DOUBLE),
-            (' Ab\\#c # def', posix, True, False, '#;', 'Ab\\#c', EnvQuoteType.NONE),
-            ("'```\"'", powsh, True, False, None, '```\"', EnvQuoteType.SINGLE),
-            ("'```\"'", powsh, True, None, None, '```\"', EnvQuoteType.SINGLE),
-            ("'```\"'", powsh, True, True, None, '`\"', EnvQuoteType.SINGLE),
-            ('"```\""', powsh, True, True, None, '`\"', EnvQuoteType.DOUBLE),
-            ('"```""', powsh, True, False, None, '```"', EnvQuoteType.DOUBLE),
+            (' Abc # def', False, "\\", False, None, "#", ' Abc ', EnvQuoteType.NONE, "", ""),
+            (' Abc # def', True, "\\", False, None, "#", ' Abc ', EnvQuoteType.NONE, "", ""),
+            (' Abc \\x41\\t\\n', False, "\\", False, None, None, ' Abc \\x41\\t\\n', EnvQuoteType.NONE, "\\", ""),
+            (' Abc \\u0041\\t\\n', True, "\\", True, None, None, 'Abc A', EnvQuoteType.NONE, "\\", ""),
+            ('" Abc \\u0041\\t\\n"', True, "\\", False, None, None, ' Abc A\t\n', EnvQuoteType.DOUBLE, "\\", ""),
+            ('" Abc \\u0041\\t\\n"', True, "\\", True, None, None, ' Abc A\t\n', EnvQuoteType.DOUBLE, "\\", ""),
         ],
     )
     def test_unquote(
-        self, input, expand_info, strip_spaces, unescape, stoppers,
-        exp_str, exp_quote_type
+        self, input, unescape, escapes, strip_spaces, hard_quotes, stoppers,
+        exp_result, exp_quote_type, exp_escape, exp_expand
     ):
         # Call the method
-        str, quote_type = Env.unquote(
+        result, info = Env.unquote(
             input,
-            strip_spaces=strip_spaces,
             unescape=unescape,
-            stoppers=stoppers,
-            expand_info=expand_info
+            escapes=escapes,
+            strip_spaces=strip_spaces,
+            hard_quotes=hard_quotes,
+            stoppers=stoppers
         )
 
         # Verify result matches expected
-        assert str == exp_str
-        assert quote_type == exp_quote_type
+        assert info.input == (input or "")
+        assert info.result == (result or "")
+        assert info.result == (exp_result or "")
+        assert info.quote_type == (exp_quote_type)
+        assert info.escape == (exp_escape or "")
+        assert info.expand == (exp_expand or "")
 
 
 ###############################################################################
@@ -618,62 +546,63 @@ class TestUnquoteOnly:
     """Test suite for Env.unquote_only method"""
 
     @pytest.mark.parametrize(
-        "input, escape, strip_spaces, hard_quotes, stoppers, expected",
+        "input, escapes, strip_spaces, hard_quotes, stoppers, exp_result, exp_quote_type, exp_escape, exp_expand",
         [
-            (None, None, False, None, None, None, "", EnvQuoteType.NONE),
-            (None, None, True, None, None, None, "", EnvQuoteType.NONE),
-            ("", None, False, None, None, None, "", EnvQuoteType.NONE),
-            ("", None, True, None, None, None, "", EnvQuoteType.NONE),
-            (" \t ", None, False, None, None, None, " \t ", EnvQuoteType.NONE),
-            (" \t ", None, True, None, None, None, "", EnvQuoteType.NONE),
-            (' \n " \t " \n ', None, False, None, None, None, ' \n " \t " \n ', EnvQuoteType.NONE),
-            (' \n " \t " \n ', None, True, None, None, None, ' \t ', EnvQuoteType.DOUBLE),
-            ('"\t\\""', "\\", False, None, None, None, '\t\\"', EnvQuoteType.DOUBLE),
-            (' A\"', "\\", False, None, None, None, ' A\"', EnvQuoteType.NONE),
-            (' A\"', "\\", True, None, None, None, 'A\"', EnvQuoteType.NONE),
-            (' A\"', "\\", True, True, None, None, 'A\"', EnvQuoteType.NONE),
-            ('"\\""', "\\", True, None, None, None, '\\"', EnvQuoteType.DOUBLE),
-            ('"\\\\""', "\\", True, None, None, None, '\\\\', EnvQuoteType.DOUBLE),
-            ('"\\\\\\""', "\\", True, None, None, None, '\\\\\\"', EnvQuoteType.DOUBLE),
-            ("'\\\\\\\"'", "\\", True, None, None, None, '\\\\\\\"', EnvQuoteType.SINGLE),
-            ('"\\\\\\\\""', "\\", True, '"', None, None, '\\\\\\\\', EnvQuoteType.DOUBLE),
-            (' Abc # def', "\\", False, None, None, "#", ' Abc ', EnvQuoteType.NONE),
-            (' Abc # def', "\\", True, None, None, "#", 'Abc', EnvQuoteType.NONE),
-            (' "Ab;c" # def', "\\", False, None, None, "#;", ' "Ab', EnvQuoteType.NONE),
-            (' "Ab;c" # def', "\\", True, None, None, "#;", 'Ab;c', EnvQuoteType.DOUBLE),
-            (' "Ab#c" ; def', "\\", False, None, None, "#;", ' "Ab', EnvQuoteType.NONE),
-            (' "Ab#c" ; def', "\\", True, None, None, "#;", 'Ab#c', EnvQuoteType.DOUBLE),
-            (' Ab\\#c # def', "\\", True, None, None, "#;", 'Ab\\#c', EnvQuoteType.NONE),
-            ('"`""', "`", False, None, None, None, '`"', EnvQuoteType.DOUBLE),
-            ('"`""', "`", True, None, None, None, '`"', EnvQuoteType.DOUBLE),
-            ('"``""', "`", True, None, None, None, '``', EnvQuoteType.DOUBLE),
-            ('"```""', "`", True, None, None, None, '```"', EnvQuoteType.DOUBLE),
-            ("'```\"'", "`", True, None, None, None, '```"', EnvQuoteType.SINGLE),
-            ('"````""', "`", True, '"', None, None, '````', EnvQuoteType.DOUBLE),
+            (None, None, False, None, None, "", EnvQuoteType.NONE, "", ""),
+            (None, None, True, None, None, "", EnvQuoteType.NONE, "", ""),
+            ("", None, False, None, None, "", EnvQuoteType.NONE, "", ""),
+            ("", None, True, None, None, "", EnvQuoteType.NONE, "", ""),
+            (" \t ", None, False, None, None, " \t ", EnvQuoteType.NONE, "", ""),
+            (" \t ", None, True, None, None, "", EnvQuoteType.NONE, "", ""),
+            (' \n " \t " \n ', None, False, None, None, ' \n " \t " \n ', EnvQuoteType.NONE, "", ""),
+            (' \n " \t " \n ', None, True, None, None, ' \t ', EnvQuoteType.DOUBLE, "", ""),
+            ('"\t\\""', "\\", False, None, None, '\t\\"', EnvQuoteType.DOUBLE, "\\", ""),
+            (' A\"', "\\", False, None, None, ' A\"', EnvQuoteType.NONE, "", ""),
+            (' A\"', "\\", True, None, None, 'A\"', EnvQuoteType.NONE, "", ""),
+            (' A\"', "\\", True, True, None, 'A\"', EnvQuoteType.NONE, "", ""),
+            ('"\\""', "\\", True, None, None, '\\"', EnvQuoteType.DOUBLE, "\\", ""),
+            ('"\\\\""', "\\", True, None, None, '\\\\', EnvQuoteType.DOUBLE, "\\", ""),
+            ('"\\\\\\""', "\\", True, None, None, '\\\\\\"', EnvQuoteType.DOUBLE, "\\", ""),
+            ("'\\\\\\\"'", "\\", True,None, None, '\\\\\\\"', EnvQuoteType.SINGLE, "", ""),
+            ('"\\\\\\\\""', "\\", True, '"', None, '\\\\\\\\', EnvQuoteType.DOUBLE, "", ""),
+            (' Abc # def', "\\", False, None, "#", ' Abc ', EnvQuoteType.NONE, "", ""),
+            (' Abc # def', "\\", True, None, "#", 'Abc', EnvQuoteType.NONE, "", ""),
+            (' "Ab;c" # def', "\\", False, None, "#;", ' "Ab', EnvQuoteType.NONE, "", ""),
+            (' "Ab;c" # def', "\\", True, None, "#;", 'Ab;c', EnvQuoteType.DOUBLE, "", ""),
+            (' "Ab#c" ; def', "\\", False, None, "#;", ' "Ab', EnvQuoteType.NONE, "", ""),
+            (' "Ab#c" ; def', "\\", True, None, "#;", 'Ab#c', EnvQuoteType.DOUBLE, "", ""),
+            (' Ab\\#c # def', "\\", True, None, "#;", 'Ab\\#c', EnvQuoteType.NONE, "\\", ""),
+            (' $Abc %def% ', "\\", False, None, "#", ' $Abc %def% ', EnvQuoteType.NONE, "", "$"),
+            ('"`""', "`", False, None, None, '`"', EnvQuoteType.DOUBLE, "`", ""),
+            ('"`""', "`", True, None, None, '`"', EnvQuoteType.DOUBLE, "`", ""),
+            ('"``""', "`", True, None, None, '``', EnvQuoteType.DOUBLE, "`", ""),
+            ('"```""', "`", True, None, None, '```"', EnvQuoteType.DOUBLE, "`", ""),
+            ("'```\"'", "`", True, None, None, '```"', EnvQuoteType.SINGLE, "", ""),
+            ('"````""', "`", True, '"', None, '````', EnvQuoteType.DOUBLE, "", ""),
         ],
     )
     def test_unquote_only(
-        self, input, escape, strip_spaces, hard_quotes, stoppers,
-        expected: EnvUnquoteData
+        self, input, escapes, strip_spaces, hard_quotes, stoppers,
+        exp_result, exp_quote_type, exp_escape, exp_expand
     ):
         # Call the method
         actual = Env.unquote_only(
             input,
-            escape=escape,
+            escapes=escapes,
             strip_spaces=strip_spaces,
             hard_quotes=hard_quotes,
             stoppers=stoppers
         )
 
         # Verify result matches expected
-        assert actual.input == input
-        assert actual.result == expected.result
-        assert actual.quote_type == expected.quote_type
-        assert actual.escape == expected.escape
-        assert actual.expand == expected.expand
+        assert actual.input == (input or "")
+        assert actual.result == (exp_result or "")
+        assert actual.quote_type == (exp_quote_type)
+        assert actual.escape == (exp_escape or "")
+        assert actual.expand == (exp_expand or "")
 
     @pytest.mark.parametrize(
-        "input, escape, strip_spaces, hard_quotes, stoppers, expected",
+        "input, escapes, strip_spaces, hard_quotes, stoppers, expected",
         [
             (' "', "\\", True, None, None, 'Unterminated'),
             (' \t"\\', "\\", True, None, None, 'dangling'),
@@ -689,13 +618,13 @@ class TestUnquoteOnly:
         ],
     )
     def test_unquote_only_bad(
-        self, input, escape, strip_spaces, hard_quotes, stoppers, expected
+        self, input, escapes, strip_spaces, hard_quotes, stoppers, expected
     ):
         # Call the method
         with pytest.raises(ValueError) as ex:
             Env.unquote_only(
                 input,
-                escape=escape,
+                escapes=escapes,
                 strip_spaces=strip_spaces,
                 hard_quotes=hard_quotes,
                 stoppers=stoppers
