@@ -15,14 +15,7 @@ from env import Env, EnvExpandFlags, EnvQuoteType
 from env_expand_info import EnvExpandInfo
 from env_expand_info_type import EnvExpandInfoType
 from env_platform_stack_flags import EnvPlatformStackFlags
-from env_unquote_info import EnvUnquoteInfo
-
-###############################################################################
-
-msdos: Final[EnvExpandInfo] = Env._Env__msdos_info
-posix: Final[EnvExpandInfo] = Env._Env__posix_info
-powsh: Final[EnvExpandInfo] = Env._Env__powsh_info
-vms: Final[EnvExpandInfo] = Env._Env__vms_info
+from env_parse_info import EnvParseInfo
 
 ###############################################################################
 
@@ -506,46 +499,6 @@ class TestUnquote:
     """Test suite for Env.unquote method"""
 
     @pytest.mark.parametrize(
-        "input, unescape, escapes, strip_spaces, hard_quotes, stoppers, exp_result, exp_quote_type, exp_escape, exp_expand",
-        [
-            (' Abc # def', False, "\\", False, None, "#", ' Abc ', EnvQuoteType.NONE, "", ""),
-            (' Abc # def', True, "\\", False, None, "#", ' Abc ', EnvQuoteType.NONE, "", ""),
-            (' Abc \\x41\\t\\n', False, "\\", False, None, None, ' Abc \\x41\\t\\n', EnvQuoteType.NONE, "\\", ""),
-            (' Abc \\u0041\\t\\n', True, "\\", True, None, None, 'Abc A', EnvQuoteType.NONE, "\\", ""),
-            ('" Abc \\u0041\\t\\n"', True, "\\", False, None, None, ' Abc A\t\n', EnvQuoteType.DOUBLE, "\\", ""),
-            ('" Abc \\u0041\\t\\n"', True, "\\", True, None, None, ' Abc A\t\n', EnvQuoteType.DOUBLE, "\\", ""),
-        ],
-    )
-    def test_unquote(
-        self, input, unescape, escapes, strip_spaces, hard_quotes, stoppers,
-        exp_result, exp_quote_type, exp_escape, exp_expand
-    ):
-        # Call the method
-        result, info = Env.unquote(
-            input,
-            unescape=unescape,
-            escapes=escapes,
-            strip_spaces=strip_spaces,
-            hard_quotes=hard_quotes,
-            stoppers=stoppers
-        )
-
-        # Verify result matches expected
-        assert info.input == (input or "")
-        assert info.result == (result or "")
-        assert info.result == (exp_result or "")
-        assert info.quote_type == (exp_quote_type)
-        assert info.escape == (exp_escape or "")
-        assert info.expand == (exp_expand or "")
-
-
-###############################################################################
-
-
-class TestUnquoteOnly:
-    """Test suite for Env.unquote_only method"""
-
-    @pytest.mark.parametrize(
         "input, escapes, strip_spaces, hard_quotes, stoppers, exp_result, exp_quote_type, exp_escape, exp_expand",
         [
             (None, None, False, None, None, "", EnvQuoteType.NONE, "", ""),
@@ -581,17 +534,17 @@ class TestUnquoteOnly:
             ('"````""', "`", True, '"', None, '````', EnvQuoteType.DOUBLE, "", ""),
         ],
     )
-    def test_unquote_only(
+    def test_unquote(
         self, input, escapes, strip_spaces, hard_quotes, stoppers,
         exp_result, exp_quote_type, exp_escape, exp_expand
     ):
         # Call the method
-        actual = Env.unquote_only(
+        actual = Env.unquote(
             input,
             escapes=escapes,
             strip_spaces=strip_spaces,
             hard_quotes=hard_quotes,
-            stoppers=stoppers
+            cutters=stoppers
         )
 
         # Verify result matches expected
@@ -617,17 +570,17 @@ class TestUnquoteOnly:
             ('" \t `"``#`', "`", True, None, "#", 'dangling'),
         ],
     )
-    def test_unquote_only_bad(
+    def test_unquote_bad(
         self, input, escapes, strip_spaces, hard_quotes, stoppers, expected
     ):
         # Call the method
         with pytest.raises(ValueError) as ex:
-            Env.unquote_only(
+            Env.unquote(
                 input,
                 escapes=escapes,
                 strip_spaces=strip_spaces,
                 hard_quotes=hard_quotes,
-                stoppers=stoppers
+                cutters=stoppers
             )
 
         # Verify result matches expected

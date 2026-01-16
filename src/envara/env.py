@@ -14,14 +14,14 @@ import os
 import re
 import string
 import sys
-from typing import Any, Final
+from typing import Any, ClassVar, Final
 
 from env_expand_flags import EnvExpandFlags
 from env_expand_info import EnvExpandInfo
 from env_expand_info_type import EnvExpandInfoType
 from env_platform_stack_flags import EnvPlatformStackFlags
 from env_quote_type import EnvQuoteType
-from env_unquote_info import EnvUnquoteInfo
+from env_parse_info import EnvParseInfo
 
 ###############################################################################
 
@@ -40,14 +40,22 @@ class Env:
     # True if the app is running under Linux, UNIX, BSD, macOS or smimilar
     IS_POSIX: Final[bool] = os.sep == "/"
 
-    # True if the app is running under Windows or OS/2
-    IS_WINDOWS: Final[bool] = os.sep == "\\"
+    # True if the app is running under Risc OS
+    IS_RISCOS: Final[bool] = os.sep == "."
 
     # True if the app is running under OpenVMS or similar
     IS_VMS: Final[bool] = os.sep == ":"
 
-    # True if the app is running under Risc OS
-    IS_RISCOS: Final[bool] = os.sep == "."
+    # True if the app is running under Windows or OS/2
+    IS_WINDOWS: Final[bool] = os.sep == "\\"
+
+    # Helps to find env var/arg parttern based on expand and escape
+    PATTERNS: Final[dict[str, re.Pattern]] = {
+        "$\\": re.compile("([\\\\]*)\\$({?)([A-Za-z_\\d]+)(}?)", re.IGNORECASE | re.UNICODE),
+        "$`": re.compile("([``]*)\\$({?)([A-Za-z_\\d]+)(}?)", re.IGNORECASE | re.UNICODE),
+        "%\\": re.compile("([\\\\]*)(%)([A-Za-z_\\d]+)(%)", re.IGNORECASE | re.UNICODE),
+        "%^": re.compile("([\\^]*)(%)([A-Za-z_\\d]+)(%)", re.IGNORECASE | re.UNICODE),
+    }
 
     # A text indicating any platform, but not empty
     PLATFORM_ANY: Final[str] = "any"
@@ -66,40 +74,6 @@ class Env:
         "a": "\a", "b": "\b", "f": "\f", "n": "\n",
         "r": "\r", "t": "\t", "v": "\v"
     }
-
-    # Expansion/unescaping info - MSDOS-style
-    __msdos_info: EnvExpandInfo = EnvExpandInfo(
-        expand="%",
-        escape="^",
-        pat_esc="([\\^]+)(x([\\dA-Fa-f]{2})|u([\\dA-Fa-f]{4})|.)",
-        pat_var="([\\^]*)(%)([A-Za-z_][A-Za-z_\\d]*)(%)",
-        pat_arg="([\\^]*)(%)([\\d]+)(%)",
-    )
-
-    # Expansion/unescaping info - POSIX-style
-    __posix_info: EnvExpandInfo = EnvExpandInfo(
-        expand="$",
-        escape="\\",
-        pat_esc="([\\\\]+)(x([\\dA-Fa-f]{2})|u([\\dA-Fa-f]{4})|.)",
-        pat_var="([\\\\]*)\\$({?)([A-Za-z_][A-Za-z_\\d]*)(}?)",
-        pat_arg="([\\\\]*)\\$({?)([\\d]+)(}?)",
-    )
-
-    __powsh_info: EnvExpandInfo = EnvExpandInfo(
-        expand="$",
-        escape="`",
-        pat_esc="([`]+)(x([\\dA-Fa-f]{2})|u([\\dA-Fa-f]{4})|.)",
-        pat_var="([`]*)\\$({?)([A-Za-z_][A-Za-z_\\d]*)(}?)",
-        pat_arg="([`]*)\\$({?)([\\d]+)(}?)",
-    )
-
-    __vms_info: EnvExpandInfo = EnvExpandInfo(
-        expand="'",
-        escape="^",
-        pat_esc="([\\^]+)(x([\\dA-Fa-f]{2})|u([\\dA-Fa-f]{4})|.)",
-        pat_var="([\\^]*)(')([A-Za-z_][A-Za-z_\\d]*)(')",
-        pat_arg="([\\^]*)(')([\\d]+)(')",
-    )
 
     # Internal dictionary: regex => list-of-platform-names
     __platform_map: dict[str, list[str]] = {
@@ -131,8 +105,12 @@ class Env:
     def expand(
         input: str,
         args: list[str] | None = None,
-        flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-    ) -> str:
+        strip_spaces: bool = True,
+        escapes: str = None,
+        expands: str = None,
+        hard_quotes: str = None,
+        cutters: str = None,
+    ) -> tuple[str, EnvParseInfo]:
         """
         Unquote the input if required, remove trailing line comment if
         required, expand the result with the arguments if required, expand
@@ -149,77 +127,29 @@ class Env:
         :rtype: str
         """
 
-        # For input as None or the empty string, return empty string
+        # Unquote the string and get details
 
-        if not input:
-            return ""
+        info: EnvParseInfo
 
-        # Initialise
-
-        result = (
-            input.replace(f"{Env.ESCAPE}$", Env.HIDE_01)
-            .replace(f'{Env.ESCAPE}"', Env.HIDE_02)
-            .replace(Env.ESCAPE_ESCAPED, Env.HIDE_03)
+        _, info = Env.unquote(
+            input,
+            strip_spaces=strip_spaces,
+            escapes=escapes,
+            expands=expands,
+            cutters=cutters,
+            hard_quotes=hard_quotes,
         )
 
-        # Simplify flags
+        # Expand args and env vars
 
-        is_remove_line_comment: bool = flags & EnvExpandFlags.REMOVE_LINE_COMMENT
-        is_remove_quotes: bool = flags & EnvExpandFlags.REMOVE_QUOTES
-        is_skip_environ: bool = flags & EnvExpandFlags.SKIP_ENVIRON
-        is_skip_single_quoted: bool = flags & EnvExpandFlags.SKIP_SINGLE_QUOTED
-        is_unescape: bool = flags & EnvExpandFlags.UNESCAPE
+        def replacer(match: re.Match) -> str:
+            return match.string
 
-        # Prepare for the unquoting and further unhiding
-
-        quote_type: EnvQuoteType = EnvQuoteType.NONE
-        unhide_escape = Env.ESCAPE
-
-        # If the unquoting requested, do that treating a single-quoted input
-        # as literal (no further expansion) if required
-
-        if is_remove_quotes:
-            result, quote_type = Env.unquote(result, unescape=False)
-
-        # Remove line comment if required
-
-        if (quote_type == EnvQuoteType.NONE) and is_remove_line_comment:
-            result = Env.remove_line_comment(result)
-
-        # If not a single-quoted string, try expanding user and vars
-
-        if not is_skip_single_quoted or (quote_type != EnvQuoteType.SINGLE):
-
-            # If the user indicator is found, expand the string
-
-            if "~" in result:
-                result = os.path.expanduser(result)
-
-            # If the sought indicator found in the string, expand arguments
-            # if the list of those passed, then expand the environment
-            # variables if allowed
-
-            if ("$" in result) or (Env.IS_WINDOWS and ("%" in result)):
-                if args:
-                    result = Env.expand_args(result, args)
-                if not is_skip_environ:
-                    result = os.path.expandvars(result)
-
-            # If decoding escaped characters, shouldn't restore the escape
-
-            if is_unescape:
-                unhide_escape = ""
-                result = Env.unescape(result)
-
-        result = (
-            result.replace(Env.HIDE_01, f"{unhide_escape}$")
-            .replace(Env.HIDE_02, f'{unhide_escape}"')
-            .replace(Env.HIDE_03, f"{unhide_escape}{Env.ESCAPE}")
-        )
+        info.result = info.pattern.sub(replacer, info.result)
 
         # Return the final result
 
-        return result
+        return (info.result, info)
 
     ###########################################################################
 
@@ -388,7 +318,7 @@ class Env:
         result = "" if (input is None) else input
 
         if (not escape):
-            escape = EnvUnquoteInfo.DEFAULT_ESCAPES[0]
+            escape = EnvParseInfo.DEFAULT_ESCAPES[0]
 
         # Define the quote being used
 
@@ -439,7 +369,7 @@ class Env:
         # if input does not contain the default escape char, then finish
 
         if (not escape):
-            escape = EnvUnquoteInfo.DEFAULT_ESCAPES[0]
+            escape = EnvParseInfo.DEFAULT_ESCAPES[0]
             if escape not in input:
                 return input
 
@@ -509,99 +439,12 @@ class Env:
     @staticmethod
     def unquote(
         input: str,
-        unescape: bool | None = None,
         strip_spaces: bool = True,
         escapes: str = None,
         expands: str = None,
         hard_quotes: str = None,
-        stoppers: str = None,
-    ) -> tuple[str, EnvUnquoteInfo]:
-        """
-        Optionally, remove leading and trailing whitespaces from the copy
-        of the input, then remove enclosing quotes if found, then,
-        optionally, unescape escaped characters and return the result as
-        well as the unquoting info that also contains detected expand
-        character (default: $, or the first of $ or % depending on the
-        running platform)
-
-        :param input: String to unquote
-        :type input: str
-        :param escapes: Escape characters: "\\\\\\\\", "\\\\\\\\%"
-        :type escapes: str
-        :param strip_spaces: True = strip leading and trailing spaces. If
-                             quoted, don't strip again after unquoting
-        :type strip_spaces: bool
-        :param expands: A string of characters where each indicates a start
-                        of an env var or an arg expansion: "$%"
-        :type expands: str
-        :param hard_quotes: A string containing all quote characters that
-                            require to ignore escaping: e.g., a single quote
-        :type hard_quotes: bool
-        :param stoppers: A string of characters where each indicates a string
-                         end when found non-escaped and either outside quotes
-                         or in an unquoted input: e.g., a line comment: "#"
-        :type stoppers: str
-        :return: unquoted and, optionally, unescaped input, as well as
-                 details: see _EnvUnquoteData_
-        :rtype: tuple[str, EnvUnquoteData]
-        """
-
-        # Unquote the string first
-
-        info: EnvUnquoteInfo
-
-        _, info = Env.unquote_only(
-            input,
-            strip_spaces=strip_spaces,
-            escapes=escapes,
-            expands=expands,
-            hard_quotes=hard_quotes,
-            stoppers=stoppers
-        )
-
-        # If unescape flag is undefined, and input wasn't quoted, override it
-
-        if (unescape is None) and (info.quote_type == EnvQuoteType.NONE):
-            unescape = True
-
-        # If no unescape needed, finish
-
-        if not unescape:
-            return (info.result, info)
-
-        # Unescape the result
-
-        info.result = Env.unescape(info.result, info.escape)
-
-        # Don't strip whitespaces again if not needed or if input was quoted
-
-        if (not strip_spaces) or (info.quote_type != EnvQuoteType.NONE):
-            return (info.result, info)
-
-        # Here, result should be stripped of the whitespaces, so do that
-
-        result: str = info.result
-
-        if result and ((result[0] in string.whitespace) or (
-            result[len(result) - 1] in string.whitespace
-        )):
-            info.result = result.strip()
-
-        # Finish
-
-        return (info.result, info)
-
-    ###########################################################################
-
-    @staticmethod
-    def unquote_only(
-        input: str,
-        strip_spaces: bool = True,
-        escapes: str = None,
-        expands: str = None,
-        hard_quotes: str = None,
-        stoppers: str = None,
-    ) -> tuple[str, EnvUnquoteInfo]:
+        cutters: str = None,
+    ) -> tuple[str, EnvParseInfo]:
         """
         Remove enclosing quotes from a string ignoring everything beyond the
         closing quote ignoring escaped quotes. Raise ValueError if a dangling
@@ -625,17 +468,17 @@ class Env:
         :param hard_quotes: A string containing all quote characters that
                             require to ignore escaping (e.g., a single quote)
         :type hard_quotes: bool
-        :param stoppers: A string of characters where each indicates a string
+        :param cutters: A string of characters where each indicates a string
                          end when found non-escaped and either outside quotes
                          or in an unquoted input (e.g., a line comment: "#")
-        :type stoppers: str
+        :type cutters: str
         :return: unquoted input and details: see _EnvUnquoteData_
         :rtype: tuple[str, EnvUnquoteData]
         """
 
         # Initialize
 
-        info = EnvUnquoteInfo(input=input, quote_type=EnvQuoteType.NONE)
+        info = EnvParseInfo(input=input, quote_type=EnvQuoteType.NONE)
 
         # If the input is None or empty, return the empty string
 
@@ -645,9 +488,9 @@ class Env:
         # Ensure required arguments are populated
 
         if (not escapes):
-            escapes = EnvUnquoteInfo.DEFAULT_ESCAPES
+            escapes = EnvParseInfo.DEFAULT_ESCAPES
         if (not expands):
-            expands = EnvUnquoteInfo.DEFAULT_EXPANDS
+            expands = EnvParseInfo.DEFAULT_EXPANDS
 
         # Initialize position beyond the last character and results
 
@@ -670,7 +513,7 @@ class Env:
 
         # Initialise flags for escaping and quoting
 
-        has_stoppers: bool = True if stoppers else False
+        has_cutters: bool = True if cutters else False
         is_escaped: bool = False
         is_quoted: bool = info.quote_type != EnvQuoteType.NONE
 
@@ -727,7 +570,7 @@ class Env:
             # the quotes, and it was not escaped
 
             if (not is_quoted) and (not is_escaped):
-                if has_stoppers and (cur_chr in stoppers):
+                if has_cutters and (cur_chr in cutters):
                     end_pos = end_pos - 1
                     break
 
@@ -762,6 +605,10 @@ class Env:
             info.result = info.result.rstrip()
 
         # Return the result
+
+        info.pattern = Env.PATTERNS[
+            f"{info.expand or Env.POSIX_EXPAND}{info.escape or Env.POSIX_ESCAPE}"
+        ]
 
         return (info.result, info)
 

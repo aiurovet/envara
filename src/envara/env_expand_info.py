@@ -19,10 +19,13 @@ class EnvExpandInfo:
     """
 
     # Special characters when they follow an odd number of ESCAPEs
+
     SPECIAL: Final[dict[str, str]] = {
         "a": "\a", "b": "\b", "f": "\f", "n": "\n",
         "r": "\r", "t": "\t", "v": "\v"
     }
+
+    ###########################################################################
 
     def __init__(
         self,
