@@ -14,11 +14,8 @@ import os
 import re
 import string
 import sys
-from typing import Any, ClassVar, Final
+from typing import Any, ClassVar
 
-from env_expand_flags import EnvExpandFlags
-from env_expand_info import EnvExpandInfo
-from env_expand_info_type import EnvExpandInfoType
 from env_platform_stack_flags import EnvPlatformStackFlags
 from env_quote_type import EnvQuoteType
 from env_parse_info import EnvParseInfo
@@ -32,25 +29,25 @@ class Env:
     """
 
     # Default escape character
-    POSIX_ESCAPE: Final[str] = "\\"
+    POSIX_ESCAPE: ClassVar[str] = "\\"
 
     # Default expand character
-    POSIX_EXPAND: Final[str] = "$"
+    POSIX_EXPAND: ClassVar[str] = "$"
 
     # True if the app is running under Linux, UNIX, BSD, macOS or smimilar
-    IS_POSIX: Final[bool] = os.sep == "/"
+    IS_POSIX: ClassVar[bool] = os.sep == "/"
 
     # True if the app is running under Risc OS
-    IS_RISCOS: Final[bool] = os.sep == "."
+    IS_RISCOS: ClassVar[bool] = os.sep == "."
 
     # True if the app is running under OpenVMS or similar
-    IS_VMS: Final[bool] = os.sep == ":"
+    IS_VMS: ClassVar[bool] = os.sep == ":"
 
     # True if the app is running under Windows or OS/2
-    IS_WINDOWS: Final[bool] = os.sep == "\\"
+    IS_WINDOWS: ClassVar[bool] = os.sep == "\\"
 
     # Helps to find env var/arg parttern based on expand and escape
-    PATTERNS: Final[dict[str, re.Pattern]] = {
+    PATTERNS: ClassVar[dict[str, re.Pattern]] = {
         "$\\": re.compile("([\\\\]*)\\$({?)([A-Za-z_\\d]+)(}?)", re.IGNORECASE | re.UNICODE),
         "$`": re.compile("([``]*)\\$({?)([A-Za-z_\\d]+)(}?)", re.IGNORECASE | re.UNICODE),
         "%\\": re.compile("([\\\\]*)(%)([A-Za-z_\\d]+)(%)", re.IGNORECASE | re.UNICODE),
@@ -58,25 +55,25 @@ class Env:
     }
 
     # A text indicating any platform, but not empty
-    PLATFORM_ANY: Final[str] = "any"
+    PLATFORM_ANY: ClassVar[str] = "any"
 
     # A text indicating a POSIX-compatible platform
-    PLATFORM_POSIX: Final[str] = "posix"
+    PLATFORM_POSIX: ClassVar[str] = "posix"
 
     # A text indicating a Windows-compatible platform
-    PLATFORM_WINDOWS: Final[str] = "windows"
+    PLATFORM_WINDOWS: ClassVar[str] = "windows"
 
     # A text indicating the running platform
-    PLATFORM_THIS: Final[str] = sys.platform.lower()
+    PLATFORM_THIS: ClassVar[str] = sys.platform.lower()
 
     # Special characters when they follow an odd number of ESCAPEs
-    SPECIAL: Final[dict[str, str]] = {
+    SPECIAL: ClassVar[dict[str, str]] = {
         "a": "\a", "b": "\b", "f": "\f", "n": "\n",
         "r": "\r", "t": "\t", "v": "\v"
     }
 
     # Internal dictionary: regex => list-of-platform-names
-    __platform_map: dict[str, list[str]] = {
+    __platform_map: ClassVar[dict[str, list[str]]] = {
         "": ["", PLATFORM_ANY, PLATFORM_POSIX], # the latter is checked
         "^aix": ["aix"],
         "android": ["linux", "android"],
@@ -318,7 +315,7 @@ class Env:
         result = "" if (input is None) else input
 
         if (not escape):
-            escape = EnvParseInfo.DEFAULT_ESCAPES[0]
+            escape = EnvParseInfo.POSIX_ESCAPE
 
         # Define the quote being used
 
@@ -348,15 +345,21 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def unescape(input: str, escape: str = None) -> str:
+    def unescape(
+        input: str,
+        escape: str = None,
+        strip_blanks: bool = False,
+    ) -> str:
         """
         Unescape '\\t', '\\n', '\\u0022' etc.
 
         :param input: Input string to unescape escaped characters in
         :type input: str
-        :param expand_info: How to expand (default: determine it)
-        :type expand_info: EnvExpandInfo
-        :return: Unescaped string
+        :param escape: String to be treated as escape character
+        :type expand_info: str
+        :param strip_blanks: True = remove leading and trailing blanks
+        :type strip_blanks: bool
+        :return: Unescaped string, optionally, stripped of blanks
         :rtype: str
         """
 
@@ -369,7 +372,7 @@ class Env:
         # if input does not contain the default escape char, then finish
 
         if (not escape):
-            escape = EnvParseInfo.DEFAULT_ESCAPES[0]
+            escape = EnvParseInfo.POSIX_ESCAPE
             if escape not in input:
                 return input
 
@@ -430,9 +433,20 @@ class Env:
             elif (esc_pos >= 0):
                 Env.__fail_unescape(input, esc_pos, cur_pos + 1)
 
-        # Join all characters and return the resulting string
+        # Join all characters into a string
 
-        return "".join(chr_lst)
+        result: str = "".join(chr_lst)
+
+        # Get the indicator of loeading or trailing blanks Turn off stripping leading and trailing blanks if not found
+
+        res_len = len(result) if strip_blanks else 0
+
+        has_blanks: bool = \
+            (res_len > 0) and \
+            (result[0] in string.whitespace) and \
+            (result[res_len - 1] in string.whitespace)
+
+        return result.strip() if (has_blanks) else result
 
     ###########################################################################
 
@@ -488,9 +502,9 @@ class Env:
         # Ensure required arguments are populated
 
         if (not escapes):
-            escapes = EnvParseInfo.DEFAULT_ESCAPES
+            escapes = EnvParseInfo.POSIX_ESCAPE
         if (not expands):
-            expands = EnvParseInfo.DEFAULT_EXPANDS
+            expands = EnvParseInfo.POSIX_EXPAND
 
         # Initialize position beyond the last character and results
 

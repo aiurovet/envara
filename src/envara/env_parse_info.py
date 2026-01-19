@@ -18,7 +18,7 @@ class EnvParseInfo:
     that string and the result of its unquoting
     """
 
-    # Pre-defined POSIX constants
+    # Pre-defined constants
 
     POSIX_ESCAPE: ClassVar[str] = "\\"
     POSIX_EXPAND: ClassVar[str] = "$"
@@ -29,22 +29,23 @@ class EnvParseInfo:
     WINDOWS_ESCAPE: ClassVar[str] = "^"
     WINDOWS_EXPAND: ClassVar[str] = "%"
 
-    # Pre-defined non-POSIX constants
-
-    DEFAULT_ESCAPES: ClassVar[str] = POSIX_ESCAPE
-    DEFAULT_EXPANDS: ClassVar[str] = POSIX_EXPAND
-
-    # Default flags used to create regexi
-
-    DEFAULT_RE_FLAGS: ClassVar[int] = re.IGNORECASE | re.UNICODE
+    RE_FLAGS: ClassVar[int] = re.IGNORECASE | re.UNICODE
 
     # Helps to find env var/arg parttern based on expand and escape
 
     PATTERNS: ClassVar[dict[str, re.Pattern]] = {
-        "$\\": re.compile("([\\\\]*)\\$({?)([A-Za-z_\\d]+)(}?)", DEFAULT_RE_FLAGS),
-        "$`": re.compile("([``]*)\\$({?)([A-Za-z_\\d]+)(}?)", DEFAULT_RE_FLAGS),
-        "%\\": re.compile("([\\\\]*)(%)([A-Za-z_\\d]+)(%)", DEFAULT_RE_FLAGS),
-        "%^": re.compile("([\\^]*)(%)([A-Za-z_\\d]+)(%)", DEFAULT_RE_FLAGS),
+        POSIX_EXPAND + POSIX_ESCAPE:
+            re.compile("([\\\\]*)\\$({?)([A-Za-z_\\d]+)(}?)", RE_FLAGS
+        ),
+        PWSH_EXPAND + PWSH_ESCAPE: re.compile(
+            "([``]*)\\$({?)([A-Za-z_\\d]+)(}?)", RE_FLAGS
+        ),
+        WINDOWS_EXPAND + POSIX_ESCAPE:
+            re.compile("([\\\\]*)(%)([A-Za-z_\\d]+)(%)", RE_FLAGS
+        ),
+        WINDOWS_EXPAND + WINDOWS_ESCAPE:
+            re.compile("([\\^]*)(%)([A-Za-z_\\d]+)(%)", RE_FLAGS
+        ),
     }
 
     ###########################################################################
