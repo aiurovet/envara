@@ -501,9 +501,9 @@ class Env:
 
         # Ensure required arguments are populated
 
-        if (not escapes):
+        if (escapes is None):
             escapes = EnvParseInfo.POSIX_ESCAPE
-        if (not expands):
+        if (expands is None):
             expands = EnvParseInfo.POSIX_EXPAND
 
         # Initialize position beyond the last character and results
