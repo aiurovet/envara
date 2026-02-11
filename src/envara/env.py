@@ -16,9 +16,11 @@ import string
 import sys
 from typing import Any, ClassVar
 
+from env_expand_flags import EnvExpandFlags
 from env_platform_stack_flags import EnvPlatformStackFlags
 from env_quote_type import EnvQuoteType
 from env_parse_info import EnvParseInfo
+from trying import Trying
 
 ###############################################################################
 
@@ -102,6 +104,7 @@ class Env:
     def expand(
         input: str,
         args: list[str] | None = None,
+        flags: EnvExpandFlags | None = None,
         strip_spaces: bool = True,
         escapes: str = None,
         expands: str = None,
@@ -124,7 +127,13 @@ class Env:
         :rtype: str
         """
 
-        # Unquote the string and get details
+        # If flags provided, map them to unquote parameters and post-processing
+        if flags is None:
+            flags = 0
+
+        # Map flags to cutters/hard_quotes/unescape behaviours
+        if (flags & EnvExpandFlags.REMOVE_LINE_COMMENT) and (cutters is None):
+            cutters = "#"
 
         info: EnvParseInfo
 
@@ -139,10 +148,29 @@ class Env:
 
         # Expand args and env vars
 
-        def replacer(match: re.Match) -> str:
-            return match.string
+        # Use Trying to perform POSIX-style or Windows-style expansions based
+        # on the first active expand character detected during unquoting
+        # Respect flags: SKIP_SINGLE_QUOTED prevents expansion inside single
+        # quotes; SKIP_ENVIRON disables env var expansion.
+        if (flags & EnvExpandFlags.SKIP_SINGLE_QUOTED) and (info.quote_type.name == "SINGLE"):
+            # leave info.result as-is
+            pass
+        else:
+            vars_dict = {} if (flags & EnvExpandFlags.SKIP_ENVIRON) else os.environ
+            if info.exp_chr == EnvParseInfo.WINDOWS_EXP_CHR:
+                info.result = Trying.expand_simple(
+                    info.result, args=args, vars=vars_dict,
+                    exp_chr=info.exp_chr, esc_chr=info.esc_chr
+                )
+            else:
+                info.result = Trying.expand_posix(
+                    info.result, args=args, vars=vars_dict,
+                    exp_chr=info.exp_chr, esc_chr=info.esc_chr
+                )
 
-        info.result = info.pattern.sub(replacer, info.result)
+        # Perform unescape if requested
+        if (flags & EnvExpandFlags.UNESCAPE):
+            info.result = Env.unescape(info.result, escape=info.esc_chr)
 
         # Return the final result
 
@@ -315,7 +343,7 @@ class Env:
         result = "" if (input is None) else input
 
         if (not escape):
-            escape = EnvParseInfo.POSIX_ESCAPE
+            escape = EnvParseInfo.POSIX_ESC_CHR
 
         # Define the quote being used
 
@@ -372,7 +400,7 @@ class Env:
         # if input does not contain the default escape char, then finish
 
         if (not escape):
-            escape = EnvParseInfo.POSIX_ESCAPE
+            escape = EnvParseInfo.POSIX_ESC_CHR
             if escape not in input:
                 return input
 
@@ -502,9 +530,9 @@ class Env:
         # Ensure required arguments are populated
 
         if (escapes is None):
-            escapes = EnvParseInfo.POSIX_ESCAPE
+            escapes = EnvParseInfo.POSIX_ESC_CHR
         if (expands is None):
-            expands = EnvParseInfo.POSIX_EXPAND
+            expands = EnvParseInfo.POSIX_EXP_CHR
 
         # Initialize position beyond the last character and results
 
@@ -554,7 +582,7 @@ class Env:
             # If an escape encountered, flip the flag and loop
 
             if (cur_chr in escapes):
-                info.escape = cur_chr
+                info.esc_chr = cur_chr
                 is_escaped = not is_escaped
                 continue
 
@@ -577,8 +605,8 @@ class Env:
             # Set expand character if found first time
 
             if (cur_chr in expands):
-                if (not info.expand) and (not is_escaped):
-                    info.expand = cur_chr
+                if (not info.exp_chr) and (not is_escaped):
+                    info.exp_chr = cur_chr
 
             # Break out if the stopper character was encountered outside
             # the quotes, and it was not escaped
@@ -621,7 +649,7 @@ class Env:
         # Return the result
 
         info.pattern = Env.PATTERNS[
-            f"{info.expand or Env.POSIX_EXPAND}{info.escape or Env.POSIX_ESCAPE}"
+            f"{info.exp_chr or Env.POSIX_EXPAND}{info.esc_chr or Env.POSIX_ESCAPE}"
         ]
 
         return (info.result, info)

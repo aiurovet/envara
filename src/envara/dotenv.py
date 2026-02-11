@@ -102,7 +102,8 @@ class DotEnv:
             # Expand the value and add to the dict of enviroment variables
 
             if val:
-                environ[key] = Env.expand(val, args, expand_flags)
+                expanded, _info = Env.expand(val, args, expand_flags)
+                environ[key] = expanded
             elif key and key in environ:
                 del environ[key]
 

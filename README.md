@@ -127,6 +127,59 @@ __*Env.unquote*__ _(input: str, unescape: bool = True) -> tuple[str, EnvQuoteTyp
 
    A tuple of the first parameter unquoted, and the type of quotes encountered. This can be used to determine which quotes the string had were before.
 
+### Advanced POSIX expansions (Trying.expand_posix) 🔧
+
+This project provides a low-level POSIX-like expansion utility implemented as `Trying.expand_posix()` (used internally). It supports a rich subset of shell-style parameter expansions and command substitutions. Key features include:
+
+### Windows-style / symmetric expansion (Trying.expand_symmetric) ⚙️
+
+For Windows-style percent-delimited expansions (e.g., `%NAME%`, `%1`, `%%` and modifiers like `%~dp1`), use `Trying.expand_symmetric()` from `envara.trying`. The older API name `expand_windows` has been removed in favour of the more general `expand_symmetric`.
+
+- `%NAME%` expands environment variables (or leaves the token intact if not present).
+- `%1`, `%2`, ... expand positional arguments supplied via `args` (1-based).
+- Substring form: `%NAME:~start[,length]%` extracts a substring from the variable (supports negative `start` to count from end).
+- `%%` produces a literal `%` and `^` (caret) can be used as an escape in typical usage.
+
+Example:
+
+```py
+from envara.trying import Trying
+Trying.expand_symmetric("Value %TEST_FOO% and arg %1", args=["one"], vars={"TEST_FOO": "bar"})
+```
+
+
+- Variable expansion: `$NAME`, `${NAME}`, and positional arguments like `$1`.
+- Length operator: `${#NAME}` → length of the variable value.
+- Defaults and alternatives: `${NAME:-word}`, `${NAME-word}`, `${NAME:+word}`.
+- Assignment operators: `${NAME:=word}` (set if unset or null), `${NAME=word}` (set if unset).
+- Error operators: `${NAME:?message}` and `${NAME?message}` (raise `ValueError`).
+- Substring extraction: `${NAME:offset[:length]}` (supports negative offsets).
+- Pattern removals: `${NAME#pat}`, `${NAME##pat}` (prefix), `${NAME%pat}`, `${NAME%%pat}` (suffix) using glob-style patterns.
+- Substitutions: `${NAME/pat/repl}` (first match), `${NAME//pat/repl}` (all matches), with anchored variants `${NAME/#pat/repl}` and `${NAME/%pat/repl}`; global anchored forms like `${NAME//#pat/repl}` are also supported.
+- Empty-pattern behavior is implemented (e.g. `${var///X}` inserts between positions), with sensible no-op semantics when appropriate.
+- Escaping: a backslash before `$` or a backtick (`\$`, ``\` ``) yields the literal character.
+- Command substitution: `$(...)` and `` `...` `` — inner content is expanded first, then executed. The behavior is configurable for safety (see flags below).
+
+Configuration flags (parameters on `expand_posix`):
+
+- `allow_subprocess: bool` (default `True`) — when `False`, command substitutions are left unchanged instead of executed.
+- `allow_shell: bool` (default `True`) — when `False`, commands are executed with `shell=False` using `shlex.split()` (safer).
+- `subprocess_timeout: float | None` — timeout in seconds for command execution; a timeout raises `ValueError`.
+
+Security note ⚠️: Command substitution executes system commands. Use `allow_subprocess=False` and `allow_shell=False` to disable or harden execution in untrusted contexts. Prefer explicit safe alternatives when possible.
+
+Examples:
+
+- `Trying.expand_posix("Value $HOME and ${1:-default}")` → expands environment and positional args.
+- `Trying.expand_posix("${VAR//foo/X}")` → replace all occurrences of `foo` with `X`.
+- `Trying.expand_posix("$(printf \"%s\" $FOO)")` → run `printf` and insert its stdout (disabled if `allow_subprocess=False`).
+
+Tests: see `tests/test_trying.py` for a comprehensive test suite covering operators, edge cases, nested expansions, and command substitution.
+Runnable example: see `examples/symmetric_example.py` for a short, runnable demonstration of `Trying.expand_symmetric()` (percent-delimited expansions).
+---
+
+For a deeper developer-oriented description, see `docs/POSIX_EXPANSION.md` (new) for a complete reference, examples, and test descriptions.
+
 ### How to Load .env file
 
 __*DotEnv.load\_from\_file*__ _(path: Path, file\_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT, expand\_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT, default\_dir: str = None, alt\_ext: str = None) -> str_
