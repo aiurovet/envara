@@ -14,84 +14,86 @@ from env_expand_flags import EnvExpandFlags
 ###############################################################################
 
 
-class TestLoadFromStr:
-    """Test suite for DotEnv.load_from_str method"""
+def test_load_from_str_basic(mocker):
+    # Arrange
+    m_environ = mocker.patch("os.environ", {})
+    data = "KEY1 =   VALUE1\nKEY2\t=\t\tVALUE2"
 
-    def test_load_from_str_basic(self, mocker):
-        # Arrange
-        m_environ = mocker.patch("os.environ", {})
-        data = "KEY1 =   VALUE1\nKEY2\t=\t\tVALUE2"
+    # Act
+    result = DotEnv.load_from_str(data)
 
-        # Act
-        result = DotEnv.load_from_str(data)
+    # Assert
+    assert m_environ["KEY1"] == "VALUE1"
+    assert m_environ["KEY2"] == "VALUE2"
+    assert result == data
 
-        # Assert
-        assert m_environ["KEY1"] == "VALUE1"
-        assert m_environ["KEY2"] == "VALUE2"
-        assert result == data
 
-    def test_load_from_str_skip_empty_lines(self, mocker):
-        # Arrange
-        m_environ = mocker.patch("os.environ", {})
-        data = "KEY1 = VALUE1\n\n  \nKEY2=VALUE2"
+def test_load_from_str_skip_empty_lines(mocker):
+    # Arrange
+    m_environ = mocker.patch("os.environ", {})
+    data = "KEY1 = VALUE1\n\n  \nKEY2=VALUE2"
 
-        # Act
-        DotEnv.load_from_str(data)
+    # Act
+    DotEnv.load_from_str(data)
 
-        # Assert
-        assert m_environ["KEY1"] == "VALUE1"
-        assert m_environ["KEY2"] == "VALUE2"
-        assert len(m_environ) == 2
+    # Assert
+    assert m_environ["KEY1"] == "VALUE1"
+    assert m_environ["KEY2"] == "VALUE2"
+    assert len(m_environ) == 2
 
-    def test_load_from_str_deletion(self, mocker):
-        # Arrange
-        m_environ = mocker.patch("os.environ", {"KEY1": "OLD_VALUE", "KEY2": "STAY"})
-        data = "KEY1="
 
-        # Act
-        DotEnv.load_from_str(data)
+def test_load_from_str_deletion(mocker):
+    # Arrange
+    m_environ = mocker.patch("os.environ", {"KEY1": "OLD_VALUE", "KEY2": "STAY"})
+    data = "KEY1="
 
-        # Assert
-        assert "KEY1" not in m_environ
-        assert m_environ["KEY2"] == "STAY"
+    # Act
+    DotEnv.load_from_str(data)
 
-    def test_load_from_str_with_args(self, mocker):
-        # Arrange
-        m_environ = mocker.patch("os.environ", {})
-        data = "KEY1=$1\nKEY2=${2}"
-        args = ["arg1", "arg2"]
+    # Assert
+    assert "KEY1" not in m_environ
+    assert m_environ["KEY2"] == "STAY"
 
-        # Act
-        DotEnv.load_from_str(data, args=args)
 
-        # Assert
-        assert m_environ["KEY1"] == "arg1"
-        assert m_environ["KEY2"] == "arg2"
+def test_load_from_str_with_args(mocker):
+    # Arrange
+    m_environ = mocker.patch("os.environ", {})
+    data = "KEY1=$1\nKEY2=${2}"
+    args = ["arg1", "arg2"]
 
-    def test_load_from_str_sequential_expansion(self, mocker):
-        # Arrange
-        m_environ = mocker.patch("os.environ", {})
-        data = "KEY1=VALUE1\nKEY2=$KEY1"
+    # Act
+    DotEnv.load_from_str(data, args=args)
 
-        # Act
-        DotEnv.load_from_str(data)
+    # Assert
+    assert m_environ["KEY1"] == "arg1"
+    assert m_environ["KEY2"] == "arg2"
 
-        # Assert
-        assert m_environ["KEY1"] == "VALUE1"
-        assert m_environ["KEY2"] == "VALUE1"
 
-    def test_load_from_str_comments(self, mocker):
-        # Arrange
-        m_environ = mocker.patch("os.environ", {})
-        data = "KEY1=VALUE1 # basic comment\nKEY2='VAL#UE2' # quoted comment\n# Full line comment\nKEY3=VALUE3"
+def test_load_from_str_sequential_expansion(mocker):
+    # Arrange
+    m_environ = mocker.patch("os.environ", {})
+    data = "KEY1=VALUE1\nKEY2=$KEY1"
 
-        # Act
-        DotEnv.load_from_str(data)
+    # Act
+    DotEnv.load_from_str(data)
 
-        # Assert
-        assert m_environ["KEY1"] == "VALUE1"
-        assert m_environ["KEY2"] == "VAL#UE2"
-        assert m_environ["KEY3"] == "VALUE3"
+    # Assert
+    assert m_environ["KEY1"] == "VALUE1"
+    assert m_environ["KEY2"] == "VALUE1"
+
+
+def test_load_from_str_comments(mocker):
+    # Arrange
+    m_environ = mocker.patch("os.environ", {})
+    data = "KEY1=VALUE1 # basic comment\nKEY2='VAL#UE2' # quoted comment\n# Full line comment\nKEY3=VALUE3"
+
+    # Act
+    DotEnv.load_from_str(data)
+
+    # Assert
+    assert m_environ["KEY1"] == "VALUE1"
+    assert m_environ["KEY2"] == "VAL#UE2"
+    assert m_environ["KEY3"] == "VALUE3"
 
 
 class TestReadText:

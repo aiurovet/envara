@@ -47,10 +47,10 @@ class EnvParseInfo:
         :param result: Result of unquoting
         :type result: str
         :param exp_chr: First active expand character encountered
-                       (e.g., "$", "%", "<")
+                        (e.g., "$", "%", "<")
         :type exp_chr: str
         :param esc_chr: First active escape character encountered
-                       (e.g., "\\\\", "`", "^")
+                        (e.g., "\\\\", "`", "^")
         :type esc_chr: str
         :param quote_type: Type of enclosing quotes found
         :type quote_type: EnvQuoteType
@@ -59,16 +59,7 @@ class EnvParseInfo:
         self.exp_chr: str = exp_chr
         self.esc_chr: str = esc_chr
         self.input: str = input
-        self.result: str = result
-
         self.quote_type: EnvQuoteType = quote_type
-
-        # Initialize patterns based on known data
-    
-        self.arg_pattern, self.var_pattern = EnvParseInfo.find_patterns(
-            exp_chr=self.exp_chr,
-            esc_chr=self.esc_chr,
-        )
-
+        self.result: str = result
 
 ###############################################################################

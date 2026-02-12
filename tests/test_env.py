@@ -1,590 +1,385 @@
-# #!/usr/bin/env pytest
-
-# ###############################################################################
-# # envara (C) Alexander Iurovetski 2026
-# #
-# # Tests for Env
-# ###############################################################################
-
-# import os
-# import re
-# from typing import Final
-# import pytest
-
-# from env import Env, EnvExpandFlags, EnvQuoteType
-# from env_expand_info import EnvExpandInfo
-# from env_expand_info_type import EnvExpandInfoType
-# from env_platform_stack_flags import EnvPlatformStackFlags
-# from env_parse_info import EnvParseInfo
-
-# ###############################################################################
+import os
+import pytest
+from env import Env
 
 
-# class TestExpand:
-#     """Test suite for Env.expand method"""
-
-#     @pytest.mark.parametrize(
-#         "platform, input, env, args, flags, expected",
-#         [
-#             ("", "", {}, [], EnvExpandFlags.NONE, ""),
-#             ("", "a$1b", {}, ["x"], EnvExpandFlags.NONE, "axb"),
-#             ("", "a${1}b", None, ["x"], EnvExpandFlags.NONE, "axb"),
-#             ("", "a$a${b}", {"a": "efg1"}, [], EnvExpandFlags.NONE, "aefg1${b}"),
-#             ("", "a#$a${b}", {"a": "efg1"}, [], EnvExpandFlags.REMOVE_LINE_COMMENT, "a"),
-#             (
-#                 "posix",
-#                 "'a $2 $a \\${b}'",
-#                 {"a": "efg1", "b": "xx"},
-#                 ["A1", "A2"],
-#                 EnvExpandFlags.REMOVE_LINE_COMMENT
-#                 | EnvExpandFlags.UNESCAPE
-#                 | EnvExpandFlags.REMOVE_QUOTES
-#                 | EnvExpandFlags.SKIP_SINGLE_QUOTED,
-#                 "a $2 $a \\${b}",
-#             ),
-#             (
-#                 "posix",
-#                 '"a $2 ~ $a \\${b}"',
-#                 {"a": "efg1", "b": "xx"},
-#                 ["A1", "A2"],
-#                 EnvExpandFlags.REMOVE_LINE_COMMENT
-#                 | EnvExpandFlags.UNESCAPE
-#                 | EnvExpandFlags.REMOVE_QUOTES
-#                 | EnvExpandFlags.SKIP_SINGLE_QUOTED,
-#                 "a A2 ~ efg1 ${b}",
-#             ),
-#             (
-#                 "windows",
-#                 "a %2 $a #${b}",
-#                 {"a": "efg1", "b": "xx"},
-#                 ["A1", "A2"],
-#                 EnvExpandFlags.REMOVE_LINE_COMMENT
-#                 | EnvExpandFlags.UNESCAPE
-#                 | EnvExpandFlags.REMOVE_QUOTES
-#                 | EnvExpandFlags.SKIP_SINGLE_QUOTED,
-#                 "a A2 efg1",
-#             ),
-#             (
-#                 "windows",
-#                 '"a $20 ~ $a \\${b}"',
-#                 {"a": "efg1", "b": "xx"},
-#                 ["A1", "A2"],
-#                 EnvExpandFlags.REMOVE_LINE_COMMENT
-#                 | EnvExpandFlags.UNESCAPE
-#                 | EnvExpandFlags.REMOVE_QUOTES
-#                 | EnvExpandFlags.SKIP_SINGLE_QUOTED,
-#                 "a $20 ~ efg1 ${b}",
-#             ),
-#             (
-#                 "posix",
-#                 '"a $1 ~ $xyz \\${b}"',
-#                 {"a": "efg1", "b": "xx"},
-#                 ["A1", "A2"],
-#                 EnvExpandFlags.REMOVE_LINE_COMMENT
-#                 | EnvExpandFlags.UNESCAPE
-#                 | EnvExpandFlags.REMOVE_QUOTES
-#                 | EnvExpandFlags.SKIP_SINGLE_QUOTED,
-#                 "a A1 ~ $xyz ${b}",
-#             ),
-#             (
-#                 "posix",
-#                 "'a $2 $a #${b}'",
-#                 {"a": "efg1", "b": "xx"},
-#                 ["A1", "A2"],
-#                 EnvExpandFlags.REMOVE_LINE_COMMENT
-#                 | EnvExpandFlags.UNESCAPE
-#                 | EnvExpandFlags.REMOVE_QUOTES
-#                 | EnvExpandFlags.SKIP_SINGLE_QUOTED,
-#                 "a $2 $a #${b}",
-#             ),
-#             (
-#                 "posix",
-#                 "~/abc",
-#                 {"a": "efg1", "b": "xx"},
-#                 ["A1", "A2"],
-#                 EnvExpandFlags.REMOVE_LINE_COMMENT
-#                 | EnvExpandFlags.UNESCAPE
-#                 | EnvExpandFlags.REMOVE_QUOTES
-#                 | EnvExpandFlags.SKIP_SINGLE_QUOTED,
-#                 os.path.expanduser(f"~{os.sep}abc"),
-#             ),
-#             (
-#                 "posix",
-#                 f"~{os.sep}$a{os.sep}${{b}}",
-#                 {"a": "efg1", "b": "xx"},
-#                 ["A1", "A2"],
-#                 EnvExpandFlags.REMOVE_LINE_COMMENT
-#                 | EnvExpandFlags.UNESCAPE
-#                 | EnvExpandFlags.REMOVE_QUOTES
-#                 | EnvExpandFlags.SKIP_SINGLE_QUOTED,
-#                 os.path.expanduser("~") + f"{os.sep}efg1{os.sep}xx",
-#             ),
-#         ],
-#     )
-#     def test_expand(self, platform, input, env, args, flags, expected):
-#         # Arrange
-#         keys_to_clear = list((env or {}).keys())
-#         for k, v in (env or {}).items():
-#             os.environ[k] = v
-
-#         if (platform == "posix"):
-#             Env.IS_POSIX = True
-#             Env.IS_WINDOWS = False
-#         elif (platform == "windows"):
-#             Env.IS_POSIX = False
-#             Env.IS_WINDOWS = True
-#         else:
-#             Env.IS_POSIX = False
-#             Env.IS_WINDOWS = False
-
-#         # Call the method
-#         result = Env.expand(input, args, flags)
-
-#         # Verify result matches expected
-#         assert result == expected
-
-#         # Cleanup
-#         for k in keys_to_clear:
-#             os.environ.pop(k, None)
+def test_unbraced_env_var(monkeypatch):
+    monkeypatch.setenv("FOO", "bar")
+    assert Env.expand_posix("Value $FOO") == "Value bar"
 
 
-# ###############################################################################
+def test_braced_env_var(monkeypatch):
+    monkeypatch.setenv("BR", "yes")
+    assert Env.expand_posix("Before ${BR} After") == "Before yes After"
 
 
-# class TestExpandArgs:
-#     """Test suite for Env.expand_args method"""
-
-#     @pytest.mark.parametrize(
-#         "input, args, expected",
-#         [
-#             (None, [], ""),
-#             ("", [], ""),
-#             ("a b c", [], "a b c"),
-#             ("a$1 b ${2}9", [], "a$1 b ${2}9"),
-#             ("a$1 b ${2}9", ["A1"], "aA1 b ${2}9"),
-#             ("a$1 b ${2}9", ["A1", "A2"], "aA1 b A29"),
-#             ("a$1 b $29", ["A1", "A2"], "aA1 b $29"),
-#         ],
-#     )
-#     def test_expand_args(self, input, args, expected):
-
-#         # Call the method
-#         result = Env.expand_args(input, args)
-
-#         # Verify result matches expected
-#         assert result == expected
+def test_length(monkeypatch):
+    monkeypatch.setenv("L", "abcd")
+    assert Env.expand_posix("${#L}") == "4"
 
 
-# ###############################################################################
+def test_default_unset_or_null(monkeypatch):
+    # unset
+    monkeypatch.delenv("DEF", raising=False)
+    assert Env.expand_posix("${DEF:-alt}") == "alt"
+    # null
+    monkeypatch.setenv("DEF", "")
+    assert Env.expand_posix("${DEF:-alt}") == "alt"
 
 
-# class TestGetPlatformStack:
-#     """Test suite for Env.expandargs method"""
-
-#     @pytest.mark.parametrize(
-#         "type, platform, flags, prefix, suffix, expected",
-#         [
-#             ("P", "linux3", EnvPlatformStackFlags.NONE, None, None, "posix, linux"),
-#             (
-#                 "P",
-#                 "linux3",
-#                 EnvPlatformStackFlags.ADD_EMPTY,
-#                 None,
-#                 None,
-#                 ", posix, linux",
-#             ),
-#             (
-#                 "P",
-#                 "linux3",
-#                 EnvPlatformStackFlags.ADD_ANY,
-#                 None,
-#                 None,
-#                 "any, posix, linux",
-#             ),
-#             (
-#                 "P",
-#                 "linux3",
-#                 EnvPlatformStackFlags.ADD_ANY | EnvPlatformStackFlags.ADD_EMPTY,
-#                 None,
-#                 None,
-#                 ", any, posix, linux",
-#             ),
-#             (
-#                 "P",
-#                 "linux3",
-#                 EnvPlatformStackFlags.ADD_CURRENT,
-#                 None,
-#                 None,
-#                 "posix, linux, linux3",
-#             ),
-#             (
-#                 "P",
-#                 "linux3",
-#                 EnvPlatformStackFlags.ADD_MAX,
-#                 None,
-#                 None,
-#                 ", any, posix, linux, linux3",
-#             ),
-#             (
-#                 "P",
-#                 "linux3",
-#                 EnvPlatformStackFlags.ADD_MAX,
-#                 ".",
-#                 ".env",
-#                 ".env, .any.env, .posix.env, .linux.env, .linux3.env",
-#             ),
-#             (
-#                 "P",
-#                 "darwin",
-#                 EnvPlatformStackFlags.ADD_MAX,
-#                 ".",
-#                 ".env",
-#                 ".env, .any.env, .posix.env, .bsd.env, .darwin.env, .macos.env",
-#             ),
-#             (
-#                 "P",
-#                 "macos",
-#                 EnvPlatformStackFlags.ADD_MAX,
-#                 ".",
-#                 ".env",
-#                 ".env, .any.env, .posix.env, .bsd.env, .darwin.env, .macos.env",
-#             ),
-#             (
-#                 "P",
-#                 "ios",
-#                 EnvPlatformStackFlags.ADD_MAX,
-#                 None,
-#                 None,
-#                 ", any, posix, bsd, ios",
-#             ),
-#             (
-#                 "P",
-#                 "aix5",
-#                 EnvPlatformStackFlags.ADD_MAX,
-#                 None,
-#                 None,
-#                 ", any, posix, aix, aix5",
-#             ),
-#             (
-#                 "P",
-#                 "cygwin",
-#                 EnvPlatformStackFlags.ADD_MAX,
-#                 None,
-#                 None,
-#                 ", any, posix, cygwin",
-#             ),
-#             (
-#                 "P",
-#                 "msys",
-#                 EnvPlatformStackFlags.ADD_MAX,
-#                 None,
-#                 None,
-#                 ", any, posix, msys",
-#             ),
-#             (
-#                 "P",
-#                 "java",
-#                 EnvPlatformStackFlags.ADD_MAX,
-#                 None,
-#                 None,
-#                 ", any, posix, java",
-#             ),
-#             (
-#                 "W",
-#                 "java",
-#                 EnvPlatformStackFlags.ADD_MAX,
-#                 None,
-#                 None,
-#                 ", any, windows, java",
-#             ),
-#             ("", "vms", EnvPlatformStackFlags.ADD_MAX, None, None, ", any, vms"),
-#             (
-#                 "W",
-#                 "windows",
-#                 EnvPlatformStackFlags.ADD_MAX,
-#                 None,
-#                 None,
-#                 ", any, windows",
-#             ),
-#         ],
-#     )
-#     def test_get_platform_stack(
-#         self, type, platform, flags, prefix, suffix, expected
-#     ):
-#         Env.IS_POSIX = True if (type == "P") else False
-#         Env.IS_WINDOWS = True if (type == "W") else False
-#         Env.IS_VMS = True if (type == "V") else False
-#         Env.PLATFORM_THIS = platform
-#         Env._Env__platform_map[".+"] = [platform]
-
-#         # Call the method
-#         result: list[str] = Env.get_platform_stack(flags, prefix, suffix)
-
-#         # Verify result matches expected
-#         assert ", ".join(result) == expected
+def test_default_unset_only(monkeypatch):
+    monkeypatch.delenv("D2", raising=False)
+    assert Env.expand_posix("${D2-default}") == "default"
+    monkeypatch.setenv("D2", "")
+    # since set (even empty), '-' does not apply
+    assert Env.expand_posix("${D2-default}") == ""
 
 
-# ###############################################################################
-
-# class TestParseEscapes:
-#     """Test suite for Env.__parse_escapes method"""
-
-#     @pytest.mark.parametrize(
-#         "regex, group_count, min_escape_count, input, exp_escapes, exp_no_action",
-#         [
-#             (posix.RE_VAR, 4, 0, "", "", ""),
-#             (posix.RE_VAR, 4, 0, "abc", "", "abc"),
-#             (posix.RE_VAR, 4, 0, f"\\$Key", "", "$Key"),
-#             (posix.RE_VAR, 4, 0, f"\\\\\\$Key", "\\", f"\\$Key"),
-#             (posix.RE_VAR, 4, 0, "`$Key", "", ""),
-#             (posix.RE_VAR, 4, 0, "```$Key", "", ""),
-#             (posix.RE_ESC, 4, 1, "", "", ""),
-#             (posix.RE_ESC, 4, 1, "abc", "", "abc"),
-#             (posix.RE_ESC, 4, 1, "\\x12", "", ""),
-#             (posix.RE_ESC, 4, 1, f"\\\\x12", "\\", f"\\x12"),
-
-#             (powsh.RE_VAR, 4, 0, "", "", ""),
-#             (powsh.RE_VAR, 4, 0, "abc", "", "abc"),
-#             (powsh.RE_VAR, 4, 0, "`$Key", "", "$Key"),
-#             (powsh.RE_VAR, 4, 0, "```$Key", "`", "`$Key"),
-#             (powsh.RE_VAR, 4, 0, "^$Key", "", ""),
-#             (powsh.RE_VAR, 4, 0, "^^^$Key", "", ""),
-#             (powsh.RE_ESC, 4, 1, "", "", ""),
-#             (powsh.RE_ESC, 4, 1, "abc", "", "abc"),
-#             (powsh.RE_ESC, 4, 1, "`x12", "", ""),
-#             (powsh.RE_ESC, 4, 1, "``x12", "`", "`x12"),
-
-#             (msdos.RE_VAR, 4, 0, "", "", ""),
-#             (msdos.RE_VAR, 4, 0, "abc", "", "abc"),
-#             (msdos.RE_VAR, 4, 0, "^%Key%", "", "%Key%"),
-#             (msdos.RE_VAR, 4, 0, "^^^%Key%", "^", "^%Key%"),
-#             (msdos.RE_VAR, 4, 0, "`%Key%", "", ""),
-#             (msdos.RE_VAR, 4, 0, "```%Key%", "", ""),
-#             (msdos.RE_ESC, 4, 1, "", "", ""),
-#             (msdos.RE_ESC, 4, 1, "abc", "", "abc"),
-#             (msdos.RE_ESC, 4, 1, "^x12", "", ""),
-#             (msdos.RE_ESC, 4, 1, "^^x12", "^", "^x12"),
-
-#             (vms.RE_VAR, 4, 0, "", "", ""),
-#             (vms.RE_VAR, 4, 0, "abc", "", "abc"),
-#             (vms.RE_VAR, 4, 0, "^'Key'", "", "'Key'"),
-#             (vms.RE_VAR, 4, 0, "^^^'Key'", "^", "^'Key'"),
-#             (vms.RE_VAR, 4, 0, "$'Key'", "", ""),
-#             (vms.RE_VAR, 4, 0, "$$$'Key'", "", ""),
-#             (vms.RE_ESC, 4, 1, "", "", ""),
-#             (vms.RE_ESC, 4, 1, "abc", "", "abc"),
-#             (vms.RE_ESC, 4, 1, "^x12", "", ""),
-#             (vms.RE_ESC, 4, 1, "^^x12", "^", "^x12"),
-#         ],
-#     )
-#     def test_parse_escapes(
-#         self, regex, min_escape_count, group_count, input, exp_escapes,
-#         exp_no_action
-#     ):
-#         # Arrange
-#         match = regex.search(input)
-
-#         # Call the method
-#         groups, escapes, no_action = \
-#             Env._Env__parse_escapes(input, match, min_escape_count)
-#         group_count = len(groups) if (groups) else 0
-
-#         # Verify result matches expected
-#         assert group_count == group_count
-#         assert escapes == exp_escapes
-#         assert no_action == exp_no_action
+def test_alternate(monkeypatch):
+    monkeypatch.setenv("A", "val")
+    assert Env.expand_posix("${A:+alt}") == "alt"
+    monkeypatch.delenv("A", raising=False)
+    assert Env.expand_posix("${A:+alt}") == ""
 
 
-# ###############################################################################
+def test_error_colon(monkeypatch):
+    monkeypatch.delenv("E", raising=False)
+    with pytest.raises(ValueError):
+        Env.expand_posix("${E:?missing}")
 
 
-# class TestQuote:
-#     """Test suite for Env.quote method"""
-
-#     @pytest.mark.parametrize(
-#         "input, type, expected",
-#         [
-#             (None, EnvQuoteType.NONE, ""),
-#             (None, EnvQuoteType.SINGLE, "''"),
-#             (None, EnvQuoteType.DOUBLE, '""'),
-#             ("", EnvQuoteType.NONE, ""),
-#             ("", EnvQuoteType.SINGLE, "''"),
-#             ("", EnvQuoteType.DOUBLE, '""'),
-#             (" a \"b'  c   ", EnvQuoteType.NONE, " a \"b'  c   "),
-#             (" a \"b'  c   ", EnvQuoteType.SINGLE, "' a \"b\\'  c   '"),
-#             (" a \\\"b\\'  c   ", EnvQuoteType.SINGLE, "' a \\\\\"b\\\\\\'  c   '"),
-#             (" a \\\"b\\'  c   ", EnvQuoteType.DOUBLE, '" a \\\\\\"b\\\\\'  c   "'),
-#         ],
-#     )
-#     def test_quote(self, input, type, expected):
-#         # Call the method
-#         result = Env.quote(input, type)
-
-#         # Verify result matches expected
-#         assert result == expected
+def test_error_no_colon(monkeypatch):
+    monkeypatch.delenv("E2", raising=False)
+    with pytest.raises(ValueError):
+        Env.expand_posix("${E2?missing}")
 
 
-# ###############################################################################
+def test_substring(monkeypatch):
+    monkeypatch.setenv("S", "abcdefgh")
+    assert Env.expand_posix("${S:2:3}") == "cde"
+    assert Env.expand_posix("${S:3}") == "defgh"
 
 
-# class TestUnescape:
-#     """Test suite for Env.decode_escaped method"""
-
-#     @pytest.mark.parametrize(
-#         "input, escape, expected",
-#         [
-#             (None, None, ""),
-#             ("", "", ""),
-#             ("A b c", None, "A b c"),
-#             ("A\\tb\\tc", "", "A\tb\tc"),
-#             ("A\\ \\N\\+\\u0042b\\a\\x41c\\x42", "\\", "A N+Bb\aAcB"),
-
-#             (None, None, ""),
-#             ("", "", ""),
-#             ("A b c", "`", "A b c"),
-#             ("A`tb`tc", "`", "A\tb\tc"),
-#             ("A` `N`+`u0042b`a`x41c`x42", "`", "A N+Bb\aAcB"),
-
-#             (None, None, ""),
-#             ("", "", ""),
-#             ("A b c", "^", "A b c"),
-#             ("A^tb^tc", "^", "A\tb\tc"),
-#             ("A^ ^N^+^u0042b^a^x41c^x42", "^", "A N+Bb\aAcB"),
-#         ],
-#     )
-#     def test_unescape(self, input, escape, expected):
-#         # Call the method
-#         result = Env.unescape(input, escape)
-
-#         # Verify result matches expected
-#         assert result == expected
-
-#     @pytest.mark.parametrize(
-#         "input, escape, exp_beg_pos, exp_bad",
-#         [
-#             ("A\\", "\\", 1, "\\"),
-#             ("\\xG", "\\", 0, "\\x"),
-#             ("\\x0", "\\", 0, "\\x0"),
-#             ("\\x0g", "\\", 0, "\\x0"),
-#             ("\\u012g", "\\", 0, "\\u012"),
-#             ("abc \\xG", "\\", 4, "\\x"),
-#             ("abc \\x0", "\\", 4, "\\x0"),
-#             ("abc \\x0g", "\\", 4, "\\x0"),
-#             ("abc \\u012g", "\\", 4, "\\u012"),
-
-#             ("A^", "^", 1, "^"),
-#             ("^xG", "^", 0, "^x"),
-#             ("^x0", "^", 0, "^x0"),
-#             ("^x0g", "^", 0, "^x0"),
-#             ("^u012g", "^", 0, "^u012"),
-#             ("abc ^xG", "^", 4, "^x"),
-#             ("abc ^x0", "^", 4, "^x0"),
-#             ("abc ^x0g", "^", 4, "^x0"),
-#             ("abc ^u012g", "^", 4, "^u012"),
-#         ],
-#     )
-#     def test_unescape_bad(self, input, escape, exp_beg_pos, exp_bad):
-#         # Call the method
-#         with pytest.raises(ValueError) as ex:
-#             Env.unescape(input, escape)
-
-#         # Verify result matches expected
-#         assert f"[{exp_beg_pos}]: \"{exp_bad}\" in \"{input}\"" in str(ex.value)
+def test_nested_default(monkeypatch):
+    monkeypatch.delenv("X", raising=False)
+    monkeypatch.delenv("Y", raising=False)
+    assert Env.expand_posix("${X:-${Y:-inner}}") == "inner"
 
 
-# ###############################################################################
+def test_escape_dollar(monkeypatch):
+    monkeypatch.setenv("ESC", "value")
+    s = r"literal \$ESC and real $ESC"
+    assert Env.expand_posix(s) == "literal $ESC and real value"
 
 
-# class TestUnquote:
-#     """Test suite for Env.unquote method"""
-
-#     @pytest.mark.parametrize(
-#         "input, escapes, strip_spaces, hard_quotes, stoppers, exp_result, exp_quote_type, exp_escape, exp_expand",
-#         [
-#             (None, None, False, None, None, "", EnvQuoteType.NONE, "", ""),
-#             (None, None, True, None, None, "", EnvQuoteType.NONE, "", ""),
-#             ("", None, False, None, None, "", EnvQuoteType.NONE, "", ""),
-#             ("", None, True, None, None, "", EnvQuoteType.NONE, "", ""),
-#             (" \t ", None, False, None, None, " \t ", EnvQuoteType.NONE, "", ""),
-#             (" \t ", None, True, None, None, "", EnvQuoteType.NONE, "", ""),
-#             (' \n " \t " \n ', None, False, None, None, ' \n " \t " \n ', EnvQuoteType.NONE, "", ""),
-#             (' \n " \t " \n ', None, True, None, None, ' \t ', EnvQuoteType.DOUBLE, "", ""),
-#             ('"\t\\""', "\\", False, None, None, '\t\\"', EnvQuoteType.DOUBLE, "\\", ""),
-#             (' A\"', "\\", False, None, None, ' A\"', EnvQuoteType.NONE, "", ""),
-#             (' A\"', "\\", True, None, None, 'A\"', EnvQuoteType.NONE, "", ""),
-#             (' A\"', "\\", True, True, None, 'A\"', EnvQuoteType.NONE, "", ""),
-#             ('"\\""', "\\", True, None, None, '\\"', EnvQuoteType.DOUBLE, "\\", ""),
-#             ('"\\\\""', "\\", True, None, None, '\\\\', EnvQuoteType.DOUBLE, "\\", ""),
-#             ('"\\\\\\""', "\\", True, None, None, '\\\\\\"', EnvQuoteType.DOUBLE, "\\", ""),
-#             ("'\\\\\\\"'", "\\", True,None, None, '\\\\\\\"', EnvQuoteType.SINGLE, "", ""),
-#             ('"\\\\\\\\""', "\\", True, '"', None, '\\\\\\\\', EnvQuoteType.DOUBLE, "", ""),
-#             (' Abc # def', "\\", False, None, "#", ' Abc ', EnvQuoteType.NONE, "", ""),
-#             (' Abc # def', "\\", True, None, "#", 'Abc', EnvQuoteType.NONE, "", ""),
-#             (' "Ab;c" # def', "\\", False, None, "#;", ' "Ab', EnvQuoteType.NONE, "", ""),
-#             (' "Ab;c" # def', "\\", True, None, "#;", 'Ab;c', EnvQuoteType.DOUBLE, "", ""),
-#             (' "Ab#c" ; def', "\\", False, None, "#;", ' "Ab', EnvQuoteType.NONE, "", ""),
-#             (' "Ab#c" ; def', "\\", True, None, "#;", 'Ab#c', EnvQuoteType.DOUBLE, "", ""),
-#             (' Ab\\#c # def', "\\", True, None, "#;", 'Ab\\#c', EnvQuoteType.NONE, "\\", ""),
-#             (' $Abc %def% ', "\\", False, None, "#", ' $Abc %def% ', EnvQuoteType.NONE, "", "$"),
-#             ('"`""', "`", False, None, None, '`"', EnvQuoteType.DOUBLE, "`", ""),
-#             ('"`""', "`", True, None, None, '`"', EnvQuoteType.DOUBLE, "`", ""),
-#             ('"``""', "`", True, None, None, '``', EnvQuoteType.DOUBLE, "`", ""),
-#             ('"```""', "`", True, None, None, '```"', EnvQuoteType.DOUBLE, "`", ""),
-#             ("'```\"'", "`", True, None, None, '```"', EnvQuoteType.SINGLE, "", ""),
-#             ('"````""', "`", True, '"', None, '````', EnvQuoteType.DOUBLE, "", ""),
-#         ],
-#     )
-#     def test_unquote(
-#         self, input, escapes, strip_spaces, hard_quotes, stoppers,
-#         exp_result, exp_quote_type, exp_escape, exp_expand
-#     ):
-#         # Call the method
-#         actual = Env.unquote(
-#             input,
-#             escapes=escapes,
-#             strip_spaces=strip_spaces,
-#             hard_quotes=hard_quotes,
-#             cutters=stoppers
-#         )
-
-#         # Verify result matches expected
-#         assert actual.input == (input or "")
-#         assert actual.result == (exp_result or "")
-#         assert actual.quote_type == (exp_quote_type)
-#         assert actual.escape == (exp_escape or "")
-#         assert actual.expand == (exp_expand or "")
-
-#     @pytest.mark.parametrize(
-#         "input, escapes, strip_spaces, hard_quotes, stoppers, expected",
-#         [
-#             (' "', "\\", True, None, None, 'Unterminated'),
-#             (' \t"\\', "\\", True, None, None, 'dangling'),
-#             (' \t \\"\\\\\\', "\\", True, None, None, 'dangling'),
-#             ('" \t \\"\\\\#\\"', "\\", True, None, "#", 'Unterminated'),
-#             ('" \t \\"\\\\#\\', "\\", True, None, "#", 'dangling'),
-
-#             (' "', "`", True, None, None, 'Unterminated'),
-#             (' \t"`', "`", True, None, None, 'dangling'),
-#             (' \t `"```', "`", True, None, None, 'dangling'),
-#             ('" \t `"``#`"', "`", True, None, "#", 'Unterminated'),
-#             ('" \t `"``#`', "`", True, None, "#", 'dangling'),
-#         ],
-#     )
-#     def test_unquote_bad(
-#         self, input, escapes, strip_spaces, hard_quotes, stoppers, expected
-#     ):
-#         # Call the method
-#         with pytest.raises(ValueError) as ex:
-#             Env.unquote(
-#                 input,
-#                 escapes=escapes,
-#                 strip_spaces=strip_spaces,
-#                 hard_quotes=hard_quotes,
-#                 cutters=stoppers
-#             )
-
-#         # Verify result matches expected
-#         assert expected in str(ex.value)
+def test_nonexistent_unchanged():
+    assert Env.expand_posix("keep ${NO_SUCH}") == "keep ${NO_SUCH}"
+    assert Env.expand_posix("keep $NO_SUCH") == "keep $NO_SUCH"
 
 
-# ###############################################################################
+def test_assignment_operators(monkeypatch):
+    # := assigns if unset or null
+    monkeypatch.delenv("ASS", raising=False)
+    assert Env.expand_posix("${ASS:=hello}") == "hello"
+    assert os.getenv("ASS") == "hello"
+    # = assigns only if unset
+    monkeypatch.delenv("ASS2", raising=False)
+    assert Env.expand_posix("${ASS2=foo}") == "foo"
+    assert os.getenv("ASS2") == "foo"
+    monkeypatch.setenv("ASS2", "")
+    assert Env.expand_posix("${ASS2=bar}") == ""
+
+
+def test_assignment_to_custom_vars_dict():
+    d: dict = {}
+    assert Env.expand_posix("${N:=x}", vars=d) == "x"
+    assert d.get("N") == "x"
+
+
+def test_substitution_and_all(monkeypatch):
+    monkeypatch.setenv("R", "foo_bar_foo")
+    assert Env.expand_posix("${R/foo/X}") == "X_bar_foo"
+    assert Env.expand_posix("${R//foo/X}") == "X_bar_X"
+
+
+def test_prefix_suffix_removal(monkeypatch):
+    monkeypatch.setenv("Z", "pre_mid_suf")
+    assert Env.expand_posix("${Z#pre_}") == "mid_suf"
+    assert Env.expand_posix("${Z%_suf}") == "pre_mid"
+
+
+def test_prefix_suffix_wildcard(monkeypatch):
+    monkeypatch.setenv("Y", "aaaaab")
+    assert Env.expand_posix("${Y#a*}") == "aaaab"
+    # longest match may consume the whole string
+    assert Env.expand_posix("${Y##a*}") == ""
+
+
+def test_anchor_substitution(monkeypatch):
+    monkeypatch.setenv("V", "foobarfoo")
+    assert Env.expand_posix("${V/#foo/X}") == "Xbarfoo"
+    assert Env.expand_posix("${V/%foo/X}") == "foobarX"
+
+
+def test_global_and_single_substitution(monkeypatch):
+    monkeypatch.setenv("SUB", "foofoo")
+    assert Env.expand_posix("${SUB/foo/X}") == "Xfoo"
+    assert Env.expand_posix("${SUB//foo/X}") == "XX"
+
+
+def test_anchor_subst_with_glob(monkeypatch):
+    monkeypatch.setenv("G", "abc123abc")
+    # prefix pattern 'a*' shortest prefix match is 'a' -> replace just that
+    assert Env.expand_posix("${G/#a*/X}") == "Xbc123abc"
+    # suffix pattern '*abc' matches ending 'abc', should replace end
+    assert Env.expand_posix("${G/%*abc/Y}") == "abc123Y"
+
+
+def test_global_anchored_prefix_removal(monkeypatch):
+    monkeypatch.setenv("P", "ababab")
+    # remove leading 'ab' repeatedly
+    assert Env.expand_posix("${P//#ab/}") == ""
+
+
+def test_global_anchored_suffix_removal(monkeypatch):
+    monkeypatch.setenv("S", "foofoo")
+    # remove trailing 'foo' repeatedly
+    assert Env.expand_posix("${S//%foo/}") == ""
+
+
+def test_empty_pattern_global_unanchored(monkeypatch):
+    monkeypatch.setenv("E", "ab")
+    # empty pattern (global) inserts between every position
+    assert Env.expand_posix("${E///X}") == "XaXbX"
+
+
+def test_empty_pattern_anchored_prefix_noop(monkeypatch):
+    monkeypatch.setenv("P", "abc")
+    # anchored empty pattern should not match non-empty prefixes
+    assert Env.expand_posix("${P//#/X}") == "abc"
+
+
+def test_empty_pattern_replace_with_empty(monkeypatch):
+    monkeypatch.setenv("E2", "ab")
+    # empty pattern replaced with empty string should leave input unchanged
+    assert Env.expand_posix("${E2///}") == "ab"
+
+
+def test_nested_replacement_with_defaults(monkeypatch):
+    monkeypatch.delenv("B", raising=False)
+    monkeypatch.setenv("VAR", "foofoo")
+    # replacement contains a default that expands to 'Y'
+    assert Env.expand_posix("${VAR//foo/${B:-Y}}") == "YY"
+
+
+def test_replacement_with_nested_substitution(monkeypatch):
+    monkeypatch.setenv("B", "Z")
+    monkeypatch.setenv("VAR", "foofoo")
+    assert Env.expand_posix("${VAR//foo/${B}}") == "ZZ"
+
+
+def test_no_infinite_loop_when_replacement_equals_original(monkeypatch):
+    monkeypatch.setenv("T", "a")
+    # replacement equals original should not cause infinite loop
+    assert Env.expand_posix("${T//#/a}") == "a"
+
+def test_command_substitution_parens():
+    assert Env.expand_posix('$(printf "X")') == "X"
+
+
+def test_command_substitution_backticks():
+    assert Env.expand_posix('`printf "Y"`') == "Y"
+
+
+def test_command_substitution_with_env(monkeypatch):
+    monkeypatch.setenv("FOO", "hello")
+    assert Env.expand_posix('$(printf "%s" $FOO)') == "hello"
+
+
+def test_command_substitution_with_braced_env(monkeypatch):
+    monkeypatch.setenv("FOO", "hello")
+    assert Env.expand_posix('$(printf "%s" ${FOO})') == "hello"
+
+
+def test_command_substitution_error():
+    # a command that fails should raise ValueError
+    with pytest.raises(ValueError):
+        Env.expand_posix('$(false)')
+
+
+def test_command_subst_disabled():
+    # when disabled, the original expression must remain intact
+    assert Env.expand_posix('$(printf "X")', allow_subprocess=False) == '$(printf "X")'
+    assert Env.expand_posix('`printf "Y"`', allow_subprocess=False) == '`printf "Y"`'
+
+
+def test_command_subst_no_shell():
+    # no shell mode should still execute simple commands
+    assert Env.expand_posix('$(printf "Z")', allow_shell=False) == 'Z'
+
+
+def test_command_subst_timeout():
+    # use python to sleep; enforce tight timeout
+    with pytest.raises(ValueError):
+        Env.expand_posix('$(python -c "import time; time.sleep(0.2)")', subprocess_timeout=0.01)
+
+
+# ---------------------------------------------------------------------------
+# Windows-style expansion via Env.expand_symmetric
+# ---------------------------------------------------------------------------
+
+def test_env_expand_named_env_var(monkeypatch):
+    monkeypatch.setenv("TEST_FOO", "bar")
+    assert Env.expand_simple("Value %TEST_FOO% end") == "Value bar end"
+
+
+def test_env_positional_args():
+    args = ["one", "two"]
+    assert Env.expand_simple("Arg %1 and %2", args=args) == "Arg one and two"
+
+
+def test_env_literal_percent():
+    assert Env.expand_simple("100%% sure") == "100% sure"
+
+
+def test_env_caret_escape(monkeypatch):
+    monkeypatch.setenv("VAR", "val")
+    s = r"literal ^%VAR% and real %VAR%"
+    assert Env.expand_simple(s) == "literal %VAR% and real val"
+
+
+def test_env_missing_var_unchanged(monkeypatch):
+    monkeypatch.delenv("NO_SUCH", raising=False)
+    assert Env.expand_simple("keep %NO_SUCH%") == "keep %NO_SUCH%"
+
+
+def test_env_star_expansion():
+    args = ["a", "b"]
+    assert Env.expand_simple("All %*", args=args) == "All a b"
+
+
+def test_env_trailing_percent_no_close():
+    assert Env.expand_simple("Bad %NAME rest") == "Bad %NAME rest"
+
+
+def test_env_digit_with_trailing_percent_uncommon():
+    args = ["X"]
+    assert Env.expand_simple("%1%", args=args) == "X"
+    assert Env.expand_simple("%1", args=args) == "X"
+
+
+def test_env_modifiers_dpnx():
+    args = ["/home/user/file.txt"]
+    # %~d = drive (empty on POSIX), %~p = path with trailing sep
+    expected_dp = os.path.splitdrive(args[0])[0] + os.path.dirname(args[0]) + os.sep
+    assert Env.expand_simple("%~dp1", args=args) == expected_dp
+    assert Env.expand_simple("%~n1", args=args) == os.path.splitext(os.path.basename(args[0]))[0]
+    assert Env.expand_simple("%~x1", args=args) == os.path.splitext(args[0])[1]
+    assert Env.expand_simple("%~nx1", args=args) == os.path.splitext(os.path.basename(args[0]))[0] + os.path.splitext(args[0])[1]
+    # combined dpnx
+    expected = expected_dp + os.path.splitext(os.path.basename(args[0]))[0] + os.path.splitext(args[0])[1]
+    assert Env.expand_simple("%~dpnx1", args=args) == expected
+
+
+def test_env_modifiers_missing_arg_leaves_intact():
+    args = []
+    assert Env.expand_simple("%~dp1", args=args) == "%~dp1"
+
+
+def test_env_named_var_substring_positive(monkeypatch):
+    monkeypatch.setenv("SV", "abcdefgh")
+    assert Env.expand_simple("%SV:~2,3%") == "cde"
+
+
+def test_env_named_var_substring_from_start(monkeypatch):
+    monkeypatch.setenv("SV", "abcdefgh")
+    assert Env.expand_simple("%SV:~2%") == "cdefgh"
+
+
+def test_env_named_var_substring_negative(monkeypatch):
+    monkeypatch.setenv("SV", "abcdefgh")
+    assert Env.expand_simple("%SV:~-3,2%") == "fg"
+
+
+def test_env_named_var_substring_missing_var(monkeypatch):
+    monkeypatch.delenv("NOPE", raising=False)
+    assert Env.expand_simple("%NOPE:~1,2%") == "%NOPE:~1,2%"
+
+
+def test_expand_symmetric_custom_expand_named_and_positional():
+    # Named variable using custom expand char '@'
+    assert Env.expand_simple("@FOO@", vars={"FOO": "bar"}, exp_chr="@") == "bar"
+    # Positional using custom expand char '@'
+    assert Env.expand_simple("@1", args=["one"], exp_chr="@") == "one"
+    # Literal '@' via doubling
+    assert Env.expand_simple("@@", exp_chr="@") == "@"
+
+
+def test_expand_symmetric_custom_escape_behavior():
+    # Custom escape '\' should prevent expansion and yield the literal token
+    assert Env.expand_simple(r"\%FOO%", esc_chr="\\", vars={"FOO": "X"}) == "%FOO%"
+    # Combined custom expand '@' and custom escape '\' should produce a literal @FOO@
+    assert Env.expand_simple(r"\@FOO@", esc_chr="\\", exp_chr="@", vars={"FOO": "X"}) == "@FOO@"
+    # Default caret escape still works (sanity)
+    assert Env.expand_simple(r"^%FOO%", esc_chr="^", vars={"FOO": "X"}) == "%FOO%"
+
+
+# ---------------------------------------------------------------------------
+# expand_posix tests with backtick as escape character
+# ---------------------------------------------------------------------------
+
+def test_expand_posix_backtick_escape_dollar(monkeypatch):
+    monkeypatch.setenv("VAR", "value")
+    # backtick escapes the dollar sign
+    assert Env.expand_posix("`$VAR", esc_chr="`", vars={"VAR": "value"}) == "$VAR"
+
+
+def test_expand_posix_backtick_escape_multiple_dollars(monkeypatch):
+    # two backticks: first escapes second backtick, then $ is processed
+    assert Env.expand_posix("``$VAR", esc_chr="`", vars={"VAR": "value"}) == "`value"
+
+
+def test_expand_posix_backtick_escape_odd_count(monkeypatch):
+    # odd number of backticks: final one escapes the dollar
+    assert Env.expand_posix("`$VAR", esc_chr="`", vars={"VAR": "value"}) == "$VAR"
+
+
+def test_expand_posix_backtick_escape_even_count(monkeypatch):
+    # even number of backticks: none escape the dollar
+    assert Env.expand_posix("````$VAR", esc_chr="`", vars={"VAR": "value"}) == "``value"
+
+
+def test_expand_posix_backtick_escape_braced_var(monkeypatch):
+    # backtick escapes braced variable expansion
+    assert Env.expand_posix("`${VAR}", esc_chr="`", vars={"VAR": "value"}) == "${VAR}"
+
+
+def test_expand_posix_backtick_not_escape_when_cmd_disabled(monkeypatch):
+    # when subprocess disabled, backtick is just a literal character
+    result = Env.expand_posix("`echo test`", esc_chr="`", allow_subprocess=False)
+    assert result == "`echo test`"
+
+
+def test_expand_posix_backtick_escape_with_other_chars(monkeypatch):
+    # backtick escape should not affect other characters
+    # Note: backtick after the escape is output literally, then $ expands normally
+    assert Env.expand_posix("a`$VARb", esc_chr="`", vars={"VAR": "x"}) == "a$VARb"
+
+
+def test_expand_posix_backtick_escape_mixed_with_normal(monkeypatch):
+    # mixing escaped and unescaped expansions
+    result = Env.expand_posix("`$A and $B", esc_chr="`", vars={"A": "first", "B": "second"})
+    assert result == "$A and second"
+
+
+def test_expand_posix_backtick_escape_in_nested_expansion(monkeypatch):
+    # When backtick is escape, it disables backtick command substitution
+    # So we test a simple default expansion instead
+    result = Env.expand_posix("${VAR:-hello}", esc_chr="`", vars={"INNER": "value"})
+    assert result == "hello"
+
+
+def test_expand_posix_backtick_escape_command_subst(monkeypatch):
+    # backtick escape should prevent command substitution with parentheses
+    result = Env.expand_posix("`$(echo test)", esc_chr="`", allow_subprocess=True)
+    assert result == "$(echo test)"

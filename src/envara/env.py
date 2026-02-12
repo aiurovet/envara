@@ -14,13 +14,15 @@ import os
 import re
 import string
 import sys
+import fnmatch
+import subprocess
+import shlex
 from typing import Any, ClassVar
 
 from env_expand_flags import EnvExpandFlags
 from env_platform_stack_flags import EnvPlatformStackFlags
 from env_quote_type import EnvQuoteType
 from env_parse_info import EnvParseInfo
-from trying import Trying
 
 ###############################################################################
 
@@ -47,14 +49,6 @@ class Env:
 
     # True if the app is running under Windows or OS/2
     IS_WINDOWS: ClassVar[bool] = os.sep == "\\"
-
-    # Helps to find env var/arg parttern based on expand and escape
-    PATTERNS: ClassVar[dict[str, re.Pattern]] = {
-        "$\\": re.compile("([\\\\]*)\\$({?)([A-Za-z_\\d]+)(}?)", re.IGNORECASE | re.UNICODE),
-        "$`": re.compile("([``]*)\\$({?)([A-Za-z_\\d]+)(}?)", re.IGNORECASE | re.UNICODE),
-        "%\\": re.compile("([\\\\]*)(%)([A-Za-z_\\d]+)(%)", re.IGNORECASE | re.UNICODE),
-        "%^": re.compile("([\\^]*)(%)([A-Za-z_\\d]+)(%)", re.IGNORECASE | re.UNICODE),
-    }
 
     # A text indicating any platform, but not empty
     PLATFORM_ANY: ClassVar[str] = "any"
@@ -128,10 +122,12 @@ class Env:
         """
 
         # If flags provided, map them to unquote parameters and post-processing
+
         if flags is None:
             flags = 0
 
         # Map flags to cutters/hard_quotes/unescape behaviours
+
         if (flags & EnvExpandFlags.REMOVE_LINE_COMMENT) and (cutters is None):
             cutters = "#"
 
@@ -140,90 +136,43 @@ class Env:
         _, info = Env.unquote(
             input,
             strip_spaces=strip_spaces,
-            escapes=escapes,
-            expands=expands,
+            esc_chrs=escapes,
+            exp_chrs=expands,
             cutters=cutters,
             hard_quotes=hard_quotes,
         )
 
-        # Expand args and env vars
+        # SKIP_SINGLE_QUOTED prevents any expansion
 
-        # Use Trying to perform POSIX-style or Windows-style expansions based
-        # on the first active expand character detected during unquoting
-        # Respect flags: SKIP_SINGLE_QUOTED prevents expansion inside single
-        # quotes; SKIP_ENVIRON disables env var expansion.
         if (flags & EnvExpandFlags.SKIP_SINGLE_QUOTED) and (info.quote_type.name == "SINGLE"):
-            # leave info.result as-is
-            pass
+            return (info.result, info)
+
+        # SKIP_ENVIRON forcefully disables env var expansion.
+
+        vars_dict = {} if (flags & EnvExpandFlags.SKIP_ENVIRON) else os.environ
+
+        # Perform POSIX-style or Windows-style expansions based on
+        # the first active expand character detected during unquoting
+
+        if info.exp_chr == EnvParseInfo.POSIX_EXP_CHR:
+            info.result = Env.expand_posix(
+                info.result, args=args, vars=vars_dict,
+                exp_chr=info.exp_chr, esc_chr=info.esc_chr
+            )
         else:
-            vars_dict = {} if (flags & EnvExpandFlags.SKIP_ENVIRON) else os.environ
-            if info.exp_chr == EnvParseInfo.WINDOWS_EXP_CHR:
-                info.result = Trying.expand_simple(
-                    info.result, args=args, vars=vars_dict,
-                    exp_chr=info.exp_chr, esc_chr=info.esc_chr
-                )
-            else:
-                info.result = Trying.expand_posix(
-                    info.result, args=args, vars=vars_dict,
-                    exp_chr=info.exp_chr, esc_chr=info.esc_chr
-                )
+            info.result = Env.expand_simple(
+                info.result, args=args, vars=vars_dict,
+                exp_chr=info.exp_chr, esc_chr=info.esc_chr
+            )
 
         # Perform unescape if requested
+
         if (flags & EnvExpandFlags.UNESCAPE):
             info.result = Env.unescape(info.result, escape=info.esc_chr)
 
         # Return the final result
 
         return (info.result, info)
-
-    ###########################################################################
-
-    @staticmethod
-    def expand_args(input: str, args: list[str] | None = None) -> str:
-        """
-        Expand references to an array of arguments by its indices
-
-        :param input: String being expanded
-        :type input: str
-        :param args: List of arguments to refer to
-        :type args: list[str]
-        :return: Expanded string
-        :rtype: str
-        """
-
-        # If input is None or empty, return empty string
-
-        if not input:
-            return ""
-
-        # Get how many args and return input intact if no arg passed
-
-        arg_cnt = len(args) if args else 0
-
-        if arg_cnt <= 0:
-            return input
-
-        # Define regex match evaluator
-
-        def matcher(match):
-            idx_str = match.group(1) or match.group(2)
-
-            if (not idx_str) and Env.IS_WINDOWS:
-                idx_str = match.group(3)
-
-                if not idx_str:
-                    return match.group(0)
-
-            idx_int = int(idx_str) - 1
-
-            if (idx_int >= 0) and (idx_int < arg_cnt):
-                return args[idx_int]
-
-            return match.group(0)
-
-        # Run the substitution
-
-        return Env.RE_ARGS.sub(matcher, input)
 
     ###########################################################################
 
@@ -482,8 +431,8 @@ class Env:
     def unquote(
         input: str,
         strip_spaces: bool = True,
-        escapes: str = None,
-        expands: str = None,
+        esc_chrs: str = None,
+        exp_chrs: str = None,
         hard_quotes: str = None,
         cutters: str = None,
     ) -> tuple[str, EnvParseInfo]:
@@ -529,10 +478,10 @@ class Env:
 
         # Ensure required arguments are populated
 
-        if (escapes is None):
-            escapes = EnvParseInfo.POSIX_ESC_CHR
-        if (expands is None):
-            expands = EnvParseInfo.POSIX_EXP_CHR
+        if (exp_chrs is None):
+            exp_chrs = EnvParseInfo.POSIX_EXP_CHR
+        if (esc_chrs is None):
+            esc_chrs = EnvParseInfo.POSIX_ESC_CHR
 
         # Initialize position beyond the last character and results
 
@@ -567,7 +516,7 @@ class Env:
         # No escape is relevant if the given quote is the hard one
 
         if is_quoted and (info.quote in hard_quotes):
-            escapes = ""
+            esc_chrs = ""
 
         # Loop through each input character and analyze
 
@@ -581,7 +530,7 @@ class Env:
 
             # If an escape encountered, flip the flag and loop
 
-            if (cur_chr in escapes):
+            if (cur_chr in esc_chrs):
                 info.esc_chr = cur_chr
                 is_escaped = not is_escaped
                 continue
@@ -604,7 +553,7 @@ class Env:
 
             # Set expand character if found first time
 
-            if (cur_chr in expands):
+            if (cur_chr in exp_chrs):
                 if (not info.exp_chr) and (not is_escaped):
                     info.exp_chr = cur_chr
 
@@ -648,10 +597,6 @@ class Env:
 
         # Return the result
 
-        info.pattern = Env.PATTERNS[
-            f"{info.exp_chr or Env.POSIX_EXPAND}{info.esc_chr or Env.POSIX_ESCAPE}"
-        ]
-
         return (info.result, info)
 
     ###########################################################################
@@ -680,57 +625,619 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def __parse_escapes(
+    def expand_posix(
         input: str,
-        match: re.Match,
-        min_escape_count: int
-    ) -> tuple[tuple[Any, ...], str, str]:
-        """
-        :param input: The string being scanned
-        :type input: str
-        :param match: Analyze match and return groups as well as unescaped
-                      escapes (twice less) and the no_action string. When the
-                      latter is not None, it tells to return that immediately
-                      from the replacer, as there is nothing to unescape or
-                      expand
-        :type match: re.Match
-        :param min_escape_count: Pass as 0 for env vars' and args' expansions
-                                 (all escapes should compensate each other).
-                                 Pass as 1 for unescapes (there should be 1
-                                 left after the rest of escapes compensate
-                                 each other)
-        :type min_escape_count: int
-        :param expand_info: Rules for expansion and unescaping
-        :type expand_info: EnvExpandInfo
-        :return: (groups, unescaped-escapes, no_action)
-        :rtype: tuple[tuple[Any, ...], str, str]
-        """
+        args: list[str] | None = None,
+        vars: dict[str, str] | None = os.environ,
+        exp_chr: str = "$",
+        esc_chr: str = "\\",
+        allow_subprocess: bool = True,
+        allow_shell: bool = True,
+        subprocess_timeout: float | None = None,
+    ) -> str:
+        if input is None:
+            return ""
 
-        # If the input is void, return the empty string
+        if vars is None:
+            vars = os.environ
 
-        if not match:
-            return (None, "", input)
+        s = input
+        res: list[str] = []
+        i = 0
+        inp_len = len(s)
+        bktick = "`"
+        is_bktick_cmd = bktick != esc_chr
 
-        # Initialise
+        def get_var(name: str):
+            return vars.get(name) if vars is not None else os.environ.get(name)
 
-        groups: tuple[Any, ...] = match.groups()
-        escapes: str = groups[0]
-        escape_count: int = len(escapes)
-        no_action: str = ""
+        def eval_braced(inner: str) -> str:
+            # Length: #{NAME}
+            if inner.startswith("#"):
+                name = inner[1:]
+                val = get_var(name)
+                if val is None:
+                    return f"{exp_chr}{{{inner}}}"
+                return str(len(val))
 
-        if (escape_count > 0):
-            escapes = escapes[0] * (escape_count // 2)
-        
-        # If this number of escapes dictate to ignore the rest, set
-        # no_action to the value that should be returned from caller
-        # without any further interpretation
+            # Parse name
+            m = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)', inner)
+            if not m:
+                # Support numeric positional parameters inside braces: ${1}, ${2}
+                md = re.match(r'^(\d+)$', inner)
+                if md:
+                    idx = int(md.group(1)) - 1
+                    if args and 0 <= idx < len(args):
+                        return args[idx]
+                    return f"{exp_chr}{{{inner}}}"
+                return f"{exp_chr}{{{inner}}}"
+            name = m.group(1)
+            rest = inner[m.end():]
 
-        if ((escape_count % 2) != min_escape_count):
-            no_action = escapes + match.string[escape_count:]
+            val = get_var(name)
+            is_set = val is not None
+            is_null = (val == "") if is_set else False
 
-        # All components are ready, return those
+            # Substring: :offset[:length]
+            sm = re.match(r'^:(-?\d+)(?::(-?\d+))?$', rest)
+            if sm:
+                offset = int(sm.group(1))
+                length = int(sm.group(2)) if sm.group(2) is not None else None
+                if not is_set:
+                    return f"{exp_chr}{{{inner}}}"
+                text = val
+                if offset < 0:
+                    offset = len(text) + offset
+                    if offset < 0:
+                        offset = 0
+                if length is None:
+                    return text[offset:]
+                return text[offset:offset + length]
 
-        return (groups, escapes, no_action)
+            # Parameter expansion operators
+            if rest.startswith(":=") or rest.startswith("="):
+                assign_colon = rest.startswith(":=")
+                word = rest[2:] if assign_colon else rest[1:]
+                if (not is_set) or (assign_colon and is_null):
+                    new_val = Env.expand_posix(word, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+                    try:
+                        if vars is not None:
+                            vars[name] = new_val
+                    except Exception:
+                        pass
+                    return new_val
+                return val
+
+            # Pattern removals: #, ## (prefix) and %, %% (suffix)
+            if rest.startswith("##") or rest.startswith("#"):
+                pattern = rest[2:] if rest.startswith("##") else rest[1:]
+                if not is_set:
+                    return f"{exp_chr}{{{inner}}}"
+                text = val
+                best_i = None
+                for i in range(0, len(text) + 1):
+                    if fnmatch.fnmatchcase(text[0:i], pattern):
+                        if rest.startswith("##"):
+                            best_i = i
+                        else:
+                            best_i = i
+                            break
+                if best_i is None:
+                    return text
+                return text[best_i:]
+            if rest.startswith("%%") or rest.startswith("%"):
+                pattern = rest[2:] if rest.startswith("%%") else rest[1:]
+                if not is_set:
+                    return f"{exp_chr}{{{inner}}}"
+                text = val
+                best_i = None
+                for i in range(0, len(text) + 1):
+                    sub = text[len(text) - i:]
+                    if fnmatch.fnmatchcase(sub, pattern):
+                        if rest.startswith("%%"):
+                            best_i = i
+                        else:
+                            best_i = i
+                            break
+                if best_i is None:
+                    return text
+                return text[:len(text) - best_i]
+
+            # Substitutions
+            anchor = None
+            r = rest
+            if r and r[0] in ("#", "%"):
+                anchor = r[0]
+                r = r[1:]
+
+            pat = None
+            repl = None
+            is_all = False
+
+            if r.startswith("//"):
+                is_all = True
+                part = r[2:]
+                if "/" in part:
+                    pat, repl = part.split("/", 1)
+            elif r.startswith("/"):
+                part = r[1:]
+                if "/" in part:
+                    pat, repl = part.split("/", 1)
+            elif "/" in r:
+                pat, repl = r.split("/", 1)
+
+            if pat and pat[0] in ("#", "%"):
+                anchor = pat[0]
+                pat = pat[1:]
+
+            if (pat is None) or (repl is None):
+                pass
+            else:
+                if not is_set:
+                    return f"{exp_chr}{{{inner}}}"
+
+                core = fnmatch.translate(pat)
+                if core.startswith("(?s:") and core.endswith(")\\Z"):
+                    core = core[4:-3]
+
+                repl_eval = Env.expand_posix(repl, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+
+                if anchor == "#":
+                    text = val
+                    if is_all:
+                        while True:
+                            changed = False
+                            for i in range(1, len(text) + 1):
+                                if fnmatch.fnmatchcase(text[:i], pat):
+                                    new_text = repl_eval + text[i:]
+                                    if new_text == text:
+                                        changed = False
+                                        break
+                                    text = new_text
+                                    changed = True
+                                    break
+                            if not changed:
+                                break
+                        return text
+                    else:
+                        for i in range(1, len(text) + 1):
+                            if fnmatch.fnmatchcase(text[:i], pat):
+                                return repl_eval + text[i:]
+                        return val
+
+                if anchor == "%":
+                    text = val
+                    if is_all:
+                        while True:
+                            changed = False
+                            for i in range(1, len(text) + 1):
+                                sub = text[len(text) - i:]
+                                if fnmatch.fnmatchcase(sub, pat):
+                                    new_text = text[:len(text) - i] + repl_eval
+                                    if new_text == text:
+                                        changed = False
+                                        break
+                                    text = new_text
+                                    changed = True
+                                    break
+                            if not changed:
+                                break
+                        return text
+                    else:
+                        for i in range(1, len(text) + 1):
+                            sub = text[len(text) - i:]
+                            if fnmatch.fnmatchcase(sub, pat):
+                                return text[:len(text) - i] + repl_eval
+                        return val
+
+                pattern = core
+                prog = re.compile(pattern, re.DOTALL)
+                if is_all:
+                    return prog.sub(repl_eval, val)
+                else:
+                    return prog.sub(repl_eval, val, count=1)
+
+            if rest.startswith(":-"):
+                word = rest[2:]
+                if (not is_set) or is_null:
+                    return Env.expand_posix(word, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+                return val
+            if rest.startswith("-"):
+                word = rest[1:]
+                if not is_set:
+                    return Env.expand_posix(word, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+                return val
+            if rest.startswith(":+"):
+                word = rest[2:]
+                if is_set and not is_null:
+                    return Env.expand_posix(word, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+                return ""
+            if rest.startswith("+"):
+                word = rest[1:]
+                if is_set:
+                    return Env.expand_posix(word, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+                return ""
+            if rest.startswith(":?"):
+                word = rest[2:]
+                if (not is_set) or is_null:
+                    raise ValueError(Env.expand_posix(word, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout) or f"{name}: parameter null or not set")
+                return val
+            if rest.startswith("?"):
+                word = rest[1:]
+                if not is_set:
+                    raise ValueError(Env.expand_posix(word, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout) or f"{name}: parameter not set")
+                return val
+
+            if is_set:
+                return val
+            return f"{exp_chr}{{{inner}}}"
+
+        while i < inp_len:
+            ch = s[i]
+
+            if ch == esc_chr:
+                j = i
+                while j < inp_len and s[j] == esc_chr:
+                    j += 1
+                escape_count = j - i
+                if (j < inp_len) and ((s[j] == exp_chr) or (is_bktick_cmd and (s[j] == bktick))):
+                    res.append(esc_chr * (escape_count // 2))
+                    if (escape_count % 2) == 1:
+                        res.append(s[j])
+                        i = j + 1
+                        continue
+                    i = j
+                    continue
+                else:
+                    res.append(esc_chr * escape_count)
+                    i = j
+                    continue
+
+            if is_bktick_cmd and (ch == bktick):
+                j = i + 1
+                while j < inp_len:
+                    if s[j] == bktick:
+                        break
+                    if s[j] == esc_chr and (j + 1) < inp_len and s[j + 1] == bktick:
+                        j += 2
+                        continue
+                    j += 1
+                if j >= inp_len:
+                    raise ValueError(f"Unterminated backtick command substitution in: {input}")
+                inner = s[i + 1:j]
+                cmd = Env.expand_posix(inner, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+                if not allow_subprocess:
+                    res.append(s[i:j + 1])
+                    i = j + 1
+                    continue
+                try:
+                    if allow_shell:
+                        proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=subprocess_timeout)
+                    else:
+                        proc = subprocess.run(shlex.split(cmd), shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=subprocess_timeout)
+                except subprocess.TimeoutExpired:
+                    raise ValueError(f"Command substitution timed out: {cmd}")
+                if proc.returncode != 0:
+                    raise ValueError(f"Command substitution failed: {cmd}: {proc.stderr.strip()}")
+                out = proc.stdout.rstrip('\n')
+                res.append(out)
+                i = j + 1
+                continue
+
+            if ch != exp_chr:
+                res.append(ch)
+                i += 1
+                continue
+
+            if (i + 1) < inp_len and s[i + 1] == exp_chr:
+                res.append(str(os.getpid()))
+                i += 2
+                continue
+
+            if (i + 1) < inp_len and s[i + 1] == "(":
+                j = i + 2
+                depth = 1
+                while j < inp_len:
+                    if s[j] == "(":
+                        depth += 1
+                    elif s[j] == ")":
+                        depth -= 1
+                        if depth == 0:
+                            break
+                    j += 1
+                if j >= inp_len:
+                    raise ValueError(f"Unterminated command substitution in: {input}")
+                inner = s[i + 2:j]
+                cmd = Env.expand_posix(inner, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+                if not allow_subprocess:
+                    res.append(s[i:j + 1])
+                    i = j + 1
+                    continue
+                try:
+                    if allow_shell:
+                        proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=subprocess_timeout)
+                    else:
+                        proc = subprocess.run(shlex.split(cmd), shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=subprocess_timeout)
+                except subprocess.TimeoutExpired:
+                    raise ValueError(f"Command substitution timed out: {cmd}")
+                if proc.returncode != 0:
+                    raise ValueError(f"Command substitution failed: {cmd}: {proc.stderr.strip()}")
+                out = proc.stdout.rstrip('\n')
+                res.append(out)
+                i = j + 1
+                continue
+
+            if (i + 1) < inp_len and s[i + 1] == "{":
+                j = i + 2
+                depth = 1
+                while j < inp_len:
+                    if s[j] == "{":
+                        depth += 1
+                    elif s[j] == "}":
+                        depth -= 1
+                        if depth == 0:
+                            break
+                    j += 1
+                if j >= inp_len:
+                    raise ValueError(f"Unterminated braced expansion in: {input}")
+                inner = s[i + 2:j]
+                res.append(eval_braced(inner))
+                i = j + 1
+                continue
+
+            j = i + 1
+            if j < inp_len:
+                ch2 = s[j]
+                if ch2.isdigit():
+                    start = j
+                    while j < inp_len and s[j].isdigit():
+                        j += 1
+                    idx = int(s[start:j]) - 1
+                    if args and 0 <= idx < len(args):
+                        res.append(args[idx])
+                    else:
+                        res.append(s[i:j])
+                    i = j
+                    continue
+
+                if ch2.isalpha() or ch2 == "_":
+                    start = j
+                    while j < inp_len and (s[j].isalnum() or s[j] == "_"):
+                        j += 1
+                    name = s[start:j]
+                    val = get_var(name)
+                    if val is None:
+                        res.append(s[i:j])
+                    else:
+                        res.append(val)
+                    i = j
+                    continue
+
+            res.append(exp_chr)
+            i += 1
+
+        return "".join(res)
+
+    ###########################################################################
+
+    @staticmethod
+    def expand_simple(
+        input: str,
+        args: list[str] | None = None,
+        vars: dict[str, str] | None = None,
+        exp_chr: str = "%",
+        esc_chr: str = "^",
+    ) -> str:
+        if input is None:
+            return ""
+
+        if vars is None:
+            vars = os.environ
+
+        s = input
+        i = 0
+        ln = len(s)
+        out: list[str] = []
+
+        while i < ln:
+            ch = s[i]
+
+            if ch == esc_chr:
+                if (i + 1) < ln:
+                    nxt = s[i + 1]
+                    if nxt == exp_chr:
+                        if (i + 2) < ln and s[i + 2] == exp_chr:
+                            out.append(exp_chr)
+                            i += 3
+                            continue
+                        if (i + 2) < ln and s[i + 2].isdigit():
+                            j = i + 2
+                            while j < ln and s[j].isdigit():
+                                j += 1
+                            out.append(exp_chr + s[i + 2:j])
+                            i = j
+                            continue
+                        k = s.find(exp_chr, i + 2)
+                        if k != -1:
+                            out.append(s[i + 1:k + 1])
+                            i = k + 1
+                            continue
+                        out.append(exp_chr)
+                        i += 2
+                        continue
+                    out.append(nxt)
+                    i += 2
+                    continue
+                else:
+                    out.append(esc_chr)
+                    i += 1
+                    continue
+
+            if ch != exp_chr:
+                out.append(ch)
+                i += 1
+                continue
+
+            if (i + 1) < ln and s[i + 1] == exp_chr:
+                out.append(exp_chr)
+                i += 2
+                continue
+
+            j = i + 1
+            if j < ln and s[j] == "~":
+                k = j + 1
+                mods = []
+                while k < ln and s[k].isalpha():
+                    mods.append(s[k])
+                    k += 1
+                if k < ln and s[k].isdigit():
+                    start = k
+                    while k < ln and s[k].isdigit():
+                        k += 1
+                    token = s[start:k]
+                    end_with_percent = False
+                    if k < ln and s[k] == exp_chr:
+                        end_with_percent = True
+                        k += 1
+
+                    idx = int(token) - 1
+                    if args and 0 <= idx < len(args):
+                        tokval = args[idx]
+                        def part_drive(t):
+                            return os.path.splitdrive(t)[0]
+                        def part_path(t):
+                            p = os.path.dirname(t)
+                            if p and not p.endswith(os.sep):
+                                p = p + os.sep
+                            return p
+                        def part_name(t):
+                            return os.path.splitext(os.path.basename(t))[0]
+                        def part_ext(t):
+                            return os.path.splitext(t)[1]
+                        def part_full(t):
+                            return os.path.abspath(t)
+
+                        out_frag = []
+                        for m in mods:
+                            if m == "d":
+                                out_frag.append(part_drive(tokval))
+                            elif m == "p":
+                                out_frag.append(part_path(tokval))
+                            elif m == "n":
+                                out_frag.append(part_name(tokval))
+                            elif m == "x":
+                                out_frag.append(part_ext(tokval))
+                            elif m == "f":
+                                out_frag.append(part_full(tokval))
+                            else:
+                                pass
+                        out.append("".join(out_frag))
+                    else:
+                        if end_with_percent:
+                            out.append(exp_chr + s[j:k] + exp_chr)
+                        else:
+                            out.append(exp_chr + s[j:k])
+                    i = k
+                    continue
+
+            if j < ln and s[j].isdigit():
+                start = j
+                while j < ln and s[j].isdigit():
+                    j += 1
+                end_with_percent = False
+                if j < ln and s[j] == exp_chr:
+                    end_with_percent = True
+                    token = s[start:j]
+                    j += 1
+                else:
+                    token = s[start:j]
+
+                idx = int(token) - 1
+                if args and 0 <= idx < len(args):
+                    out.append(args[idx])
+                else:
+                    if end_with_percent:
+                        out.append(exp_chr + token + exp_chr)
+                    else:
+                        out.append(exp_chr + token)
+                i = j
+                continue
+
+            if j < ln and s[j] == "*":
+                j += 1
+                if j < ln and s[j] == exp_chr:
+                    j += 1
+                if args:
+                    out.append(" ".join(args))
+                else:
+                    out.append(exp_chr + "*")
+                i = j
+                continue
+
+            k = s.find(exp_chr, j)
+            if k == -1:
+                out.append(exp_chr)
+                i += 1
+                continue
+
+            token = s[j:k]
+            if not token:
+                out.append(exp_chr)
+                out.append(exp_chr)
+                i = k + 1
+                continue
+
+            if ":~" in token:
+                base, suff = token.split(":~", 1)
+                if not base:
+                    out.append(exp_chr + token + exp_chr)
+                    i = k + 1
+                    continue
+                if "," in suff:
+                    start_str, length_str = suff.split(",", 1)
+                else:
+                    start_str = suff
+                    length_str = None
+                try:
+                    start = int(start_str)
+                    length = int(length_str) if (length_str is not None and length_str != "") else None
+                except Exception:
+                    out.append(exp_chr + token + exp_chr)
+                    i = k + 1
+                    continue
+
+                val = vars.get(base)
+                if val is None:
+                    out.append(exp_chr + token + exp_chr)
+                    i = k + 1
+                    continue
+
+                text = val
+                if start < 0:
+                    start = len(text) + start
+                    if start < 0:
+                        start = 0
+                if length is None:
+                    substr = text[start:]
+                else:
+                    if length < 0:
+                        substr = ""
+                    else:
+                        substr = text[start:start + length]
+                out.append(substr)
+                i = k + 1
+                continue
+
+            name = token
+            val = vars.get(name)
+            if val is None:
+                out.append(exp_chr + name + exp_chr)
+            else:
+                out.append(val)
+
+            i = k + 1
+
+        return "".join(out)
 
 
 ###############################################################################
