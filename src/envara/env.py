@@ -178,9 +178,7 @@ class Env:
 
     @staticmethod
     def get_platform_stack(
-        flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT,
-        prefix: str | None = None,
-        suffix: str | None = None,
+        flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT
     ) -> list[str]:
         """
         Get the stack (list) of platforms from more generic to more specific
@@ -188,20 +186,9 @@ class Env:
 
         :param flags: Controls which items will be added to the stack
         :type flags: EnvPlatformStackFlags
-        :param prefix: A string to prepend every platform name with
-        :type prefix: str
-        :param suffix: A string to append to every platform name
-        :type suffix: str
-        :return: A list of all relevant platforms with an optional decoration
+        :return: A list of all relevant platforms
         :rtype: list[str]
         """
-
-        # Adjust parameters
-
-        prefix: str = "" if (prefix is None) else prefix
-        suffix: str = "" if (suffix is None) else suffix
-
-        is_decorated: bool = True if (prefix or suffix) else False
 
         # Initialize the return value
 
@@ -241,18 +228,6 @@ class Env:
                 elif platform == Env.PLATFORM_WINDOWS:
                     if not Env.IS_WINDOWS:
                         continue
-
-                # Decorate the platform name if needed
-                # If the platform name is empty, and suffix starts with prefix
-                # (like "." and ".env"), take suffix alone (i.e. merge)
-
-                if is_decorated:
-                    if ((not platform) and prefix and suffix and (
-                        suffix[len(prefix) - 1] == prefix[0]
-                    )):
-                        platform = f"{prefix}{platform}{suffix[1:]}"
-                    else:
-                        platform = f"{prefix}{platform}{suffix}"
 
                 # If the platform name was not added yet, add it
 

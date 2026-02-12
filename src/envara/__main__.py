@@ -40,31 +40,30 @@ Note that the leading dot is optional, except for .env, extension can be
 changed, <sys.platform> lowercased, each file loaded once:
 
 For any platform:
-    .env
-    [.]any.env
+    .env, .env.any, [.]any.env
 
 Android, Linux:
-    [.]posix.env
-    [.]linux.env
+    .env.posix, [.]posix.env
+    .env.linux, [.]linux.env
 BSD-like:
-    [.]posix.env
-    [.]bsd.env
+    .env.posix, [.]posix.env
+    .env.bsd, [.]bsd.env
 Cygwin, MSYS:
-    [.]posix.env
+    .env.posix, [.]posix.env
 iOS, iPadOS, macOS:
-    [.]posix.env
-    [.]bsd.env
-    [.]darwin.env
+    .env.posix, [.]posix.env
+    .env.bsd, [.]bsd.env
+    .env.darwin, [.]darwin.env
 Java:
-    [.]posix.env (on POSIX platforms)
-    [.]windows.env (on Windows)
+    .env.posix, [.]posix.env (on POSIX platforms)
+    .env.windows, [.]windows.env (on Windows)
 VMS:
-    [.]vms.env
+    .env.vms, [.]vms.env
 Windows:
-    [.]windows.env
+    .env.windows, [.]windows.env
 
 For any platform again:
-    [.]<sys.platform>.env
+    .env.<sys.platform>, [.]<sys.platform>.env
 
 None of these files is required, and will be picked only if found and verified
 to be relevant to the platform you are running under. The platform includes not
@@ -76,18 +75,27 @@ portable. For instance, you are going to call Google Chrome from your script
 in headless mode to save some screenshots. In that case, you can define a
 variable CMD_CHROME as follows:
 
-    .env:
+    .env OR .env.any OR.any.env OR any.env:
+
         APP_NAME = $1 # need to pass a list of command-line arguments
         APP_VERSION = "${2}_$3"
         PROJECT_PATH = ~/Projects/$APP_NAME
         ARG_HEADLESS = "--headless --disable-gpu --default-background-color=00000000 --window-size={w},{h} --screenshot={o} file://{i}"
-    .linux.env:
+
+    .env.linux OR .linux.env OR linux.env:
+
         CMD_CHROME = "google-chrome $ARG_HEADLESS"
-    .bsd.env
-        CMD_CHROME = "chrome $ARG_HEADLESS"
-    .macos.env
+
+    .env.bsd OR .bsd.env OR bsd.env
+
+       CMD_CHROME = "chrome $ARG_HEADLESS"
+
+    .env.macos OR .macos.env OR macos.env
+
         CMD_CHROME = "\\\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\\\" $ARG_HEADLESS"
-    .windows.env
+
+    .env.windows
+
         CMD_CHROME = "chrome $ARG_HEADLESS"
 """
     )

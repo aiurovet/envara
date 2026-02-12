@@ -102,7 +102,7 @@ class DotEnv:
             # Expand the value and add to the dict of enviroment variables
 
             if val:
-                expanded, _info = Env.expand(val, args, expand_flags)
+                expanded, _ = Env.expand(val, args, expand_flags)
                 environ[key] = expanded
             elif key and key in environ:
                 del environ[key]
@@ -189,19 +189,8 @@ class DotEnv:
 
         # Get platform hierarchy as a list of dot-env files if needed
 
-        if file_flags & DotEnvFileFlags.SKIP_DEFAULT_FILES:
-            item_names = []
-        else:
-            if (file_flags & DotEnvFileFlags.VISIBLE_FILES):
-                prefix = ""
-            else:
-                prefix = ext_sep
-
-            item_names = Env.get_platform_stack(
-                EnvPlatformStackFlags.ADD_MAX,
-                prefix,
-                suffix,
-            )
+        item_names = [] if file_flags & DotEnvFileFlags.SKIP_DEFAULT_FILES \
+            else item_names = Env.get_platform_stack(EnvPlatformStackFlags.ADD_MAX)
 
         # Add custom path if passed
 
