@@ -50,9 +50,6 @@ class Env:
     # True if the app is running under Windows or OS/2
     IS_WINDOWS: ClassVar[bool] = os.sep == "\\"
 
-    # A text indicating any platform, but not empty
-    PLATFORM_ANY: ClassVar[str] = "any"
-
     # A text indicating a POSIX-compatible platform
     PLATFORM_POSIX: ClassVar[str] = "posix"
 
@@ -70,7 +67,7 @@ class Env:
 
     # Internal dictionary: regex => list-of-platform-names
     __platform_map: ClassVar[dict[str, list[str]]] = {
-        "": ["", PLATFORM_ANY, PLATFORM_POSIX], # the latter is checked
+        "": ["", PLATFORM_POSIX], # the latter is checked
         "^aix": ["aix"],
         "android": ["linux", "android"],
         "^atheos": ["atheos"],
@@ -178,15 +175,22 @@ class Env:
 
     @staticmethod
     def get_platform_stack(
-        flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT
+        flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT,
+        prefix: str | None = None,
+        suffix: str | None = None,
     ) -> list[str]:
         """
         Get the stack (list) of platforms from more generic to more specific
-        ones
+        ones. Optionally add a prefix and/or suffix to every platform name
+        (used by DotEnv to form filenames like '.env' or '.linux.env').
 
         :param flags: Controls which items will be added to the stack
         :type flags: EnvPlatformStackFlags
-        :return: A list of all relevant platforms
+        :param prefix: optional string to prepend to every platform name
+        :type prefix: str | None
+        :param suffix: optional string to append to every platform name
+        :type suffix: str | None
+        :return: A list of all relevant platforms (optionally decorated)
         :rtype: list[str]
         """
 
@@ -216,12 +220,6 @@ class Env:
                 if not platform:
                     if (flags & EnvPlatformStackFlags.ADD_EMPTY) == 0:
                         continue
-                elif platform == Env.PLATFORM_ANY:
-                    if (flags & EnvPlatformStackFlags.ADD_ANY) == 0:
-                        continue
-                elif platform == Env.PLATFORM_THIS:
-                    if (flags & EnvPlatformStackFlags.ADD_CURRENT) == 0:
-                        continue
                 elif platform == Env.PLATFORM_POSIX:
                     if not Env.IS_POSIX:
                         continue
@@ -233,6 +231,13 @@ class Env:
 
                 if platform not in result:
                     result.append(platform)
+
+        # Optionally decorate with prefix/suffix
+        if prefix or suffix:
+            decorated: list[str] = []
+            for p in result:
+                decorated.append(f"{prefix or ''}{p}{suffix or ''}")
+            return decorated
 
         # Return the accumulated list
 

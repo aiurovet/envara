@@ -16,12 +16,6 @@ class DotEnvFileFlags(IntFlag):
     # Drop internal accumulations from the previous runs
     RESET = 1 << 0
 
-    # Do not load the default files
-    SKIP_DEFAULT_FILES = 1 << 1
-
-    # Do not prepend system-specfic files with a dot
-    VISIBLE_FILES = 1 << 2
-
     # Default combination
     DEFAULT = NONE
 

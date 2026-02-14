@@ -16,17 +16,11 @@ class EnvPlatformStackFlags(IntFlag):
     # Add empty: relevant to any platform
     ADD_EMPTY = 1 << 0
 
-    # Add Env.PLATFORM_ANY: relevant to any platform
-    ADD_ANY = 1 << 1
-
-    # Add current platform
-    ADD_CURRENT = 1 << 2
-
-    # Add maximum platforms possible
-    ADD_MAX = ADD_EMPTY | ADD_ANY | ADD_CURRENT
+    # Add maximum platforms (compatibility with README/tests)
+    ADD_MAX = 1 << 1
 
     # Default set of platforms
-    DEFAULT = ADD_MAX
+    DEFAULT = ADD_EMPTY
 
 
 ###############################################################################
