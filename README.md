@@ -20,7 +20,7 @@ This example can be used to generate all launcher icons for a _Flutter_ project.
    ...
    Env.expand("Home $HOME, arg #1: $1", plain_args)
    ...
-   DotEnv.load_from_file(Path("/path/to/.my.env"), default_dir="/home/user/local/bin")
+   DotEnv.load(dir="/home/user/local/bin")
    ```
 
 ### How to Expand Environment Variables and Arguments in a String
