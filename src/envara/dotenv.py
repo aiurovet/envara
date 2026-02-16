@@ -52,22 +52,21 @@ class DotEnv:
     @staticmethod
     def get_file_stack(
         dir: Path | None = None,
-        with_platforms: bool = True,
-        all_of: list[str] | None = None,
+        flags: DotEnvFileFlags = DotEnvFileFlags.ADD_PLATFORMS,
+        *all_of: list[str] | str | None,
     ) -> list[Path]:
         """
         Get list of eligible files. Adds a list of platform names if
-        with_platforms = True (default)
+        `with_platforms = True` (default)
 
         :param dir: directory to look in
         :type dir: Path | None
         :param with_platforms: add platform names to filters
         :type with_platforms: bool, default: True
-        :param all_of: list of filters with every to be matched in
-            the filename; like runtime environment, language code, OS;
-            wildcards are allowed:
-            [',dev,\*test\*,prod\*', 'en,es,fr', 'linux,windows,darwin,bsd,*os']
-        :type all_of: list[str] | None
+        :param all_of: filters (lists of strings or strings) the filename
+            should be matched against: `DotEnv.get_file_stack('prod*',
+            'es', ['linux','windows','darwin','bsd','*os'])`
+        :type all_of: unlimited arguments of type list[str] or str
         :rtype: list[Path]
         """
 
@@ -77,34 +76,34 @@ class DotEnv:
 
         # Add a regex for the default filename
 
-        regexi: list[re.Pattern] = [
-            DotEnv.__append_filter(regexi, "")
-        ]
+        regexi: list[re.Pattern] = []
 
         # Add regexi for the passed filters
 
-        if all_of:
-            for f in all_of:
-                if f:
-                    DotEnv.__append_filter(regexi, f)
+        for f in all_of:
+            DotEnv.__append_filter(regexi, f)
 
         # Add regexi for the platforms if required
 
-        if (with_platforms):
+        if flags & DotEnvFileFlags.ADD_PLATFORMS:
             DotEnv.__append_filter(
                 regexi,
                 ",".join(Env.get_platform_stack(EnvPlatformStackFlags.NONE))
             )
 
+        # Ensure the defualt filter is added
+
+        if len(regexi) <= 0:
+            DotEnv.__append_filter(regexi, None)
+
         # Grab all files and filter those to the result list
 
-        has_regexi: bool = len(regexi) > 0
         result: list[Path] = []
 
         for file in dir.iterdir():
             name: str = file.name
 
-            if (not has_regexi) or all(r.search(name) for r in regexi):
+            if all(r.search(name) for r in regexi):
                 result.append(dir / name)
 
         # Finish
@@ -115,10 +114,10 @@ class DotEnv:
 
     @staticmethod
     def load(
-        path: Path | str | None = None,
-        dir: Path | str | None = None,
+        dir: Path | None = None,
         file_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT,
         expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
+        *all_of: list[str] | str | None,
     ) -> str:
         """
         Load environment variables from a .env-compliant file
@@ -180,7 +179,7 @@ class DotEnv:
     @staticmethod
     def read_text(
         path: Path | str | None = None,
-        file_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT,
+        file_flags: DotEnvFileFlags = DotEnvFileFlags.ADD_PLATFORMS,
         default_dir: Path | str | None = None,
         alt_ext: str | None = None,
     ) -> str:
@@ -280,7 +279,7 @@ class DotEnv:
     @staticmethod
     def __append_filter(
         target: list[re.Pattern],
-        source: str
+        source: list[str] | str | None
     ):
         """
         Attach delimiters to source items, create patterns and append
@@ -295,30 +294,43 @@ class DotEnv:
 
         # Making variable name shorter for better clarity
 
-        i: str = DotEnv.INDICATOR
+        i: str = f"({DotEnv.INDICATOR})"
+
+        # Define a pattern for all allowed separators as well as default
+        # filename pattern
+
+        s: str = r"[\.\-_]"
+        p: str = f"^{s}?{i}{s}?$"
 
         # If source filters are not present, add the default regex and finish
 
         if not source:
-            target.append(re.compile(f"^\.{i}$"))
+            target.append(re.compile(p))
             return
 
+        # Define the derived pattern for all allowed separators between the
+        # indicator and source or vice versa: a single separator pattern or
+        # two separator patterns with something else inbetween
+
+        m = f"({s}|{s}.+{s})"
+
         # Convert source to a regular expression pattern string replacing the
-        # list item separator and wildcards into the regular expression
+        # list item separator and wildcards with the regular expression
         # equivalents
 
-        s: str = re.escape(source.replace(r"\\", r"\u0001"))\
+        x: str = ",".join(source) if isinstance(source, list) else source
+
+        x = "(" + re.escape(x.replace(r"\\", r"\u0001"))\
             .replace(",", "|")\
             .replace(r"\?", ".")\
             .replace(r"\*", ".*")\
-            .replace(r"\u0001", r"\\")
+            .replace(r"\u0001", r"\\") + ")"
 
         # Compose the final pattern, compile that into a regular expression
         # and append to the target list
 
-        target.append(re.compile(
-            f"^\.{i}$|\.{i}(\.|\..+\.)({s})(\.|$)|\.({s})(\.|\..+\.){i}(\.|$)"
-        ))
+        p = f"{p}|(^|{s}){i}{m}{x}({s}|$)|(^|{s}){x}{m}{i}({s}|$)"
+        target.append(re.compile(p))
 
         return
 
