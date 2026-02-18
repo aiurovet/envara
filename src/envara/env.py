@@ -19,7 +19,7 @@ import subprocess
 import shlex
 from typing import Any, ClassVar
 
-from env_expand_flags import EnvExpandFlags
+from env_exp_flags import EnvExpFlags
 from env_platform_stack_flags import EnvPlatformStackFlags
 from env_quote_type import EnvQuoteType
 from env_parse_info import EnvParseInfo
@@ -95,7 +95,7 @@ class Env:
     def expand(
         input: str,
         args: list[str] | None = None,
-        flags: EnvExpandFlags | None = None,
+        flags: EnvExpFlags | None = None,
         strip_spaces: bool = True,
         escapes: str = None,
         expands: str = None,
@@ -125,7 +125,7 @@ class Env:
 
         # Map flags to cutters/hard_quotes/unescape behaviours
 
-        if (flags & EnvExpandFlags.REMOVE_LINE_COMMENT) and (cutters is None):
+        if (flags & EnvExpFlags.REMOVE_LINE_COMMENT) and (cutters is None):
             cutters = "#"
 
         info: EnvParseInfo
@@ -141,12 +141,12 @@ class Env:
 
         # SKIP_SINGLE_QUOTED prevents any expansion
 
-        if (flags & EnvExpandFlags.SKIP_SINGLE_QUOTED) and (info.quote_type.name == "SINGLE"):
+        if (flags & EnvExpFlags.SKIP_SINGLE_QUOTED) and (info.quote_type.name == "SINGLE"):
             return (info.result, info)
 
         # SKIP_ENVIRON forcefully disables env var expansion.
 
-        vars_dict = {} if (flags & EnvExpandFlags.SKIP_ENVIRON) else os.environ
+        vars_dict = {} if (flags & EnvExpFlags.SKIP_ENV_VARS) else os.environ
 
         # Perform POSIX-style or Windows-style expansions based on
         # the first active expand character detected during unquoting
@@ -164,7 +164,7 @@ class Env:
 
         # Perform unescape if requested
 
-        if (flags & EnvExpandFlags.UNESCAPE):
+        if (flags & EnvExpFlags.UNESCAPE):
             info.result = Env.unescape(info.result, escape=info.esc_chr)
 
         # Return the final result
@@ -611,8 +611,7 @@ class Env:
         vars: dict[str, str] | None = os.environ,
         exp_chr: str = "$",
         esc_chr: str = "\\",
-        allow_subprocess: bool = True,
-        allow_shell: bool = True,
+        exp_flags: EnvExpFlags = EnvExpFlags.DEFAULT,
         subprocess_timeout: float | None = None,
     ) -> str:
         if input is None:
@@ -620,6 +619,13 @@ class Env:
 
         if vars is None:
             vars = os.environ
+
+        allow_shell: bool =\
+            (exp_flags & EnvExpFlags.ALLOW_SHELL) != 0
+
+        allow_subprocess: bool =\
+            allow_shell or\
+            ((exp_flags & EnvExpFlags.ALLOW_SUBPROC) != 0)
 
         s = input
         res: list[str] = []
@@ -679,7 +685,7 @@ class Env:
                 assign_colon = rest.startswith(":=")
                 word = rest[2:] if assign_colon else rest[1:]
                 if (not is_set) or (assign_colon and is_null):
-                    new_val = Env.expand_posix(word, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+                    new_val = Env.expand_posix(word, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
                     try:
                         if vars is not None:
                             vars[name] = new_val
@@ -760,7 +766,7 @@ class Env:
                 if core.startswith("(?s:") and core.endswith(")\\Z"):
                     core = core[4:-3]
 
-                repl_eval = Env.expand_posix(repl, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+                repl_eval = Env.expand_posix(repl, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
 
                 if anchor == "#":
                     text = val
@@ -820,32 +826,32 @@ class Env:
             if rest.startswith(":-"):
                 word = rest[2:]
                 if (not is_set) or is_null:
-                    return Env.expand_posix(word, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+                    return Env.expand_posix(word, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
                 return val
             if rest.startswith("-"):
                 word = rest[1:]
                 if not is_set:
-                    return Env.expand_posix(word, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+                    return Env.expand_posix(word, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
                 return val
             if rest.startswith(":+"):
                 word = rest[2:]
                 if is_set and not is_null:
-                    return Env.expand_posix(word, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+                    return Env.expand_posix(word, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
                 return ""
             if rest.startswith("+"):
                 word = rest[1:]
                 if is_set:
-                    return Env.expand_posix(word, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+                    return Env.expand_posix(word, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
                 return ""
             if rest.startswith(":?"):
                 word = rest[2:]
                 if (not is_set) or is_null:
-                    raise ValueError(Env.expand_posix(word, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout) or f"{name}: parameter null or not set")
+                    raise ValueError(Env.expand_posix(word, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout) or f"{name}: parameter null or not set")
                 return val
             if rest.startswith("?"):
                 word = rest[1:]
                 if not is_set:
-                    raise ValueError(Env.expand_posix(word, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout) or f"{name}: parameter not set")
+                    raise ValueError(Env.expand_posix(word, args=args, vars=vars, subprocess_timeout=subprocess_timeout) or f"{name}: parameter not set")
                 return val
 
             if is_set:
@@ -885,7 +891,7 @@ class Env:
                 if j >= inp_len:
                     raise ValueError(f"Unterminated backtick command substitution in: {input}")
                 inner = s[i + 1:j]
-                cmd = Env.expand_posix(inner, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+                cmd = Env.expand_posix(inner, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
                 if not allow_subprocess:
                     res.append(s[i:j + 1])
                     i = j + 1
@@ -928,7 +934,7 @@ class Env:
                 if j >= inp_len:
                     raise ValueError(f"Unterminated command substitution in: {input}")
                 inner = s[i + 2:j]
-                cmd = Env.expand_posix(inner, args=args, vars=vars, allow_subprocess=allow_subprocess, allow_shell=allow_shell, subprocess_timeout=subprocess_timeout)
+                cmd = Env.expand_posix(inner, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
                 if not allow_subprocess:
                     res.append(s[i:j + 1])
                     i = j + 1

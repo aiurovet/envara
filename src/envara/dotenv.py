@@ -20,7 +20,7 @@ from typing import Final
 
 from dotenv_file_flags import DotEnvFileFlags
 from env import Env
-from env_expand_flags import EnvExpandFlags
+from env_exp_flags import EnvExpFlags
 from env_platform_stack_flags import EnvPlatformStackFlags
 
 ###############################################################################
@@ -31,11 +31,11 @@ from env_platform_stack_flags import EnvPlatformStackFlags
 class DotEnv:
 
     # Default set of string expansion flags
-    DEFAULT_EXPAND_FLAGS: Final[EnvExpandFlags] = (
-        EnvExpandFlags.UNESCAPE
-        | EnvExpandFlags.REMOVE_LINE_COMMENT
-        | EnvExpandFlags.REMOVE_QUOTES
-        | EnvExpandFlags.SKIP_SINGLE_QUOTED
+    DEFAULT_EXPAND_FLAGS: Final[EnvExpFlags] = (
+        EnvExpFlags.UNESCAPE
+        | EnvExpFlags.REMOVE_LINE_COMMENT
+        | EnvExpFlags.REMOVE_QUOTES
+        | EnvExpFlags.SKIP_SINGLE_QUOTED
     )
 
     # Default dot-env file type without leading extension separator
@@ -116,20 +116,24 @@ class DotEnv:
     def load(
         dir: Path | None = None,
         file_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT,
-        expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
+        exp_flags: EnvExpFlags = DEFAULT_EXPAND_FLAGS,
         *all_of: list[str] | str | None,
     ) -> str:
         """
-        Load environment variables from a .env-compliant file
+        Load environment variables from a .env-compliant file(s)
 
-        :param path: a file to load from (optional)
-        :type path: Path
         :param dir: default directory to locate platform-specific files
         :type dir: Path | str | None
+        :param file_flags: Describes what and how to load
+        :type file_flags: DotEnvFileFlags
+        :param file_flags: Describes how to expand env vars and app args
+        :type exp_flags: EnvExpandFlags
         """
 
-        content = DotEnv.read_text(path, file_flags, dir)
-        DotEnv.load_from_str(content, expand_flags=expand_flags)
+        files: list[Path] = DotEnv.get_file_stack(dir, file_flags, all_of)
+        content: str = DotEnv.read_text(files, file_flags, dir)
+
+        DotEnv.load_from_str(content, exp_flags=exp_flags)
 
         return content
 
@@ -139,7 +143,7 @@ class DotEnv:
     def load_from_str(
         data: str | None,
         args: list[str] | None = None,
-        expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
+        exp_flags: EnvExpFlags = DEFAULT_EXPAND_FLAGS,
     ) -> str:
         """
         Load environment variables from a string
@@ -167,7 +171,7 @@ class DotEnv:
             # Expand the value and add to the dict of enviroment variables
 
             if val:
-                expanded, _ = Env.expand(val, args, expand_flags)
+                expanded, _ = Env.expand(val, args, exp_flags)
                 environ[key] = expanded
             elif key and key in environ:
                 del environ[key]
@@ -178,101 +182,53 @@ class DotEnv:
 
     @staticmethod
     def read_text(
-        path: Path | str | None = None,
-        file_flags: DotEnvFileFlags = DotEnvFileFlags.ADD_PLATFORMS,
-        default_dir: Path | str | None = None,
-        alt_ext: str | None = None,
+        files: list[Path],
+        flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT
     ) -> str:
         """
-        Load environment variables from .env-compliant files taken either from
-        the directory of the custom file (path) or from default_dir if passed,
-        or from the current directory. The files to load are defined as the
-        maximum platform stack, as well as the custom one.
+        Load the content of all files as text and return. May
+        discard previously loaded content if the special flag
+        is set
 
-        :param path: a path to a custom file to load from after the default
-                     files were loaded (unless the latter was turned off)
-        :type path: Path
-        :param file_flags: Describes what and how to load
-        :type file_flags: DotEnvFileFlags
-        :param default_dir: Default directory for the default files
-        :type default_dir: str | Path | None
-        :param alt_ext: Alternative extension for the default files
-        :type alt_ext: str
+        :param files: list of Paths to read text from
+        :type files: list[Path]
+        :param flags: Describes what and how to load
+        :type flags: DotEnvFileFlags
         """
 
-        # Initialise suffix for the list of files
+        # Initialise the content
 
-        ext_sep = os.extsep
-        suffix = alt_ext or DotEnv.INDICATOR
-
-        if suffix[0] != ext_sep:
-            suffix = ext_sep + suffix
-
-        # Resolve base directory where default/platform files are located
-
-        if default_dir:
-            base_dir = Path(default_dir) if not isinstance(default_dir, Path) else default_dir
-        elif path and isinstance(path, Path) and path.is_absolute() and not path.is_dir():
-            # if path is a file, use its parent as the base dir
-            base_dir = path.absolute().parent
-        else:
-            base_dir = Path.cwd()
-
-        # Initialise
-
-        content = ""
+        result: list[str] = []
 
         # If required, discard information about the files already loaded
 
-        if file_flags & DotEnvFileFlags.RESET:
+        if flags & DotEnvFileFlags.RESET:
             DotEnv._loaded = []
 
-        # Ask Env for the platform filenames (with prefix and suffix applied)
-        platform_filenames = Env.get_platform_stack(
-            EnvPlatformStackFlags.ADD_EMPTY, ".", suffix
-        )
+        # Accumulate the content
 
-        # Load files for each platform filename
-        for platform_filename in platform_filenames:
-            file = base_dir / platform_filename
+        for file in files:
             file_str = str(file)
 
-            # If the file of that path wasn't loaded yet, and the file
-            # exists, load it
+            # If the file of that path was loaded aready, skip it
 
-            if file_str not in DotEnv._loaded:
-                try:
-                    if file.exists():
-                        content += f"{file.read_text()}\n"
-                        DotEnv._loaded.append(file_str)
-                except Exception:
-                    # Be tolerant of mock Path objects in tests
-                    try:
-                        content += f"{file.read_text()}\n"
-                        DotEnv._loaded.append(file_str)
-                    except Exception:
-                        # ignore unreadable files
-                        pass
+            if file_str in DotEnv._loaded:
+                continue
 
-        # If a custom path was passed and it is a file, load it last
-        if path and (not isinstance(path, Path) or not path.is_dir()):
-            custom_path = path if isinstance(path, Path) else Path(path)
-            custom_str = str(custom_path)
-            if custom_str not in DotEnv._loaded:
-                try:
-                    if custom_path.exists():
-                        content += f"{custom_path.read_text()}\n"
-                        DotEnv._loaded.append(custom_str)
-                except Exception:
-                    try:
-                        content += f"{custom_path.read_text()}\n"
-                        DotEnv._loaded.append(custom_str)
-                    except Exception:
-                        pass
+            # Avoid multiple loads of the same file 
 
-        # Return full content
+            DotEnv._loaded.append(file_str)
 
-        return content
+            # Read the file content ignoring any issue
+
+            try:
+                result.append(file.read_text())
+            except Exception:
+                pass
+
+        # Return the content
+
+        return "\n".join(result)
 
     ###########################################################################
 

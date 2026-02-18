@@ -9,13 +9,15 @@ from enum import IntFlag
 ###############################################################################
 
 
-class EnvExpandFlags(IntFlag):
+class EnvExpFlags(IntFlag):
     # No flag set
     NONE = 0
 
-    # Expand escaped characters: \\ or `\`, \n or `n, \uNNNN or `uNNNN`, etc.
-    # (depends on NATIVE_ESCAPE flag)
-    UNESCAPE = 1 << 0
+    # Execute raw shell commands like $(...) or `...` - expand_posix() only
+    ALLOW_SHELL = 1 << 0
+
+    # Parse shell commands like $(...) or `...` and execute - expand_posix() only
+    ALLOW_SUBPROC = 1 << 1
 
     # Remove hash "#" (outside the quotes if found) and everything beyond that
     REMOVE_LINE_COMMENT = 1 << 2
@@ -24,13 +26,17 @@ class EnvExpandFlags(IntFlag):
     REMOVE_QUOTES = 1 << 3
 
     # Do not expand environment variables
-    SKIP_ENVIRON = 1 << 4
+    SKIP_ENV_VARS = 1 << 4
 
     # If a string is embraced in apostrophes, don't expand it
     SKIP_SINGLE_QUOTED = 1 << 5
 
+    # Expand escaped characters: \\ or `\`, \n or `n, \uNNNN or `uNNNN`, etc.
+    # (depends on NATIVE_ESCAPE flag)
+    UNESCAPE = 1 << 6
+
     # Default set of flags
-    DEFAULT = UNESCAPE | REMOVE_QUOTES | SKIP_SINGLE_QUOTED
+    DEFAULT = ALLOW_SHELL | REMOVE_QUOTES | SKIP_SINGLE_QUOTED | UNESCAPE
 
 
 ###############################################################################

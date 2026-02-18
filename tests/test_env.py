@@ -1,6 +1,7 @@
 import os
 import pytest
 from env import Env
+from env_exp_flags import EnvExpFlags
 from env_platform_stack_flags import EnvPlatformStackFlags
 
 
@@ -214,19 +215,19 @@ def test_expand_posix_command_substitution_error():
 
 def test_expand_posix_command_subst_disabled():
     # when disabled, the original expression must remain intact
-    assert Env.expand_posix('$(printf "X")', allow_subprocess=False) == '$(printf "X")'
-    assert Env.expand_posix('`printf "Y"`', allow_subprocess=False) == '`printf "Y"`'
+    assert Env.expand_posix('$(printf "X")', exp_flags=0) == '$(printf "X")'
+    assert Env.expand_posix('`printf "Y"`', exp_flags=0) == '`printf "Y"`'
 
 
 def test_expand_posix_command_subst_no_shell():
     # no shell mode should still execute simple commands
-    assert Env.expand_posix('$(printf "Z")', allow_shell=False) == 'Z'
+    assert Env.expand_posix('$(printf "Z")', exp_flags=EnvExpFlags.ALLOW_SUBPROC) == 'Z'
 
 
 def test_expand_posix_command_subst_timeout():
     # use python to sleep; enforce tight timeout
     with pytest.raises(ValueError):
-        Env.expand_posix('$(python -c "import time; time.sleep(0.2)")', subprocess_timeout=0.01)
+        Env.expand_posix('$(python -c "import time; time.sleep(0.2)")', exp_flags=EnvExpFlags.ALLOW_SHELL, subprocess_timeout=0.01)
 
 # ---------------------------------------------------------------------------
 # expand_posix tests with backtick as escape character
@@ -260,7 +261,7 @@ def test_expand_posix_backtick_escape_braced_var(monkeypatch):
 
 def test_expand_posix_backtick_not_escape_when_cmd_disabled(monkeypatch):
     # when subprocess disabled, backtick is just a literal character
-    result = Env.expand_posix("`echo test`", esc_chr="`", allow_subprocess=False)
+    result = Env.expand_posix("`echo test`", esc_chr="`", exp_flags=EnvExpFlags.ALLOW_SHELL)
     assert result == "`echo test`"
 
 
@@ -285,7 +286,7 @@ def test_expand_posix_backtick_escape_in_nested_expansion(monkeypatch):
 
 def test_expand_posix_backtick_escape_command_subst(monkeypatch):
     # backtick escape should prevent command substitution with parentheses
-    result = Env.expand_posix("`$(echo test)", esc_chr="`", allow_subprocess=True)
+    result = Env.expand_posix("`$(echo test)", esc_chr="`", exp_flags=EnvExpFlags.ALLOW_SUBPROC)
     assert result == "$(echo test)"
 
 

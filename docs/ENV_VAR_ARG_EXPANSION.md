@@ -1,6 +1,6 @@
 # POSIX-style expansions implemented in envara
 
-This document describes the behaviour implemented in `Trying.expand_posix()` and the testing and safety guidance for using these features.
+This document describes the behaviour implemented in `Env.expand_posix()` and the testing and safety guidance for using these features.
 
 ## Supported constructs
 
@@ -72,18 +72,18 @@ Use these options when expanding untrusted input.
 ## Example usage
 
 ```py
-from envara.trying import Trying
+from env import Env
 
 # Expand a string with environment variables and defaults
-res = Trying.expand_posix("Home: ${HOME:-/home/default}, first arg: $1", args=["app"], allow_subprocess=False)
+res = Env.expand_posix("Home: ${HOME:-/home/default}, first arg: $1", args=["app"], exp_flags=EnvExpandFlags.ALLOW_SHELL)
 
 # Run a simple command substitution without shell
-res2 = Trying.expand_posix('$(printf "%s" $FOO)', allow_subprocess=True, allow_shell=False)
+res2 = Env.expand_posix('$(printf "%s" $FOO)', exp_flags=EnvExpandFlags.ALLOW_SUBPROCESS)
 ```
 
 ## Windows / symmetric expansion note
 
-Windows-style percent-delimited expansions are provided by `Trying.expand_symmetric()` (see `envara.trying`). This method supports `%NAME%`, `%1`, `%*`, `%%`, and simple `%~` modifiers (e.g., `%~dp1`) for extracting path components on Windows-like inputs. Additionally, it supports a substring form for named variables using the syntax `%NAME:~start[,length]%` — negative `start` counts from the end. The older name `expand_windows` was removed and replaced by `expand_symmetric` to better reflect its general-purpose nature.
+Windows-style percent-delimited expansions are provided by `Env.expand_symmetric()` (see `envara.trying`). This method supports `%NAME%`, `%1`, `%*`, `%%`, and simple `%~` modifiers (e.g., `%~dp1`) for extracting path components on Windows-like inputs. Additionally, it supports a substring form for named variables using the syntax `%NAME:~start[,length]%` — negative `start` counts from the end. The older name `expand_windows` was removed and replaced by `expand_symmetric` to better reflect its general-purpose nature.
 
 ## Security reminder
 

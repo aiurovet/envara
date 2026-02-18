@@ -16,7 +16,7 @@ This example can be used to generate all launcher icons for a _Flutter_ project.
 
    ```py
    from pathlib import Path
-   from envara import Env
+   from env import Env
    ...
    Env.expand("Home $HOME, arg #1: $1", plain_args)
    ...
@@ -127,13 +127,13 @@ __*Env.unquote*__ _(input: str, unescape: bool = True) -> tuple[str, EnvQuoteTyp
 
    A tuple of the first parameter unquoted, and the type of quotes encountered. This can be used to determine which quotes the string had were before.
 
-### Advanced POSIX expansions (Trying.expand_posix) 🔧
+### Advanced POSIX expansions (Env.expand_posix) 🔧
 
-This project provides a low-level POSIX-like expansion utility implemented as `Trying.expand_posix()` (used internally). It supports a rich subset of shell-style parameter expansions and command substitutions. Key features include:
+This project provides a low-level POSIX-like expansion utility implemented as `Env.expand_posix()` (used internally). It supports a rich subset of shell-style parameter expansions and command substitutions. Key features include:
 
-### Windows-style / symmetric expansion (Trying.expand_symmetric) ⚙️
+### Windows-style / symmetric expansion (Env.expand_symmetric) ⚙️
 
-For Windows-style percent-delimited expansions (e.g., `%NAME%`, `%1`, `%%` and modifiers like `%~dp1`), use `Trying.expand_symmetric()` from `envara.trying`. The older API name `expand_windows` has been removed in favour of the more general `expand_symmetric`.
+For Windows-style percent-delimited expansions (e.g., `%NAME%`, `%1`, `%%` and modifiers like `%~dp1`), use `Env.expand_symmetric()` from `envara.trying`. The older API name `expand_windows` has been removed in favour of the more general `expand_symmetric`.
 
 - `%NAME%` expands environment variables (or leaves the token intact if not present).
 - `%1`, `%2`, ... expand positional arguments supplied via `args` (1-based).
@@ -143,10 +143,9 @@ For Windows-style percent-delimited expansions (e.g., `%NAME%`, `%1`, `%%` and m
 Example:
 
 ```py
-from envara.trying import Trying
-Trying.expand_symmetric("Value %TEST_FOO% and arg %1", args=["one"], vars={"TEST_FOO": "bar"})
+from env import Env
+Env.expand_symmetric("Value %TEST_FOO% and arg %1", args=["one"], vars={"TEST_FOO": "bar"})
 ```
-
 
 - Variable expansion: `$NAME`, `${NAME}`, and positional arguments like `$1`.
 - Length operator: `${#NAME}` → length of the variable value.
@@ -170,12 +169,12 @@ Security note ⚠️: Command substitution executes system commands. Use `allow_
 
 Examples:
 
-- `Trying.expand_posix("Value $HOME and ${1:-default}")` → expands environment and positional args.
-- `Trying.expand_posix("${VAR//foo/X}")` → replace all occurrences of `foo` with `X`.
-- `Trying.expand_posix("$(printf \"%s\" $FOO)")` → run `printf` and insert its stdout (disabled if `allow_subprocess=False`).
+- `Env.expand_posix("Value $HOME and ${1:-default}")` → expands environment and positional args.
+- `Env.expand_posix("${VAR//foo/X}")` → replace all occurrences of `foo` with `X`.
+- `Env.expand_posix("$(printf \"%s\" $FOO)")` → run `printf` and insert its stdout (disabled if `exp_flags = EnvExpandFlags.ALLOW_SHELL`).
 
 Tests: see `tests/test_trying.py` for a comprehensive test suite covering operators, edge cases, nested expansions, and command substitution.
-Runnable example: see `examples/symmetric_example.py` for a short, runnable demonstration of `Trying.expand_symmetric()` (percent-delimited expansions).
+Runnable example: see `examples/symmetric_example.py` for a short, runnable demonstration of `Env.expand_symmetric()` (percent-delimited expansions).
 ---
 
 For a deeper developer-oriented description, see `docs/POSIX_EXPANSION.md` (new) for a complete reference, examples, and test descriptions.
