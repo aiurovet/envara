@@ -17,7 +17,7 @@ import sys
 import fnmatch
 import subprocess
 import shlex
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from env_exp_flags import EnvExpFlags
 from env_platform_stack_flags import EnvPlatformStackFlags
