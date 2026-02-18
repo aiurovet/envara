@@ -14,21 +14,23 @@ if __name__ == "__main__":
 
 envara (c) Alexander Iurovetski 2026
 
-A library to expand environment variables, user home, application arguments
-and escaped characters in arbitrary strings, as well as to load stacked
-dot-env files, remove line comments, unquote and and expand values as above
-(if the input was unquoted or enclosed in single quotes), then extend the
+A library to expand environment variables, application arguments and escaped
+in arbitrary strings, as well as to load stacked dot-env files, remove line
+comments, unquote and and expand values as above (if the input was unquoted
+or enclosed in single quotes), execute sub-commands, and finally, extend the
 environment.
 
 class Env:
     .expand()
-    .expandargs()
+    .expand_posix()
+    .expand_simple() # Windows-like
+    .get_platform_stack()
     .quote()
-    .remove_line_comment()
+    .unescape()
     .unquote()
           
 class DotEnv:
-    .load_from_file()
+    .load()
     .load_from_str()
     .read_text()
 
@@ -36,39 +38,56 @@ See README.md for more details about these calls
           
 Here is an incomplete list of dot-env files the latter method will look for
 
-Note that the leading dot is optional, except for .env, extension can be
-changed, <sys.platform> lowercased, each file loaded once:
+Note that the leading dot is optional, except for .env, <sys.platform> gets
+lowercased, each file loaded once, unless internal cache is dropped:
 
-For any platform:
-    .env, .env.any, [.]any.env
+== For any filter ==
+
+    .env
+
+== Platforms (added to the list of filters by default) ==
 
 Android, Linux:
+
     .env.posix, [.]posix.env
     .env.linux, [.]linux.env
+
 BSD-like:
+
     .env.posix, [.]posix.env
     .env.bsd, [.]bsd.env
+
 Cygwin, MSYS:
+
     .env.posix, [.]posix.env
+
 iOS, iPadOS, macOS:
+
     .env.posix, [.]posix.env
     .env.bsd, [.]bsd.env
     .env.darwin, [.]darwin.env
+
 Java:
+
     .env.posix, [.]posix.env (on POSIX platforms)
     .env.windows, [.]windows.env (on Windows)
+
 VMS:
+
     .env.vms, [.]vms.env
+
 Windows:
+
     .env.windows, [.]windows.env
 
 For any platform again:
+
     .env.<sys.platform>, [.]<sys.platform>.env
 
 None of these files is required, and will be picked only if found and verified
-to be relevant to the platform you are running under. The platform includes not
-only OSes, but also Java, Cygwin and MSYS as well as such artefact OSes as AIX,
-RiscOS, OpenVMS, OS/2, etc.
+to be relevant to the platform you are running under. The platform includes
+not only OSes, but also Java, Cygwin and MSYS as well as such artefact OSes as
+AIX, RiscOS, OpenVMS, OS/2, etc.
 
 This allows you to define extra environment variables to make your application
 portable. For instance, you are going to call Google Chrome from your script
@@ -97,6 +116,19 @@ variable CMD_CHROME as follows:
     .env.windows
 
         CMD_CHROME = "chrome $ARG_HEADLESS"
+
+== Extra filters ==
+
+You can also pass things like "dev" (runtime environment) or "es" (current
+language), as well as a list of all expected runtime environments and a list
+of all expected languages. All that will be considered while filtering .env
+files in a specified directory. Please note also that if a filename does not
+contain an element you are filtering on, it will be considered as common to
+the whole subset. For instance, having .env.es will imply it is applicable
+to any runtime env, or having .env.test will imply it is applicable to any
+selected language when running in "test".
+
+The filterable elements can appear in a filename in any order
 """
     )
 

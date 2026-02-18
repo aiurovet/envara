@@ -285,4 +285,33 @@ def test_load_reads_files_and_passes_flags(mocker):
     # Assert
     m_read_text.assert_called_once()
     m_load_from_str.assert_called_once_with("K=V", exp_flags=DotEnv.DEFAULT_EXPAND_FLAGS)
-    assert result == "K=V"
+
+
+def test_load_from_str_uses_env_expand(mocker):
+    # Arrange
+    m_environ = mocker.patch("os.environ", {})
+    m_expand = mocker.patch("dotenv.Env.expand", return_value=("EXPANDED", None))
+    data = "KEY=VALUE"
+
+    # Act
+    DotEnv.load_from_str(data)
+
+    # Assert
+    m_expand.assert_called_once_with("VALUE", None, DotEnv.DEFAULT_EXPAND_FLAGS)
+    assert m_environ["KEY"] == "EXPANDED"
+
+
+def test_load_from_str_passes_args_and_flags(mocker):
+    # Arrange
+    m_environ = mocker.patch("os.environ", {})
+    m_expand = mocker.patch("dotenv.Env.expand", return_value=("X", None))
+    data = "K=$1"
+    args = ["a1"]
+    flags = DotEnv.DEFAULT_EXPAND_FLAGS
+
+    # Act
+    DotEnv.load_from_str(data, args=args, exp_flags=flags)
+
+    # Assert
+    m_expand.assert_called_once_with("$1", args, flags)
+    assert m_environ["K"] == "X"

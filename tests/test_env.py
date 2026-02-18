@@ -3,13 +3,283 @@ import pytest
 from env import Env
 from env_exp_flags import EnvExpFlags
 from env_platform_stack_flags import EnvPlatformStackFlags
+from env_parse_info import EnvParseInfo
+from env_quote_type import EnvQuoteType
 
 
 # ---------------------------------------------------------------------------
-# Windows-style expansion via Env.expand_simple
+# Tests for Env.expand (uses Env.unquote -> expand_posix/expand_simple path)
 # ---------------------------------------------------------------------------
 
-def test_expand_posix_expand_posix_unbraced_env_var(monkeypatch):
+def test_expand_skips_single_quoted_when_flag_set(mocker):
+    # Arrange: make unquote report a SINGLE-quoted string
+    info = EnvParseInfo(input="'x'", result="quoted-result", exp_chr=EnvParseInfo.POSIX_EXP_CHR, esc_chr="\\", quote_type=EnvQuoteType.SINGLE)
+    mocker.patch.object(Env, "unquote", return_value=(None, info))
+    m_posix = mocker.patch.object(Env, "expand_posix")
+    m_simple = mocker.patch.object(Env, "expand_simple")
+
+    # Act
+    out, got = Env.expand("'x'", flags=EnvExpFlags.SKIP_SINGLE_QUOTED)
+
+    # Assert - expansion functions must not be called and original result returned
+    assert out == "quoted-result"
+    assert got is info
+    m_posix.assert_not_called()
+    m_simple.assert_not_called()
+
+
+def test_expand_uses_posix_and_unescape(mocker):
+    # Arrange: unquote reports POSIX expansion character
+    info = EnvParseInfo(input="$A", result="raw-val", exp_chr=EnvParseInfo.POSIX_EXP_CHR, esc_chr="\\", quote_type=None)
+    mocker.patch.object(Env, "unquote", return_value=(None, info))
+    m_posix = mocker.patch.object(Env, "expand_posix", return_value="posix-expanded")
+    m_unescape = mocker.patch.object(Env, "unescape", return_value="final-unescaped")
+
+    # Act
+    out, got = Env.expand("$A", args=["arg1"], flags=EnvExpFlags.UNESCAPE)
+
+    # Assert
+    m_posix.assert_called_once()
+    called_args, called_kwargs = m_posix.call_args
+    # first positional arg passed to expand_posix is the unquoted result
+    assert called_args[0] == "raw-val"
+    assert called_kwargs["args"] == ["arg1"]
+    assert called_kwargs["exp_chr"] == info.exp_chr
+    assert called_kwargs["esc_chr"] == info.esc_chr
+    # unescape must be invoked with expand_posix's result and the escape char
+    m_unescape.assert_called_once_with("posix-expanded", escape=info.esc_chr)
+    assert out == "final-unescaped"
+    assert got is info
+
+
+def test_expand_uses_simple_and_respects_skip_env_vars(mocker):
+    # Arrange: unquote reports Windows-style expansion char
+    info = EnvParseInfo(input="%X%", result="raw-simple", exp_chr=EnvParseInfo.WINDOWS_EXP_CHR, esc_chr="^", quote_type=None)
+    mocker.patch.object(Env, "unquote", return_value=(None, info))
+    m_simple = mocker.patch.object(Env, "expand_simple", return_value="simple-expanded")
+
+    # Act - request SKIP_ENV_VARS so vars dict should be empty
+    out, got = Env.expand("%X%", flags=EnvExpFlags.SKIP_ENV_VARS)
+
+    # Assert
+    m_simple.assert_called_once()
+    _, kw = m_simple.call_args
+    assert kw["vars"] == {}
+    assert out == "simple-expanded"
+    assert got is info
+
+def test_expand_with_none_input_returns_empty_and_info_result_set():
+    out, info = Env.expand(None)
+    assert out == ""
+    assert info.result == ""
+
+
+def test_expand_preserves_spaces_when_strip_false():
+    out, info = Env.expand("  val  ", strip_spaces=False)
+    assert out == "  val  "
+    assert info.quote_type == EnvQuoteType.NONE
+
+
+def test_expand_sets_cutters_on_remove_line_comment_flag():
+    out, info = Env.expand("A #comment", flags=EnvExpFlags.REMOVE_LINE_COMMENT)
+    assert out == "A"
+
+
+def test_expand_posix_respects_skip_env_vars(monkeypatch):
+    monkeypatch.setenv("SILENT", "yes")
+    out, _ = Env.expand("$SILENT", flags=EnvExpFlags.SKIP_ENV_VARS)
+    # when SKIP_ENV_VARS is set, env variables are not expanded
+    assert out == "$SILENT"
+
+# ---------------------------------------------------------------------------
+# Tests for Env.unescape and Env.unquote
+# ---------------------------------------------------------------------------
+
+def test_unescape_basic_and_codes():
+    # basic escapes, unicode and hex, and a literal backslash
+    inp = "\\n\\t\\u0041\\x41\\\\"
+    out = Env.unescape(inp)
+    # two consecutive backslashes in input cancel out in the current implementation
+    assert out == "\n\tAA"
+
+
+def test_unescape_strip_blanks_and_hex():
+    # hex escapes produce spaces which are stripped when requested
+    assert Env.unescape("\\x20a\\x20", strip_blanks=True) == "a"
+    # without strip_blanks the spaces remain
+    assert Env.unescape("\\x20a\\x20", strip_blanks=False) == " a "
+
+
+def test_unescape_invalid_hex_calls_fail_and_raises(mocker):
+    # Arrange - patch the private error handler to raise so we can assert it's called
+    m_fail = mocker.patch.object(Env, "_Env__fail_unescape", side_effect=ValueError("bad"))
+
+    # Act / Assert
+    with pytest.raises(ValueError):
+        Env.unescape("\\u00G1")
+
+    m_fail.assert_called_once()
+
+
+def test_unescape_empty_returns_empty():
+    assert Env.unescape("") == ""
+    assert Env.unescape(None) == ""
+
+
+def test_unescape_custom_escape_not_present_returns_input():
+    assert Env.unescape("plain-text", escape="^") == "plain-text"
+
+
+def test_unescape_custom_escape_character_is_processed():
+    # custom escape '`' should translate `n into newline
+    assert Env.unescape("`n", escape="`") == "\n"
+
+
+def test_unescape_strip_blanks_requires_both_ends():
+    # only leading blank -> should NOT be stripped (requires both ends)
+    assert Env.unescape(r"\x20a", strip_blanks=True) == " a"
+    # without strip_blanks the result is identical
+    assert Env.unescape(r"\x20a", strip_blanks=False) == " a"
+
+
+def test_unescape_invalid_x_hex_calls_fail_and_raises(mocker):
+    m_fail = mocker.patch.object(Env, "_Env__fail_unescape", side_effect=ValueError("bad"))
+    with pytest.raises(ValueError):
+        Env.unescape(r"\x4")
+    m_fail.assert_called_once()
+
+
+def test_unquote_removes_double_quotes_and_sets_info():
+    res, info = Env.unquote('"a$B"')
+    assert res == "a$B"
+    assert info.quote_type == EnvQuoteType.DOUBLE
+    assert info.exp_chr == EnvParseInfo.POSIX_EXP_CHR
+
+
+def test_unquote_uses_cutters_and_detects_expchr():
+    res, info = Env.unquote("$X#y", cutters="#")
+    assert res == "$X"
+    assert info.exp_chr == EnvParseInfo.POSIX_EXP_CHR
+    assert info.quote_type == EnvQuoteType.NONE
+
+
+def test_unquote_raises_for_unterminated_quote():
+    with pytest.raises(ValueError):
+        Env.unquote('"abc')
+
+
+def test_unquote_raises_for_dangling_escape():
+    with pytest.raises(ValueError):
+        Env.unquote("abc\\")
+
+
+def test_unquote_constructs_envparseinfo_when_input_empty(mocker):
+    m = mocker.patch("env.EnvParseInfo")
+    mock_inst = m.return_value
+    mock_inst.result = ""
+
+    res, info = Env.unquote("")
+
+    m.assert_called_once_with(input="", quote_type=EnvQuoteType.NONE)
+    assert res == mock_inst.result
+    assert info is mock_inst
+
+
+def test_unquote_hard_quotes_ignore_escape():
+    # backslash inside single quotes should be treated literally (hard quote)
+    res, info = Env.unquote(r"'a\nb'")
+    assert res == r"a\nb"
+    assert info.quote_type == EnvQuoteType.SINGLE
+    assert info.esc_chr is None
+
+
+def test_unquote_hard_quotes_param_disables_escaping():
+    # when hard_quotes includes '"', escaping inside double quotes is ignored
+    res, info = Env.unquote('"a\\"b"', hard_quotes='"')
+    # encountering the inner double-quote closes the quoted string because
+    # escaping is disabled by hard_quotes -> the result contains the backslash
+    assert res == 'a\\'
+    assert info.quote_type == EnvQuoteType.DOUBLE
+
+
+def test_unquote_preserves_spaces_when_strip_false():
+    inp = "  abc  "
+    res, info = Env.unquote(inp, strip_spaces=False)
+    assert res == inp
+    assert info.quote_type == EnvQuoteType.NONE
+
+
+def test_unquote_detects_first_of_multiple_expansion_chars():
+    res, info = Env.unquote("a%b$z", exp_chrs="%$")
+    assert info.exp_chr == "%"
+
+
+def test_unquote_quoted_cutter_ignored():
+    res, info = Env.unquote("'a#b'", cutters="#")
+    assert res == "a#b"
+
+
+def test_unquote_escaped_quote_inside_double_quotes():
+    res, info = Env.unquote('"a\\"b"')
+    # unquote does not remove escaping backslashes (that's done by Env.unescape)
+    assert res == r'a\"b'
+    assert info.quote_type == EnvQuoteType.DOUBLE
+    assert info.esc_chr == "\\"
+
+
+# ---------------------------------------------------------------------------
+# Tests for Env.quote (with and without mocking defaults)
+# ---------------------------------------------------------------------------
+
+def test_quote_escapes_internal_double_and_escape_char():
+    # input contains a double quote and a backslash (default escape)
+    inp = 'a"b\\c'
+    out = Env.quote(inp, type=EnvQuoteType.DOUBLE)
+    # backslash doubled, internal quote escaped, whole string wrapped in double quotes
+    assert out == '"a\\\"b\\\\c"'
+
+
+def test_quote_doubles_escape_chars_and_single_quote():
+    inp = "it's\\done"
+    out = Env.quote(inp, type=EnvQuoteType.SINGLE)
+    # backslash doubled and single-quote escaped, wrapped in single quotes
+    assert out == "'it\\\'s\\\\done'"
+
+
+def test_quote_returns_input_when_no_quote_type():
+    assert Env.quote('plain', type=EnvQuoteType.NONE) == 'plain'
+
+
+def test_quote_none_input_returns_empty_quotes():
+    assert Env.quote(None) == '""'
+
+
+def test_quote_with_custom_escape_arg():
+    # custom escape character should be used instead of default; when no
+    # quote char is present the implementation does not double escapes
+    out = Env.quote('a^b^c', type=EnvQuoteType.DOUBLE, escape='^')
+    assert out == '"a^b^c"'
+
+
+def test_quote_uses_mocked_default_escape(mocker):
+    # patch the default escape char and ensure Env.quote uses it (no doubling
+    # unless a quote char is present in the input)
+    mocker.patch.object(EnvParseInfo, 'POSIX_ESC_CHR', '^')
+    assert Env.quote('a^b') == '"a^b"'
+
+
+def test_unquote_respects_mocked_posix_exp_chr(mocker):
+    # patch the default POSIX expansion char and ensure unquote picks it up
+    mocker.patch.object(EnvParseInfo, 'POSIX_EXP_CHR', '@')
+    res, info = Env.unquote('a@b')
+    assert info.exp_chr == '@'
+
+
+# ---------------------------------------------------------------------------
+# POSIX-style expansion via Env.expand_posix
+# ---------------------------------------------------------------------------
+
+def test_expand_posix_unbraced_env_var(monkeypatch):
     monkeypatch.setenv("FOO", "bar")
     assert Env.expand_posix("Value $FOO") == "Value bar"
 
@@ -22,6 +292,13 @@ def test_expand_posix_braced_env_var(monkeypatch):
 def test_expand_posix_length(monkeypatch):
     monkeypatch.setenv("L", "abcd")
     assert Env.expand_posix("${#L}") == "4"
+
+
+def test_expand_posix_numeric_braced_positional_and_missing(monkeypatch):
+    # present positional parameter inside braces
+    assert Env.expand_posix("${1}", args=["first"]) == "first"
+    # missing positional parameter should remain as-is
+    assert Env.expand_posix("${2}", args=["only"]) == "${2}"
 
 
 def test_expand_posix_default_unset_or_null(monkeypatch):
@@ -395,6 +672,7 @@ def test_expand_simple_custom_escape_behavior():
 # Tests for Env.get_platform_stack method
 # ---------------------------------------------------------------------------
 
+
 def test_get_platform_stack_no_flags():
     # With EnvPlatformStackFlags.NONE, minimal platforms should be returned
     result = Env.get_platform_stack(flags=EnvPlatformStackFlags.NONE)
@@ -430,3 +708,12 @@ def test_get_platform_stack_add_max_includes_all(mocker):
     assert isinstance(result, list)
     # Should include at least the current platform (linux)
     assert "linux" in result
+
+
+def test_get_platform_stack_with_prefix_and_suffix(mocker):
+    mocker.patch.object(Env, "PLATFORM_THIS", "linux")
+    mocker.patch.object(Env, "IS_POSIX", True)
+    res = Env.get_platform_stack(flags=EnvPlatformStackFlags.ADD_MAX, prefix="pre-", suffix="-suf")
+    # every returned string should start with prefix and end with suffix
+    assert all(r.startswith("pre-") and r.endswith("-suf") for r in res)
+

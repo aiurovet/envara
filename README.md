@@ -1,14 +1,12 @@
 # envara (C) Alexander Iurovetski 2026
 
-## A library to expand environment variables, program arguments and special characters in a string, as well as parse general and OS-specific .env  files
+## A library to expand environment variables, application arguments and special characters in a string, execute sub-commands, as well as parse general and OS-specific .env  files
 
 This library allows to expand environment variables and program arguments in a string, parse general and OS-specific .env  files.
 
 The application does not depend on any special Python package.
 
-### Usage
-
-This example can be used to generate all launcher icons for a _Flutter_ project. See also: _How Do I Use It_ at the end of this document
+### Sample Usage
 
 1. Install _envara_ from _PyPI_
 
@@ -127,167 +125,100 @@ __*Env.unquote*__ _(input: str, unescape: bool = True) -> tuple[str, EnvQuoteTyp
 
    A tuple of the first parameter unquoted, and the type of quotes encountered. This can be used to determine which quotes the string had were before.
 
-### Advanced POSIX expansions (Env.expand_posix) 🔧
+## POSIX-style expansions implemented in envara
 
-This project provides a low-level POSIX-like expansion utility implemented as `Env.expand_posix()` (used internally). It supports a rich subset of shell-style parameter expansions and command substitutions. Key features include:
+This document describes the behaviour implemented in _Env.expand_posix()_ and the testing and safety guidance for using these features.
 
-### Windows-style / symmetric expansion (Env.expand_symmetric) ⚙️
+### Supported constructs
 
-For Windows-style percent-delimited expansions (e.g., `%NAME%`, `%1`, `%%` and modifiers like `%~dp1`), use `Env.expand_symmetric()` from `envara.trying`. The older API name `expand_windows` has been removed in favour of the more general `expand_symmetric`.
+- Basic variable expansion
+  - _$NAME_ and _${NAME}_ - expand variable from the provided _vars_ mapping (defaults to _os.environ_).
+  - Positional arguments: _$1_, _$2_, ... (1-based indices supplied via _args_) - out-of-bounds indices leave the pattern unchanged.
+  - _$$_ expands to the current process id.
 
-- `%NAME%` expands environment variables (or leaves the token intact if not present).
-- `%1`, `%2`, ... expand positional arguments supplied via `args` (1-based).
-- Substring form: `%NAME:~start[,length]%` extracts a substring from the variable (supports negative `start` to count from end).
-- `%%` produces a literal `%` and `^` (caret) can be used as an escape in typical usage.
+- Length and substrings
+  - _${#NAME}_ returns the length of _NAME_'s value.
+  - _${NAME:offset[:length]}_ extracts a substring; negative _offset_ counts from the end.
 
-Example:
+- Defaulting and alternatives
+  - _${NAME:-word}_ - use _word_ if _NAME_ is unset or null.
+  - _${NAME-word}_ - use _word_ if _NAME_ is unset.
+  - _${NAME:+word}_ - use _word_ if _NAME_ is set and non-empty.
+  - _${NAME:?message}_ and _${NAME?message}_ - raise _ValueError_ with _message_ if variable is not set (or null for _:?_).
 
-```py
+- Assignment
+  - _${NAME:=word}_ - set _NAME_ to the expansion of _word_ if _NAME_ is unset or null.
+  - _${NAME=word}_ - set _NAME_ if unset.
+  - Assignment writes to the _vars_ mapping you pass (if any).
+
+- Pattern removals
+  - _${NAME#pattern}_ and _${NAME##pattern}_ - remove shortest/longest matching prefix using glob-style patterns.
+  - _${NAME%pattern}_ and _${NAME%%pattern}_ - remove shortest/longest matching suffix using glob-style patterns.
+
+- Substitution
+  - _${NAME/pat/repl}_ - replace first match of glob _pat_ with _repl_ (replacement is recursively expanded).
+  - _${NAME//pat/repl}_ - replace all matches.
+  - Anchored forms: _${NAME/#pat/repl}_ replaces matching prefix, _${NAME/%pat/repl}_ replaces matching suffix.
+  - Global anchored forms such as _${NAME//#pat/repl}_ or _${NAME//%pat/repl}_ iteratively apply the anchored substitution until no further progress is made.
+  - Empty pattern special cases:
+    - _${VAR///X}_ inserts _X_ between every position (including start and end) - tests demonstrate the exact behavior.
+    - Anchored empty patterns are treated as no-ops in prefix/suffix anchored forms.
+
+- Escaping
+  - A backslash before _$_ or backtick prevents expansion: _\$NAME_ → literal _$NAME_, __\_cmd\_ __ → literal __ _cmd_ __.
+  - Pairs of backslashes reduce appropriately.
+
+- Command substitution
+  - _$(...)_ and __ _..._ __ are supported.
+  - Inner content is first expanded using _expand_posix()_ before execution (so nested expansions and defaults work inside command substitutions).
+  - The executed command's stdout (with trailing newline removed) is inserted into the result.
+  - If the command exits with a non-zero status, _ValueError_ is raised (including _stderr_ text in the message).
+  - Timeouts raise _ValueError_.
+
+### Safety and configuration
+
+The following parameters control execution of command substitutions and improve safety:
+
+- _exp_flags: EnvExpFlags_ (default _EnvExpFlags.DEFAULT_) - controls expansion.
+  1. _ALLOW_SHELL_ - when set (default), command substitutions are executed with _shell=True_ (less safe, but more flexible).
+
+  2. _ALLOW_SUBPROC_ - when set, command substitutions are executed with _shell=False_ using _shlex.split()_ (safer, but requires simple commands and proper quoting).
+
+- _subprocess_timeout_ - timeout in seconds applied to _subprocess.run()_; _TimeoutExpired_ becomes _ValueError_.
+
+Command substitution runs local commands; ensure the expanded input is trusted or use the safety flags to disable or restrict execution. Use these options when expecting to expand untrusted input.
+
+### Development notes
+
+- Unit tests live in _tests/test_trying.py_ and cover:
+  - Basic operators and alternatives
+  - Pattern removals and substitutions (including anchored and global variants)
+  - Nested expansions and defaults
+  - Edge cases like empty patterns and replacements equal to original text
+  - Command substitution variations and safety flags
+
+- If you add any feature dealing with command execution, add tests that cover both normal and disabled execution modes: _(exp\_flags & (EnvExpFlags.ALLOW\_SHELL | EnvExpFlags.ALLOW\_SUBPROC)) == 0)_ as well as timeouts.
+
+### Sample Usage of Env.expand...()
+
+___py
 from env import Env
-Env.expand_symmetric("Value %TEST_FOO% and arg %1", args=["one"], vars={"TEST_FOO": "bar"})
-```
 
-- Variable expansion: `$NAME`, `${NAME}`, and positional arguments like `$1`.
-- Length operator: `${#NAME}` → length of the variable value.
-- Defaults and alternatives: `${NAME:-word}`, `${NAME-word}`, `${NAME:+word}`.
-- Assignment operators: `${NAME:=word}` (set if unset or null), `${NAME=word}` (set if unset).
-- Error operators: `${NAME:?message}` and `${NAME?message}` (raise `ValueError`).
-- Substring extraction: `${NAME:offset[:length]}` (supports negative offsets).
-- Pattern removals: `${NAME#pat}`, `${NAME##pat}` (prefix), `${NAME%pat}`, `${NAME%%pat}` (suffix) using glob-style patterns.
-- Substitutions: `${NAME/pat/repl}` (first match), `${NAME//pat/repl}` (all matches), with anchored variants `${NAME/#pat/repl}` and `${NAME/%pat/repl}`; global anchored forms like `${NAME//#pat/repl}` are also supported.
-- Empty-pattern behavior is implemented (e.g. `${var///X}` inserts between positions), with sensible no-op semantics when appropriate.
-- Escaping: a backslash before `$` or a backtick (`\$`, ``\` ``) yields the literal character.
-- Command substitution: `$(...)` and `` `...` `` — inner content is expanded first, then executed. The behavior is configurable for safety (see flags below).
+\# Expand a string with environment variables and defaults
 
-Configuration flags (parameters on `expand_posix`):
+res = Env.expand_posix("Home: ${HOME:-/home/default}, first arg: $1", args=["app"], exp_flags=EnvExpFlags.ALLOW_SHELL)
 
-- `allow_subprocess: bool` (default `True`) — when `False`, command substitutions are left unchanged instead of executed.
-- `allow_shell: bool` (default `True`) — when `False`, commands are executed with `shell=False` using `shlex.split()` (safer).
-- `subprocess_timeout: float | None` — timeout in seconds for command execution; a timeout raises `ValueError`.
+\# Run a simple command substitution without shell
 
-Security note ⚠️: Command substitution executes system commands. Use `allow_subprocess=False` and `allow_shell=False` to disable or harden execution in untrusted contexts. Prefer explicit safe alternatives when possible.
+res2 = Env.expand_posix('$(printf "%s" $FOO)', exp_flags=EnvExpFlags.ALLOW_SUBPROCESS)
+___
 
-Examples:
+## Symmetric (Windows-like) expansions implemented in envara
 
-- `Env.expand_posix("Value $HOME and ${1:-default}")` → expands environment and positional args.
-- `Env.expand_posix("${VAR//foo/X}")` → replace all occurrences of `foo` with `X`.
-- `Env.expand_posix("$(printf \"%s\" $FOO)")` → run `printf` and insert its stdout (disabled if `exp_flags = EnvExpandFlags.ALLOW_SHELL`).
+Windows-style percent-delimited expansions are provided by _Env.expand_symmetric()_ (see _envara.env_). This method supports _%NAME%_, _%1_, _%*_, _%%_, and simple _%~_ modifiers (e.g., _%~dp1_) for extracting path components on Windows-like inputs. Additionally, it supports a substring form for named variables using the syntax _%NAME:~start[,length]%_ - negative _start_ counts from the end. The older name _expand_windows_ was removed and replaced by _expand_symmetric_ to better reflect its general-purpose nature.
 
-Tests: see `tests/test_trying.py` for a comprehensive test suite covering operators, edge cases, nested expansions, and command substitution.
-Runnable example: see `examples/symmetric_example.py` for a short, runnable demonstration of `Env.expand_symmetric()` (percent-delimited expansions).
----
+## Which expansion to choose?
 
-For a deeper developer-oriented description, see `docs/POSIX_EXPANSION.md` (new) for a complete reference, examples, and test descriptions.
-
-### How to Load .env file
-
-__*DotEnv.load\_from\_file*__ _(path: Path, file\_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT, expand\_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT, default\_dir: str = None, alt\_ext: str = None) -> str_
-
-A mere wrapper calling _DotEnv.read\_text()_, then  _DotEnv.load\_from\_str()_. See more detail there.
-
-__*DotEnv.load\_from\_str*__ _(data: Path, expand\_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT) -> str_
-
-1. Param _data_
-
-   The input to expand. _DotEnv.load\_from\_file()_ loads content from file(s), then passes that buffer as this parameter.
-
-2. Param _expand\_flags_
-
-   A bitwise combination. See _flags_ under _Env.expand()_ for more detail.
-
-__*DotEnv.read\_text*__ _(path: Path, file\_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT, default\_dir: str = None, alt\_ext: str = None) -> str_
-
-1. Param _path_
-
-   A file or directory. If file, will be loaded after the default ones (see below). If directory, will be used to locate the default files in, if _None_, the current directory will be used.
-
-2. Param _file\_flags_
-
-   A bitwise combination of:
-
-   - _NONE_: none of the below (default)
-   - _RESET_: discard internally accumulated list of loaded files
-   - _SKIP\_DEFAULT\_FILES_: do not load any default file
-   - _VISIBLE\_FILES_: do not prepend default filenames with a dot, except _.env_
-
-3. Param _default\_dir_
-
-   Directory to look for the default files in. If not specified, the directory of the first parameter _path_ will be used if passed, or the current directory otherwise.
-
-4. Param _alt\_ext_
-
-   Alternative extension to use
-
-### The Default .env Files
-
-These files will be loaded in the noted order before the custom one. This happens in _DotEnv.read\_text()_, which is called by _DotEnv.load\_from\_file()_.
-
-Note that _sys.platform_ is converted to lowercase, all comparisons are case-insensitive, file extension can be changed.
-
-- _.env_ (always hidden), then _[.]any.env_
-
-  For any _sys.platform_.
-
-- _[.]posix.env_
-
-  When _sys.platform_ contains one of the following: _aix_, _bsd_, _darwin_, _hp-ux_, _linux_, _sunos_, _java_ (on POSIX OS), _cygwin_, _MSYS_.
-
-- _[.]bsd.env_
-
-  When _sys.platform_ contains _bsd_ or _darwin_.
-
-- _[.]linux.env_
-
-  When _sys.platform_ contains _linux_.
-
-- _[.]darwin.env_
-
-  When _sys.platform_ contains _darwin_ or _macos_, or starts with _ios_ (the latter also applies to iPadOS).
-
-- _[.]macos.env_
-
-  When _sys.platform_ contains _darwin_ or _macos_.
-
-- _[.]vms.env_
-
-  When _sys.platform_ contains _vms_.
-
-- _[.]windows.env_
-
-  When _sys.platform_ starts with _win_ or contains _java_ that is running on Windows.
-
-- _[.]\<sys.platform\>.env_
-
-  For any _sys.platform_ again.
-
-### How to Utilise the Stack of Default _.env_ Files
-
-For instance, you are going to call _Google Chrome_ from your script in headless mode to save some screenshots. In that case, you can define variables _ARG\_HEADLESS_ and _CMD\_CHROME_ as follows:
-
-- _.env_:
-
-    APP_NAME = $1 \# need to pass a list of command-line arguments
-
-    APP_VERSION = "${2}_$3"
-
-    PROJECT_PATH = ~/Projects/$APP_NAME
-
-    ARG_HEADLESS = "--headless --disable-gpu --default-background-color=00000000 --window-size={w},{h} --screenshot={o} file://{i}"
-
-- _.linux.env_:
-
-    CMD_CHROME = "google-chrome $ARG_HEADLESS"
-
-- _.bsd.env_:
-
-    CMD_CHROME = "chrome $ARG_HEADLESS"
-
-- _.macos.env_:
-
-    CMD_CHROME = "\\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\\" $ARG_HEADLESS"
-
-- _.windows.env_:
-
-    CMD_CHROME = "chrome $ARG_HEADLESS"
+You don't have to decide in the code. It is all about what _DotEnv.load()_ encounters while analysing the content. Whatever comes first in each line ($ or %), will be used, and escape character will be chosen similarly. However, the POSIX-style assignemnts are by far more flexible. On the other hand, _DotEnv.load()_ handles both styles on any platform.
 
 ## __Good Luck!__

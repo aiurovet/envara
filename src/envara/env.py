@@ -174,437 +174,6 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def get_platform_stack(
-        flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT,
-        prefix: str | None = None,
-        suffix: str | None = None,
-    ) -> list[str]:
-        """
-        Get the stack (list) of platforms from more generic to more specific
-        ones. Optionally add a prefix and/or suffix to every platform name
-        (used by DotEnv to form filenames like '.env' or '.linux.env').
-
-        :param flags: Controls which items will be added to the stack
-        :type flags: EnvPlatformStackFlags
-        :param prefix: optional string to prepend to every platform name
-        :type prefix: str | None
-        :param suffix: optional string to append to every platform name
-        :type suffix: str | None
-        :return: A list of all relevant platforms (optionally decorated)
-        :rtype: list[str]
-        """
-
-        # Initialize the return value
-
-        result: list[str] = []
-
-        # Traverse the {pattern: list-of-relevant-platforms} dictionary and
-        # append those where the pattern matches the running platform
-
-        re_flags = re.IGNORECASE | re.UNICODE
-
-        for pattern, platforms in Env.__platform_map.items():
-
-            # If the platform doesn't match the running one, skip it
-
-            if pattern:
-                if not re.search(pattern, Env.PLATFORM_THIS, re_flags):
-                    continue
-
-            # Append every platform from the current list if eligible
-
-            for platform in platforms:
-
-                # Perform extra checks
-
-                if not platform:
-                    if (flags & EnvPlatformStackFlags.ADD_EMPTY) == 0:
-                        continue
-                elif platform == Env.PLATFORM_POSIX:
-                    if not Env.IS_POSIX:
-                        continue
-                elif platform == Env.PLATFORM_WINDOWS:
-                    if not Env.IS_WINDOWS:
-                        continue
-
-                # If the platform name was not added yet, add it
-
-                if platform not in result:
-                    result.append(platform)
-
-        # Optionally decorate with prefix/suffix
-        if prefix or suffix:
-            decorated: list[str] = []
-            for p in result:
-                decorated.append(f"{prefix or ''}{p}{suffix or ''}")
-            return decorated
-
-        # Return the accumulated list
-
-        return result
-
-    ###########################################################################
-
-    @staticmethod
-    def quote(
-        input: str,
-        type: EnvQuoteType = EnvQuoteType.DOUBLE,
-        escape: str = None
-    ) -> str:
-        """
-        Enclose input in quotes. Neither leading, nor trailing whitespaces
-        removed before checking the leading quotes. Use .strip() yourself
-        before calling this method if needed.
-
-        :param input: String being expanded
-        :type input: str
-        :param type: Type of quotes to enclose in
-        :type type: EnvQuoteType
-        :param escape: Escape character to use
-        :type escape: str
-        :return: Quoted string with possible quotes and escape characters from
-                 the inside being escaped
-        :rtype: str
-        """
-
-        # Initialise
-
-        result = "" if (input is None) else input
-
-        if (not escape):
-            escape = EnvParseInfo.POSIX_ESC_CHR
-
-        # Define the quote being used
-
-        if type == EnvQuoteType.SINGLE:
-            quote = "'"
-        elif type == EnvQuoteType.DOUBLE:
-            quote = '"'
-        else:
-            quote = ""
-
-        # If quote is empty, return the input itself
-
-        if not quote:
-            return result
-
-        # If input is not empty, escape the escape character, then the
-        # internal quote(s), then embrace the result in desired quotes
-        # and return
-
-        if result and (quote in result):
-            if escape in result:
-                result = result.replace(escape, f"{escape}{escape}")
-            result = result.replace(quote, f"{escape}{quote}")
-
-        return f"{quote}{result}{quote}"
-
-    ###########################################################################
-
-    @staticmethod
-    def unescape(
-        input: str,
-        escape: str = None,
-        strip_blanks: bool = False,
-    ) -> str:
-        """
-        Unescape '\\t', '\\n', '\\u0022' etc.
-
-        :param input: Input string to unescape escaped characters in
-        :type input: str
-        :param escape: String to be treated as escape character
-        :type expand_info: str
-        :param strip_blanks: True = remove leading and trailing blanks
-        :type strip_blanks: bool
-        :return: Unescaped string, optionally, stripped of blanks
-        :rtype: str
-        """
-
-        # If input is void, return empty string
-
-        if not input:
-            return ""
-
-        # If escape character is not known yet, use the default one, and
-        # if input does not contain the default escape char, then finish
-
-        if (not escape):
-            escape = EnvParseInfo.POSIX_ESC_CHR
-            if escape not in input:
-                return input
-
-        # Loop through the input and accumulate valid characters in chr_lst
-
-        chr_lst: list[str] = []
-        cur_pos: int = -1
-        esc_pos: int = -1
-        is_escaped: bool = False
-
-        # Start and end of a substring to accumulate for the code-to-string
-        # conversion
-
-        acc_beg_pos: int = -1
-        acc_end_pos: int = -1
-
-        for cur_chr in input:
-            cur_pos = cur_pos + 1
-
-            if (cur_pos >= acc_beg_pos) and (cur_pos < acc_end_pos):
-                if (cur_chr not in string.hexdigits):
-                    Env.__fail_unescape(input, esc_pos, cur_pos)
-                continue
-
-            if (cur_pos == acc_end_pos):
-                chr_lst.append(chr(int(input[acc_beg_pos:acc_end_pos], 16)))
-                is_escaped = False
-
-            if (cur_chr == escape):
-                is_escaped = not is_escaped
-                esc_pos = cur_pos if (is_escaped) else -1
-                continue
-
-            if (is_escaped):
-                if (cur_chr in Env.SPECIAL):
-                    cur_chr = Env.SPECIAL[cur_chr]
-                elif (cur_chr == "u"):
-                    acc_beg_pos = cur_pos + 1
-                    acc_end_pos = acc_beg_pos + 4
-                    continue
-                elif (cur_chr == "x"):
-                    acc_beg_pos = cur_pos + 1
-                    acc_end_pos = acc_beg_pos + 2
-                    continue
-                is_escaped = False
-
-            chr_lst.append(cur_chr)
-
-        # If escaped char (by code) is the last one, accumulation
-        # action was missed from the loop: fulfilling here
-
-        if is_escaped:
-            if (acc_end_pos > 0):
-                if (cur_pos >= acc_end_pos - 1):
-                    chr_lst.append(chr(int(input[acc_beg_pos:acc_end_pos], 16)))
-                elif (esc_pos >= 0):
-                    Env.__fail_unescape(input, esc_pos, cur_pos + 1)
-            elif (esc_pos >= 0):
-                Env.__fail_unescape(input, esc_pos, cur_pos + 1)
-
-        # Join all characters into a string
-
-        result: str = "".join(chr_lst)
-
-        # Get the indicator of loeading or trailing blanks Turn off stripping leading and trailing blanks if not found
-
-        res_len = len(result) if strip_blanks else 0
-
-        has_blanks: bool = \
-            (res_len > 0) and \
-            (result[0] in string.whitespace) and \
-            (result[res_len - 1] in string.whitespace)
-
-        return result.strip() if (has_blanks) else result
-
-    ###########################################################################
-
-    @staticmethod
-    def unquote(
-        input: str,
-        strip_spaces: bool = True,
-        esc_chrs: str = None,
-        exp_chrs: str = None,
-        hard_quotes: str = None,
-        cutters: str = None,
-    ) -> tuple[str, EnvParseInfo]:
-        """
-        Remove enclosing quotes from a string ignoring everything beyond the
-        closing quote ignoring escaped quotes. Raise ValueError if a dangling
-        escape or no closing quote found.
-        
-        In most cases, you'd rather use _Env.unquote()_ that calls this method,
-        then expands environment variables, arguments, and unescapes special
-        characters.
-        
-        :param input: String to remove enclosing quotes from
-        :type input: str
-        :param escape: Escape characters: whichever comes first in the input
-                       will be returned in the dedicated info
-        :type escapes: str
-        :param strip_spaces: True = strip leading and trailing spaces. If
-                             quoted, don't strip again after unquoting
-        :type strip_spaces: bool
-        :param expands: A string of characters where each indicates a start
-                        of env var or arg expansion (e.g., "$%")
-        :type expands: str
-        :param hard_quotes: A string containing all quote characters that
-                            require to ignore escaping (e.g., a single quote)
-        :type hard_quotes: bool
-        :param cutters: A string of characters where each indicates a string
-                         end when found non-escaped and either outside quotes
-                         or in an unquoted input (e.g., a line comment: "#")
-        :type cutters: str
-        :return: unquoted input and details: see _EnvUnquoteData_
-        :rtype: tuple[str, EnvUnquoteData]
-        """
-
-        # Initialize
-
-        info = EnvParseInfo(input=input, quote_type=EnvQuoteType.NONE)
-
-        # If the input is None or empty, return the empty string
-
-        if (not input):
-            return (info.result, info)
-
-        # Ensure required arguments are populated
-
-        if (exp_chrs is None):
-            exp_chrs = EnvParseInfo.POSIX_EXP_CHR
-        if (esc_chrs is None):
-            esc_chrs = EnvParseInfo.POSIX_ESC_CHR
-
-        # Initialize position beyond the last character and results
-
-        end_pos: int = 0
-        info.result = input.lstrip() if (strip_spaces) else input
-
-        if (not info.result):
-            return (info.result, info)
-
-        # Initialise quote and determine quote type
-
-        info.quote = info.result[0]
-
-        if (info.quote == '"'):
-            info.quote_type = EnvQuoteType.DOUBLE
-        elif (info.quote == "'"):
-            info.quote_type = EnvQuoteType.SINGLE
-        else:
-            info.quote = ""
-
-        # Initialise flags for escaping and quoting
-
-        has_cutters: bool = True if cutters else False
-        is_escaped: bool = False
-        is_quoted: bool = info.quote_type != EnvQuoteType.NONE
-
-        # Avoid Nones
-
-        if (hard_quotes is None):
-            hard_quotes = "'"
-
-        # No escape is relevant if the given quote is the hard one
-
-        if is_quoted and (info.quote in hard_quotes):
-            esc_chrs = ""
-
-        # Loop through each input character and analyze
-
-        for cur_chr in info.result:
-            # Advance the end position and skip opening quote if present
-
-            end_pos = end_pos + 1
-
-            if (end_pos == 1) and is_quoted:
-                continue
-
-            # If an escape encountered, flip the flag and loop
-
-            if (cur_chr in esc_chrs):
-                info.esc_chr = cur_chr
-                is_escaped = not is_escaped
-                continue
-
-            # When a quote is encountered, if escaped, loop, else,
-            # this quote is the closing one, so return the result.
-
-            if (cur_chr == info.quote):
-                if is_quoted and (info.quote in hard_quotes):
-                    is_quoted = False
-                    break
-                if (is_escaped):
-                    is_escaped = False
-                    continue
-                if (is_quoted):
-                    is_quoted = False
-                    break
-                else:
-                    continue
-
-            # Set expand character if found first time
-
-            if (cur_chr in exp_chrs):
-                if (not info.exp_chr) and (not is_escaped):
-                    info.exp_chr = cur_chr
-
-            # Break out if the stopper character was encountered outside
-            # the quotes, and it was not escaped
-
-            if (not is_quoted) and (not is_escaped):
-                if has_cutters and (cur_chr in cutters):
-                    end_pos = end_pos - 1
-                    break
-
-            # For any other character, discard is_escaped
-
-            is_escaped = False
-
-        # Check the malformed input
-
-        if is_escaped:
-            raise ValueError(f"A dangling escape found in: {input}")
-
-        if is_quoted:
-            raise ValueError(f"Unterminated quoted string: {input}")
-
-        # Calculate the unquoted substring
-
-        if info.quote_type == EnvQuoteType.NONE:
-            beg_pos = 0
-        else:
-            beg_pos = 1
-            end_pos = end_pos - 1
-
-        # Extract the unquoted substring
-
-        info.result = info.result[beg_pos:end_pos]
-
-        # Strip trailing spaces if needed, but only if the original input
-        # was not quoted
-
-        if strip_spaces and (info.quote_type == EnvQuoteType.NONE):
-            info.result = info.result.rstrip()
-
-        # Return the result
-
-        return (info.result, info)
-
-    ###########################################################################
-
-    @staticmethod
-    def __fail_unescape(input: str, beg_pos: int, end_pos: int):
-        """
-        Error handler for Env.unescape()
-        
-        :param input: Full string at fault
-        :type input: str
-        :param beg_pos: Starting position of the fragment at fault
-        :type beg_pos: int
-        :param end_pos: Ending position of the fragment at fault
-        :type end_pos: int
-        :return: Raise exception
-        :rtype: None
-        """
-
-        dtl: str = input[beg_pos:end_pos]
-
-        raise ValueError(
-            f"Incomplete escape sequence from [{beg_pos}]: \"{dtl}\" in \"{input}\""
-        )
-
-    ###########################################################################
-
-    @staticmethod
     def expand_posix(
         input: str,
         args: list[str] | None = None,
@@ -1081,9 +650,9 @@ class Env:
                     while k < ln and s[k].isdigit():
                         k += 1
                     token = s[start:k]
-                    end_with_percent = False
+                    end_with_exp_chr = False
                     if k < ln and s[k] == exp_chr:
-                        end_with_percent = True
+                        end_with_exp_chr = True
                         k += 1
 
                     idx = int(token) - 1
@@ -1119,7 +688,7 @@ class Env:
                                 pass
                         out.append("".join(out_frag))
                     else:
-                        if end_with_percent:
+                        if end_with_exp_chr:
                             out.append(exp_chr + s[j:k] + exp_chr)
                         else:
                             out.append(exp_chr + s[j:k])
@@ -1130,9 +699,9 @@ class Env:
                 start = j
                 while j < ln and s[j].isdigit():
                     j += 1
-                end_with_percent = False
+                end_with_exp_chr = False
                 if j < ln and s[j] == exp_chr:
-                    end_with_percent = True
+                    end_with_exp_chr = True
                     token = s[start:j]
                     j += 1
                 else:
@@ -1142,7 +711,7 @@ class Env:
                 if args and 0 <= idx < len(args):
                     out.append(args[idx])
                 else:
-                    if end_with_percent:
+                    if end_with_exp_chr:
                         out.append(exp_chr + token + exp_chr)
                     else:
                         out.append(exp_chr + token)
@@ -1224,6 +793,437 @@ class Env:
             i = k + 1
 
         return "".join(out)
+
+    ###########################################################################
+
+    @staticmethod
+    def get_platform_stack(
+        flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT,
+        prefix: str | None = None,
+        suffix: str | None = None,
+    ) -> list[str]:
+        """
+        Get the stack (list) of platforms from more generic to more specific
+        ones. Optionally add a prefix and/or suffix to every platform name
+        (used by DotEnv to form filenames like '.env' or '.linux.env').
+
+        :param flags: Controls which items will be added to the stack
+        :type flags: EnvPlatformStackFlags
+        :param prefix: optional string to prepend to every platform name
+        :type prefix: str | None
+        :param suffix: optional string to append to every platform name
+        :type suffix: str | None
+        :return: A list of all relevant platforms (optionally decorated)
+        :rtype: list[str]
+        """
+
+        # Initialize the return value
+
+        result: list[str] = []
+
+        # Traverse the {pattern: list-of-relevant-platforms} dictionary and
+        # append those where the pattern matches the running platform
+
+        re_flags = re.IGNORECASE | re.UNICODE
+
+        for pattern, platforms in Env.__platform_map.items():
+
+            # If the platform doesn't match the running one, skip it
+
+            if pattern:
+                if not re.search(pattern, Env.PLATFORM_THIS, re_flags):
+                    continue
+
+            # Append every platform from the current list if eligible
+
+            for platform in platforms:
+
+                # Perform extra checks
+
+                if not platform:
+                    if (flags & EnvPlatformStackFlags.ADD_EMPTY) == 0:
+                        continue
+                elif platform == Env.PLATFORM_POSIX:
+                    if not Env.IS_POSIX:
+                        continue
+                elif platform == Env.PLATFORM_WINDOWS:
+                    if not Env.IS_WINDOWS:
+                        continue
+
+                # If the platform name was not added yet, add it
+
+                if platform not in result:
+                    result.append(platform)
+
+        # Optionally decorate with prefix/suffix
+        if prefix or suffix:
+            decorated: list[str] = []
+            for p in result:
+                decorated.append(f"{prefix or ''}{p}{suffix or ''}")
+            return decorated
+
+        # Return the accumulated list
+
+        return result
+
+    ###########################################################################
+
+    @staticmethod
+    def quote(
+        input: str,
+        type: EnvQuoteType = EnvQuoteType.DOUBLE,
+        escape: str = None
+    ) -> str:
+        """
+        Enclose input in quotes. Neither leading, nor trailing whitespaces
+        removed before checking the leading quotes. Use .strip() yourself
+        before calling this method if needed.
+
+        :param input: String being expanded
+        :type input: str
+        :param type: Type of quotes to enclose in
+        :type type: EnvQuoteType
+        :param escape: Escape character to use
+        :type escape: str
+        :return: Quoted string with possible quotes and escape characters from
+                 the inside being escaped
+        :rtype: str
+        """
+
+        # Initialise
+
+        result = "" if (input is None) else input
+
+        if (not escape):
+            escape = EnvParseInfo.POSIX_ESC_CHR
+
+        # Define the quote being used
+
+        if type == EnvQuoteType.SINGLE:
+            quote = "'"
+        elif type == EnvQuoteType.DOUBLE:
+            quote = '"'
+        else:
+            quote = ""
+
+        # If quote is empty, return the input itself
+
+        if not quote:
+            return result
+
+        # If input is not empty, escape the escape character, then the
+        # internal quote(s), then embrace the result in desired quotes
+        # and return
+
+        if result and (quote in result):
+            if escape in result:
+                result = result.replace(escape, f"{escape}{escape}")
+            result = result.replace(quote, f"{escape}{quote}")
+
+        return f"{quote}{result}{quote}"
+
+    ###########################################################################
+
+    @staticmethod
+    def unescape(
+        input: str,
+        escape: str = None,
+        strip_blanks: bool = False,
+    ) -> str:
+        """
+        Unescape '\\t', '\\n', '\\u0022' etc.
+
+        :param input: Input string to unescape escaped characters in
+        :type input: str
+        :param escape: String to be treated as escape character
+        :type expand_info: str
+        :param strip_blanks: True = remove leading and trailing blanks
+        :type strip_blanks: bool
+        :return: Unescaped string, optionally, stripped of blanks
+        :rtype: str
+        """
+
+        # If input is void, return empty string
+
+        if not input:
+            return ""
+
+        # If escape character is not known yet, use the default one, and
+        # if input does not contain the default escape char, then finish
+
+        if (not escape):
+            escape = EnvParseInfo.POSIX_ESC_CHR
+            if escape not in input:
+                return input
+
+        # Loop through the input and accumulate valid characters in chr_lst
+
+        chr_lst: list[str] = []
+        cur_pos: int = -1
+        esc_pos: int = -1
+        is_escaped: bool = False
+
+        # Start and end of a substring to accumulate for the code-to-string
+        # conversion
+
+        acc_beg_pos: int = -1
+        acc_end_pos: int = -1
+
+        for cur_chr in input:
+            cur_pos = cur_pos + 1
+
+            if (cur_pos >= acc_beg_pos) and (cur_pos < acc_end_pos):
+                if (cur_chr not in string.hexdigits):
+                    Env.__fail_unescape(input, esc_pos, cur_pos)
+                continue
+
+            if (cur_pos == acc_end_pos):
+                chr_lst.append(chr(int(input[acc_beg_pos:acc_end_pos], 16)))
+                is_escaped = False
+
+            if (cur_chr == escape):
+                is_escaped = not is_escaped
+                esc_pos = cur_pos if (is_escaped) else -1
+                continue
+
+            if (is_escaped):
+                if (cur_chr in Env.SPECIAL):
+                    cur_chr = Env.SPECIAL[cur_chr]
+                elif (cur_chr == "u"):
+                    acc_beg_pos = cur_pos + 1
+                    acc_end_pos = acc_beg_pos + 4
+                    continue
+                elif (cur_chr == "x"):
+                    acc_beg_pos = cur_pos + 1
+                    acc_end_pos = acc_beg_pos + 2
+                    continue
+                is_escaped = False
+
+            chr_lst.append(cur_chr)
+
+        # If escaped char (by code) is the last one, accumulation
+        # action was missed from the loop: fulfilling here
+
+        if is_escaped:
+            if (acc_end_pos > 0):
+                if (cur_pos >= acc_end_pos - 1):
+                    chr_lst.append(chr(int(input[acc_beg_pos:acc_end_pos], 16)))
+                elif (esc_pos >= 0):
+                    Env.__fail_unescape(input, esc_pos, cur_pos + 1)
+            elif (esc_pos >= 0):
+                Env.__fail_unescape(input, esc_pos, cur_pos + 1)
+
+        # Join all characters into a string
+
+        result: str = "".join(chr_lst)
+
+        # Get the indicator of loeading or trailing blanks Turn off stripping leading and trailing blanks if not found
+
+        res_len = len(result) if strip_blanks else 0
+
+        has_blanks: bool = \
+            (res_len > 0) and \
+            (result[0] in string.whitespace) and \
+            (result[res_len - 1] in string.whitespace)
+
+        return result.strip() if (has_blanks) else result
+
+    ###########################################################################
+
+    @staticmethod
+    def unquote(
+        input: str,
+        strip_spaces: bool = True,
+        esc_chrs: str = None,
+        exp_chrs: str = None,
+        hard_quotes: str = None,
+        cutters: str = None,
+    ) -> tuple[str, EnvParseInfo]:
+        """
+        Remove enclosing quotes from a string ignoring everything beyond the
+        closing quote ignoring escaped quotes. Raise ValueError if a dangling
+        escape or no closing quote found.
+        
+        In most cases, you'd rather use _Env.unquote()_ that calls this method,
+        then expands environment variables, arguments, and unescapes special
+        characters.
+        
+        :param input: String to remove enclosing quotes from
+        :type input: str
+        :param escape: Escape characters: whichever comes first in the input
+                       will be returned in the dedicated info
+        :type escapes: str
+        :param strip_spaces: True = strip leading and trailing spaces. If
+                             quoted, don't strip again after unquoting
+        :type strip_spaces: bool
+        :param expands: A string of characters where each indicates a start
+                        of env var or arg expansion (e.g., "$%")
+        :type expands: str
+        :param hard_quotes: A string containing all quote characters that
+                            require to ignore escaping (e.g., a single quote)
+        :type hard_quotes: bool
+        :param cutters: A string of characters where each indicates a string
+                         end when found non-escaped and either outside quotes
+                         or in an unquoted input (e.g., a line comment: "#")
+        :type cutters: str
+        :return: unquoted input and details: see _EnvUnquoteData_
+        :rtype: tuple[str, EnvUnquoteData]
+        """
+
+        # Initialize
+
+        info = EnvParseInfo(input=input, quote_type=EnvQuoteType.NONE)
+
+        # If the input is None or empty, return the empty string
+
+        if (not input):
+            return (info.result, info)
+
+        # Ensure required arguments are populated
+
+        if (exp_chrs is None):
+            exp_chrs = EnvParseInfo.POSIX_EXP_CHR
+        if (esc_chrs is None):
+            esc_chrs = EnvParseInfo.POSIX_ESC_CHR
+
+        # Initialize position beyond the last character and results
+
+        end_pos: int = 0
+        info.result = input.lstrip() if (strip_spaces) else input
+
+        if (not info.result):
+            return (info.result, info)
+
+        # Initialise quote and determine quote type
+
+        info.quote = info.result[0]
+
+        if (info.quote == '"'):
+            info.quote_type = EnvQuoteType.DOUBLE
+        elif (info.quote == "'"):
+            info.quote_type = EnvQuoteType.SINGLE
+        else:
+            info.quote = ""
+
+        # Initialise flags for escaping and quoting
+
+        has_cutters: bool = True if cutters else False
+        is_escaped: bool = False
+        is_quoted: bool = info.quote_type != EnvQuoteType.NONE
+
+        # Avoid Nones
+
+        if (hard_quotes is None):
+            hard_quotes = "'"
+
+        # No escape is relevant if the given quote is the hard one
+
+        if is_quoted and (info.quote in hard_quotes):
+            esc_chrs = ""
+
+        # Loop through each input character and analyze
+
+        for cur_chr in info.result:
+            # Advance the end position and skip opening quote if present
+
+            end_pos = end_pos + 1
+
+            if (end_pos == 1) and is_quoted:
+                continue
+
+            # If an escape encountered, flip the flag and loop
+
+            if (cur_chr in esc_chrs):
+                info.esc_chr = cur_chr
+                is_escaped = not is_escaped
+                continue
+
+            # When a quote is encountered, if escaped, loop, else,
+            # this quote is the closing one, so return the result.
+
+            if (cur_chr == info.quote):
+                if is_quoted and (info.quote in hard_quotes):
+                    is_quoted = False
+                    break
+                if (is_escaped):
+                    is_escaped = False
+                    continue
+                if (is_quoted):
+                    is_quoted = False
+                    break
+                else:
+                    continue
+
+            # Set expand character if found first time
+
+            if (cur_chr in exp_chrs):
+                if (not info.exp_chr) and (not is_escaped):
+                    info.exp_chr = cur_chr
+
+            # Break out if the stopper character was encountered outside
+            # the quotes, and it was not escaped
+
+            if (not is_quoted) and (not is_escaped):
+                if has_cutters and (cur_chr in cutters):
+                    end_pos = end_pos - 1
+                    break
+
+            # For any other character, discard is_escaped
+
+            is_escaped = False
+
+        # Check the malformed input
+
+        if is_escaped:
+            raise ValueError(f"A dangling escape found in: {input}")
+
+        if is_quoted:
+            raise ValueError(f"Unterminated quoted string: {input}")
+
+        # Calculate the unquoted substring
+
+        if info.quote_type == EnvQuoteType.NONE:
+            beg_pos = 0
+        else:
+            beg_pos = 1
+            end_pos = end_pos - 1
+
+        # Extract the unquoted substring
+
+        info.result = info.result[beg_pos:end_pos]
+
+        # Strip trailing spaces if needed, but only if the original input
+        # was not quoted
+
+        if strip_spaces and (info.quote_type == EnvQuoteType.NONE):
+            info.result = info.result.rstrip()
+
+        # Return the result
+
+        return (info.result, info)
+
+    ###########################################################################
+
+    @staticmethod
+    def __fail_unescape(input: str, beg_pos: int, end_pos: int):
+        """
+        Error handler for Env.unescape()
+        
+        :param input: Full string at fault
+        :type input: str
+        :param beg_pos: Starting position of the fragment at fault
+        :type beg_pos: int
+        :param end_pos: Ending position of the fragment at fault
+        :type end_pos: int
+        :return: Raise exception
+        :rtype: None
+        """
+
+        dtl: str = input[beg_pos:end_pos]
+
+        raise ValueError(
+            f"Incomplete escape sequence from [{beg_pos}]: \"{dtl}\" in \"{input}\""
+        )
 
 
 ###############################################################################

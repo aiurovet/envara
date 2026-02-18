@@ -144,7 +144,7 @@ class DotEnv:
         data: str | None,
         args: list[str] | None = None,
         exp_flags: EnvExpFlags = DEFAULT_EXPAND_FLAGS,
-    ) -> str:
+    ):
         """
         Load environment variables from a string
 
@@ -175,8 +175,6 @@ class DotEnv:
                 environ[key] = expanded
             elif key and key in environ:
                 del environ[key]
-
-        return data
 
     ###########################################################################
 
