@@ -38,64 +38,65 @@ def test_limited_glob_str_to_regex_str(input, is_full, expected):
 
 
 @pytest.mark.parametrize(
-    "input, check, expected",
+    "source, indicator, check, expected",
     [
-        # Minimal: no extra filters
+        # Most of permutations
 
-        ('', '', False),
-        ('', 'a', False),
-        ('', '.env', True),
-        ('', '-env', True),
-        ('', '_env', True),
-        ('', 'env_', False),
-        ('', 'env.', False),
-        ('', 'env-', False),
-        ('', 'env_', False),
-        ('', '.env.', False),
-        ('', '-env-', False),
-        ('', '_env_', False),
-        ('', '.env-', False),
-        ('', '-env_', False),
-        ('', '_env-', False),
-        ('', '._env-', False),
-        ('', '_env-_', False),
-        ('', '..env..', False),
-        ('', '..env', True),
-        ('', '--env', True),
-        ('', '__env', True),
+        ('a', None, 'env', True),
+        ('a', None, '.env', True),
+        ('a', None, 'env.', True),
+        ('a', None, '-env', True),
+        ('a', None, 'env-', True),
+        ('a', None, '_env', True),
+        ('a', None, 'env_', True),
+        ('a', None, '.a.env', True),
+        ('a', None, 'a.env', True),
+        ('a', None, 'env.a', True),
+        ('a', None, 'env.a.', True),
+        ('a', None, '.env.a.', True),
+        ('a', None, '..env.a..', True),
+        ('a', None, '..env...a..', True),
+        ('a', None, '_a_env', True),
+        ('a', None, '-_a_env-', True),
+        ('a', None, '._a_env._', True),
+        ('a', None, 'a_env', True),
+        ('a', None, 'a_env_', True),
+        ('a', None, 'env_a', True),
+        ('a', None, '_env_a', True),
+        ('a', None, '_env_a_', True),
+        ('a', None, 'env_a_', True),
+        ('a', None, '_env_a_', True),
+        ('a', None, '__env_a__', True),
+        ('a', None, '__env___a__', True),
+        ('a', '', '.env', False),
+        ('a', '', '__env___a__', True),
+        ('a', '', '__a__', True),
 
-        # Close to minimal
+        # Practical
 
-        ('a', 'env', False),
-        ('a', '.env', False),
-        ('a', '-env', False),
-        ('a', '_env', False),
-
-        ('a', 'ax', False),
-        ('a', 'a.x', True),
-        ('a', 'a-x', True),
-        ('a', 'a_x', True),
-
-        ('a', '.x.a', True),
-        ('a', '.x-a', True),
-        ('a', '.x_a', True),
-        ('a', '-x.a', True),
-        ('a', '-x-a', True),
-        ('a', '-x_a', True),
-
-        ('{en,fr,jp}?', 'en.x', False),
-        ('{en,fr,jp}?', 'enu.env-test', True),
-        ('en,fr,jp', 'fr.env', True),
-        ('en,fr,jp', 'dev_env.en', True),
-        ('en,fr,jp', 'prod-env', False),
-        ('en,fr', '.env.jp', False),
-        ('en,fr', '.jp.env', False),
-        ('en,fr', '-jp.env', False),
-        ('en,fr', 'jp.env', False),
+        ('{en,fr,jp}?', None, 'en.x', False),
+        ('{en,fr,jp}?', None, 'enu.env-test', True),
+        ('en,fr,jp', None, 'fr.env', True),
+        ('en,fr,jp', None, 'dev_env.en', True),
+        ('en,fr,jp', None, 'prod-env', False),
+        ('en,fr', None, '.env.jp', False),
+        ('en,fr', None, '.jp.env', False),
+        ('en,fr', None, '-jp.env', False),
+        ('en,fr', None, 'jp.env', False),
+        ('en,fr', '', '.env', False),
+        ('en,fr', '', 'env', False),
+        ('en,fr', '', 'en.env', True),
+        ('en,fr', '', 'jp.env', False),
+        ('en,fr', 'a', '.env', False),
+        ('en,fr', 'a', 'env', False),
+        ('en,fr', 'a', '.a', True),
+        ('en,fr', 'a', 'a', True),
+        ('en,fr', 'a', 'en.a', True),
+        ('en,fr', 'a', 'a.en', True),
     ],
 )
-def test_to_regex(input, check, expected):
+def test_to_regex(source, indicator, check, expected):
     # direct access to the mangled private static method
-    result = DotEnvFilter.to_regex(input)
+    result = DotEnvFilter.to_regex(source, ind=indicator)
     assert isinstance(result, re.Pattern)
     assert expected == (result.search(check) is not None)

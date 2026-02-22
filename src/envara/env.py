@@ -797,6 +797,43 @@ class Env:
     ###########################################################################
 
     @staticmethod
+    def get_all_platforms(
+        flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT
+    ) -> list[str]:
+        """
+        Get all supported platforms
+
+        :param flags: Controls which items will be added to the stack
+        :type flags: EnvPlatformStackFlags
+        :param prefix: optional string to prepend to every platform name
+        :type prefix: str | None
+        :param suffix: optional string to append to every platform name
+        :type suffix: str | None
+        :return: A list of all relevant platforms (optionally decorated)
+        :rtype: list[str]
+        """
+
+        # Initialize the return value
+
+        result: list[str] = []
+
+        # Add default platform if needed
+
+        if flags & EnvPlatformStackFlags.ADD_EMPTY:
+            result.append("")
+
+        # Traverse the lists of platforms and append
+
+        for platforms in Env.__platform_map.values:
+            result.extend(platforms)
+
+        # Return the accumulated list
+
+        return result
+
+    ###########################################################################
+
+    @staticmethod
     def get_platform_stack(
         flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT,
         prefix: str | None = None,

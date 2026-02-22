@@ -91,12 +91,14 @@ class DotEnv:
         # Add the platform filter if required
 
         if flags & DotEnvFileFlags.ADD_PLATFORMS:
-            for x in Env.get_platform_stack(EnvPlatformStackFlags.NONE):
+            platforms = Env.get_platform_stack(EnvPlatformStackFlags.NONE)
+            for x in platforms:
                 filters_ex.append(DotEnvFilter(x))
 
-        # Ensure the default filter is added if no other filter exists
+        # Fallback: append a minimal set of filters
 
-        filters_ex.append(DotEnvFilter())
+        if len(filters_ex) <= 0:
+            filters_ex.append(DotEnvFilter())
 
         # Grab all files and filter those to the result list
 
@@ -105,18 +107,10 @@ class DotEnv:
         for file in dir.iterdir():
             name: str = file.name
 
-            # If none of the expected values match or one of the current
-            # ones, then the filename is valid: '.env.jp' should match
-            # any runtime environment: 'dev', 'test' and 'prod' as well as
-            # '.env.jp', but neither of: '.env.de', '.env.en', '.env.fr'
-
-            # `f.all` and `f.cur` store the original values; regex patterns
-            # were compiled to `all_regex` and `cur_regex` in the filter
-            # constructor.  The previous implementation accidentally used
-            # the raw lists/strings which caused attribute errors.  Use the
-            # regex attributes here.
-            if all(f.is_match(name) for f in filters):
-                result.append(dir / name)
+            for x in filters_ex:
+                if x.is_match(name):
+                    result.append(dir / name)
+                    break
 
         # Finish
 

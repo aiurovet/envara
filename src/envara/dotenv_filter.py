@@ -16,10 +16,15 @@ from env import Env
 
 
 class DotEnvFilter:
+    # Default regex flags to compile with
     DEFAULT_RE_FLAGS: ClassVar[re.RegexFlag] = re.RegexFlag.IGNORECASE
+
+    # Regex to strip all unnecessary blanks around every delimited field
+    DEFAULT_STRIP_RE: ClassVar[re.Pattern] = re.compile(r"^\s+|\s*(,)\s*|\s+$")
 
     def __init__(
         self,
+        ind: str | None,
         cur: list[str] | str | None = None,
         all: list[str] | str | None = None
     ):
@@ -27,6 +32,8 @@ class DotEnvFilter:
         Constructor
         
         :param self: The object
+        :param ind: indicator - a necessary part, default: 'env'
+        :type ind: str | None
         :param cur: One or more strings relevant to the current run passed
                     either as a list of strings or as a single string
         :type cur: list[str] | str | None
@@ -40,8 +47,8 @@ class DotEnvFilter:
 
         # Parse input data into regular expressions
     
-        self.all_regex = DotEnvFilter.to_regex(all);
-        self.cur_regex = DotEnvFilter.to_regex(cur);
+        self.all_regex = DotEnvFilter.to_regex(ind, all);
+        self.cur_regex = DotEnvFilter.to_regex(ind, cur);
 
     ###########################################################################
 
@@ -59,55 +66,73 @@ class DotEnvFilter:
         if self.cur_regex.search(input):
             return True
 
-        if not DotEnvFilter.DEFAULT_RE.search(input):
-            return False
-
         return not self.all_regex.search(input)
 
     ###########################################################################
 
     @staticmethod
     def to_regex(
-        input: list[str] | str | None,
+        src: list[str] | str | None,
+        ind: str | None = None
     ) -> re.Pattern:
         """
         Attach delimiters to input items, create patterns and append
         those to the target list
       
-        :param target: destination list of regexi
-        :type target: list[re.Pattern]
-        :param input: comma-separated input filters with optional wildcards:
-                       "linux,*os" or "en,es,fr" or "dev,*test*,prod*"
+        :param ind: indicator - a part to be always present, if None, then
+            set as the default one
+        :type ind: str | None
+        :param input: comma-separated string or a list of input filters
+            with optional wildcards: "linux,*os" or ["en", "es", "fr"] or
+            "dev,*test*,prod*"
         :type input: str
         """
 
-        # Making variable name shorter for better clarity
+        # Ensure the indicator is a valid string
 
-        i: str = f"(env)"
+        if ind is None:
+            ind = "env"
 
-        # Define a pattern for all allowed separators as well as default
-        # filename pattern
+        # Define a pattern for all allowed separators as well as a minimum
+        # pattern (if the indicator is not empty)
 
-        s: str = r"[\.\-_]"
+        sep: str = r"[\.\-_]"
+        min: str = f"^{sep}*{ind}{sep}*$" if ind else ""
 
         # If input filters are not present, add the default regex and finish
 
-        if not input:
-            p: str = f"^{s}*{i}$"
-            return re.compile(p, flags=DotEnvFilter.DEFAULT_RE_FLAGS)
+        if not src:
+            return re.compile(min, flags=DotEnvFilter.DEFAULT_RE_FLAGS) \
+                if min else None
 
         # Convert glob pattern to a regular expression pattern
 
-        if isinstance(input, list):
-            input = ",".join(input)
+        if isinstance(src, list):
+            src = ",".join(src)
 
-        x: str = DotEnvFilter.__limited_glob_str_to_regex_str(input)
+        # Remove all unnecessary blanks around every delimited field
+
+        src = DotEnvFilter.DEFAULT_STRIP_RE.sub(r"\1", src)
+
+        # Define side and middle separator patterns
+
+        lft: str = f"(^|{sep})"
+        mid: str = f"({sep}+|{sep}+.+{sep}+)"
+        rgt: str = f"({sep}|$)"
+
+        # Convert glob pattern to regex pattern
+
+        pat: str = DotEnvFilter.__limited_glob_str_to_regex_str(src)
 
         # Compose the final pattern, compile that into a regular expression
         # and append to the target list
 
-        p: str = f"(^|{s}){x}({s}|$)"
-        return re.compile(p, flags=DotEnvFilter.DEFAULT_RE_FLAGS)
+        if min:
+            pat = f"{min}|{lft}{ind}{mid}{pat}{rgt}|{lft}{pat}{mid}{ind}{rgt}"
+        else:
+            pat = f"{lft}{pat}{rgt}"
+
+        return re.compile(pat, flags=DotEnvFilter.DEFAULT_RE_FLAGS)
 
     ###########################################################################
 

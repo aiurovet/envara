@@ -12,11 +12,7 @@ from dotenv import DotEnv
 from dotenv_file_flags import DotEnvFileFlags
 import re
 
-# simple stand-in filter class for exercising DotEnv.get_files logic
-class SimpleFilter:
-    def __init__(self, all_pattern: str, cur_pattern: str):
-        self.all_regex = re.compile(all_pattern)
-        self.cur_regex = re.compile(cur_pattern)
+from dotenv_filter import DotEnvFilter
 
 
 def test_read_text_basic(mocker):
@@ -163,7 +159,7 @@ def test_get_files_basic_filtering(tmp_path):
         (tmp_path / name).write_text('')
 
     # a simple filter object that matches 'dev' or 'prod' and only 'prod' as current
-    filt = SimpleFilter(all_pattern=r"dev|prod", cur_pattern=r"prod")
+    filt = DotEnvFilter(all=r"dev|prod", cur=r"prod", ind=None)
 
     # Act
     result = DotEnv.get_files(tmp_path, 0, filt)
@@ -177,11 +173,11 @@ def test_get_files_basic_filtering(tmp_path):
 
 def test_get_files_adds_platform_filter(tmp_path, mocker):
     # Arrange - stub platform filter so only names containing "plat" stay
-    fake_platform = SimpleFilter(all_pattern=r"plat", cur_pattern=r"plat")
+    fake_platform = ["plat1", "plat2", "plat3"]
     m_platform = mocker.patch('dotenv.Env.get_platform_stack', return_value=fake_platform)
 
     # create files in temp directory
-    for name in ['file.plat.env', 'file.other.env']:
+    for name in ['file.plat2.env', 'file.other.env']:
         (tmp_path / name).write_text('')
 
     # Act
@@ -190,5 +186,5 @@ def test_get_files_adds_platform_filter(tmp_path, mocker):
     # Assert - platform filter applied automatically
     assert m_platform.called
     names = [p.name for p in result]
-    assert 'file.plat.env' in names
+    assert 'file.plat2.env' in names
     assert 'file.other.env' not in names
