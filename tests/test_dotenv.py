@@ -6,177 +6,17 @@
 # Tests for DotEnv
 ###############################################################################
 
+
 from pathlib import Path
-import re
 from dotenv import DotEnv
 from dotenv_file_flags import DotEnvFileFlags
-from env import Env
+import re
 
-###############################################################################
-
-def test_append_filter_with_none():
-    target: list[re.Pattern] = []
-    result = DotEnv._DotEnv__append_filter(target, None)
-    assert result is None
-    assert len(target) == 1
-    pattern = target[0].pattern
-    assert '(env)' in pattern
-    # basic matches for the default indicator
-    assert target[0].search('.env')
-    assert target[0].search('-env')
-    assert target[0].search('_env')
-    assert target[0].search('env')
-    assert target[0].search('env-')
-    assert target[0].search('env_')
-    assert target[0].search('.env.')
-    assert target[0].search('-env-')
-    assert target[0].search('_env_')
-    assert target[0].search('env')
-    assert target[0].search('env-')
-    assert target[0].search('.env_')
-    assert target[0].search('_env-')
-
-
-def test_append_filter_with_string():
-    target: list[re.Pattern] = []
-    DotEnv._DotEnv__append_filter(target, 'prod')
-    assert len(target) == 1
-    pat = target[0]
-    # current implementation composes a pattern including the indicator
-    assert '(prod)' in pat.pattern
-    assert '(env)' in pat.pattern
-    assert r'[\.\-_]' in pat.pattern
-    # should not match when there's no separator between parts
-    assert not pat.search('prodenv')
-    assert pat.search('prod.env')
-    assert pat.search('env_prod')
-    assert pat.search('_env_prod_')
-    assert pat.search('-env-prod-')
-    assert pat.search('.env.prod')
-
-
-def test_append_filter_with_list():
-    target: list[re.Pattern] = []
-    DotEnv._DotEnv__append_filter(target, ['posix', 'bsd', 'macos'])
-    assert len(target) == 1
-    pat = target[0]
-    # pattern contains the listed alternatives and the indicator
-    assert '(posix|bsd|macos)' in pat.pattern
-    assert '(env)' in pat.pattern
-    assert '[\.\-_]' in pat.pattern
-    assert not pat.search('envposix')
-    assert pat.search('env-posix')
-    assert pat.search('posix-env')
-    assert pat.search('_posix_env_')
-    assert pat.search('.env.posix')
-    assert pat.search('.env.posix.env')
-    assert pat.search('-posix.env.posix')
-
-
-def test_get_file_stack_with_platforms_no_filters(mocker):
-    # Arrange - mock a directory with files
-    files = [
-        ".env",
-        f".{Env.PLATFORM_THIS}.env",
-        "prod.env",
-        "env-prod",
-        "README.md",
-    ]
-    mock_files = []
-    for name in files:
-        m = mocker.MagicMock(spec=Path)
-        m.name = name
-        mock_files.append(m)
-
-    m_dir = mocker.MagicMock(spec=Path)
-    m_dir.iterdir.return_value = mock_files
-    m_dir.__truediv__.side_effect = lambda other: Path(other)
-
-    # Act
-    result = DotEnv.get_file_stack(dir=m_dir, flags=DotEnvFileFlags.ADD_PLATFORMS)
-
-    # Assert - current implementation matches only the simple default name
-    names = {p.name for p in result}
-    assert ".env" in names
-    assert f".{Env.PLATFORM_THIS}.env" in names
-    assert "prod.env" not in names
-    assert "env-prod" not in names
-    assert "README.md" not in names
-
-
-def test_get_file_stack_without_platforms_no_filters(mocker):
-    # Arrange - mock a directory with files
-    files = [
-        ".env",
-        f".{Env.PLATFORM_THIS}.env",
-        "prod.env",
-        "env-prod",
-        "README.md",
-    ]
-    mock_files = []
-    for name in files:
-        m = mocker.MagicMock(spec=Path)
-        m.name = name
-        mock_files.append(m)
-
-    m_dir = mocker.MagicMock(spec=Path)
-    m_dir.iterdir.return_value = mock_files
-    m_dir.__truediv__.side_effect = lambda other: Path(other)
-
-    # Act
-    result = DotEnv.get_file_stack(dir=m_dir, flags=0)
-
-    # Assert - current implementation matches only the simple default name
-    names = {p.name for p in result}
-    assert ".env" in names
-    assert f".{Env.PLATFORM_THIS}.env" not in names
-    assert "prod.env" not in names
-    assert "env-prod" not in names
-    assert "README.md" not in names
-
-
-def test_get_file_stack_with_filter(mocker):
-    # Arrange
-    names_to_create = ["prod.env", "env-prod", "dev.env", "other.txt"]
-    mock_files = []
-    for name in names_to_create:
-        m = mocker.MagicMock(spec=Path)
-        m.name = name
-        mock_files.append(m)
-
-    m_dir = mocker.MagicMock(spec=Path)
-    m_dir.iterdir.return_value = mock_files
-    m_dir.__truediv__.side_effect = lambda other: Path(other)
-
-    # Act - filter for 'prod'
-    result = DotEnv.get_file_stack(m_dir, 0, "prod")
-
-    # Assert - current implementation requires matching all patterns, so
-    # combining default and filter produces no matches in this layout
-    res_names = {p.name for p in result}
-    assert res_names == set()
-
-
-def test_get_file_stack_with_filter(mocker):
-    # Arrange
-    names_to_create = ["prod.env", "env-prod", "dev.env", "other.txt"]
-    mock_files = []
-    for name in names_to_create:
-        m = mocker.MagicMock(spec=Path)
-        m.name = name
-        mock_files.append(m)
-
-    m_dir = mocker.MagicMock(spec=Path)
-    m_dir.iterdir.return_value = mock_files
-    m_dir.__truediv__.side_effect = lambda other: Path(other)
-
-    # Act - filter for 'prod'
-    result = DotEnv.get_file_stack(m_dir, 0, "prod")
-
-    # Assert - current implementation requires matching all patterns, so
-    # combining default and filter produces no matches in this layout
-    res_names = {p.name for p in result}
-    assert set(res_names) == set(["prod.env", "env-prod"])
+# simple stand-in filter class for exercising DotEnv.get_files logic
+class SimpleFilter:
+    def __init__(self, all_pattern: str, cur_pattern: str):
+        self.all_regex = re.compile(all_pattern)
+        self.cur_regex = re.compile(cur_pattern)
 
 
 def test_read_text_basic(mocker):
@@ -256,7 +96,7 @@ def test_read_text_reset_flag(mocker):
 
 def test_load_with_empty_stack(mocker):
     # Arrange - no files found
-    mocker.patch("dotenv.DotEnv.get_file_stack", return_value=[])
+    mocker.patch("dotenv.DotEnv.get_files", return_value=[])
     m_read_text = mocker.patch("dotenv.DotEnv.read_text", return_value="")
     m_load_from_str = mocker.patch("dotenv.DotEnv.load_from_str")
     m_dir = mocker.MagicMock(spec=Path)
@@ -271,9 +111,9 @@ def test_load_with_empty_stack(mocker):
 
 
 def test_load_reads_files_and_passes_flags(mocker):
-    # Arrange - simulate get_file_stack returning two files and read_text returning content
+    # Arrange - simulate get_files returning two files and read_text returning content
     fake_files = [mocker.MagicMock(spec=Path), mocker.MagicMock(spec=Path)]
-    mocker.patch("dotenv.DotEnv.get_file_stack", return_value=fake_files)
+    mocker.patch("dotenv.DotEnv.get_files", return_value=fake_files)
     m_read_text = mocker.patch("dotenv.DotEnv.read_text", return_value="K=V")
     m_load_from_str = mocker.patch("dotenv.DotEnv.load_from_str")
     m_dir = mocker.MagicMock(spec=Path)
@@ -315,3 +155,40 @@ def test_load_from_str_passes_args_and_flags(mocker):
     # Assert
     m_expand.assert_called_once_with("$1", args, flags)
     assert m_environ["K"] == "X"
+
+
+def test_get_files_basic_filtering(tmp_path):
+    # Arrange - create a few fake files in a temporary directory
+    for name in ['dev.env', 'prod.env', 'other.txt']:
+        (tmp_path / name).write_text('')
+
+    # a simple filter object that matches 'dev' or 'prod' and only 'prod' as current
+    filt = SimpleFilter(all_pattern=r"dev|prod", cur_pattern=r"prod")
+
+    # Act
+    result = DotEnv.get_files(tmp_path, 0, filt)
+
+    # Assert - operate on names for clarity
+    names = [p.name for p in result]
+    assert 'prod.env' in names
+    assert 'other.txt' in names
+    assert 'dev.env' not in names
+
+
+def test_get_files_adds_platform_filter(tmp_path, mocker):
+    # Arrange - stub platform filter so only names containing "plat" stay
+    fake_platform = SimpleFilter(all_pattern=r"plat", cur_pattern=r"plat")
+    m_platform = mocker.patch('dotenv.Env.get_platform_stack', return_value=fake_platform)
+
+    # create files in temp directory
+    for name in ['file.plat.env', 'file.other.env']:
+        (tmp_path / name).write_text('')
+
+    # Act
+    result = DotEnv.get_files(tmp_path)
+
+    # Assert - platform filter applied automatically
+    assert m_platform.called
+    names = [p.name for p in result]
+    assert 'file.plat.env' in names
+    assert 'file.other.env' not in names

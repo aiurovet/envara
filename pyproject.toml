@@ -17,6 +17,7 @@ dev = [
     "pytest",
     "pytest-mock",
     "coverage",
+    "pytest-cov",
 ]
 
 [project.scripts]
