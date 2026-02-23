@@ -9,7 +9,7 @@ from enum import IntFlag
 ###############################################################################
 
 
-class EnvPlatformStackFlags(IntFlag):
+class EnvPlatformFlags(IntFlag):
     # No flag set
     NONE = 0
 

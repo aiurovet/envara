@@ -20,7 +20,7 @@ import shlex
 from typing import ClassVar
 
 from env_exp_flags import EnvExpFlags
-from env_platform_stack_flags import EnvPlatformStackFlags
+from env_platform_flags import EnvPlatformFlags
 from env_quote_type import EnvQuoteType
 from env_parse_info import EnvParseInfo
 
@@ -798,7 +798,7 @@ class Env:
 
     @staticmethod
     def get_all_platforms(
-        flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT
+        flags: EnvPlatformFlags = EnvPlatformFlags.DEFAULT
     ) -> list[str]:
         """
         Get all supported platforms
@@ -819,7 +819,7 @@ class Env:
 
         # Add default platform if needed
 
-        if flags & EnvPlatformStackFlags.ADD_EMPTY:
+        if flags & EnvPlatformFlags.ADD_EMPTY:
             result.append("")
 
         # Traverse the lists of platforms and append distinct
@@ -837,7 +837,7 @@ class Env:
 
     @staticmethod
     def get_cur_platforms(
-        flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT,
+        flags: EnvPlatformFlags = EnvPlatformFlags.DEFAULT,
         prefix: str | None = None,
         suffix: str | None = None,
     ) -> list[str]:
@@ -880,7 +880,7 @@ class Env:
                 # Perform extra checks
 
                 if not platform:
-                    if (flags & EnvPlatformStackFlags.ADD_EMPTY) == 0:
+                    if (flags & EnvPlatformFlags.ADD_EMPTY) == 0:
                         continue
                 elif platform == Env.PLATFORM_POSIX:
                     if not Env.IS_POSIX:

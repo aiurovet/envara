@@ -22,7 +22,7 @@ from env_file_flags import EnvFileFlags
 from env_filter import EnvFilter
 from env import Env
 from env_exp_flags import EnvExpFlags
-from env_platform_stack_flags import EnvPlatformStackFlags
+from env_platform_flags import EnvPlatformFlags
 
 ###############################################################################
 # Implementation
@@ -89,7 +89,7 @@ class EnvFile:
         # Add the platform filter if required
 
         if flags & EnvFileFlags.ADD_PLATFORMS:
-            pfl: EnvPlatformStackFlags = EnvPlatformStackFlags.NONE
+            pfl: EnvPlatformFlags = EnvPlatformFlags.NONE
             all: list[str] = Env.get_all_platforms(flags=pfl)
             cur: list[str] = Env.get_cur_platforms(flags=pfl)
             filters_ex.append(EnvFilter(indicator, cur, all))

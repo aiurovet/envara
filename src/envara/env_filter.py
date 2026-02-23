@@ -1,7 +1,7 @@
 ###############################################################################
 # envara (C) Alexander Iurovetski 2026
 #
-# Filtering for EnvFile
+# Environment-related filtering (mainly, for EnvFile)
 ###############################################################################
 
 
@@ -139,9 +139,9 @@ class EnvFilter:
 
         # Define side and middle separator patterns
 
-        lft: str = f"(^|{sep})"
-        mid: str = f"({sep}+|{sep}+.+{sep}+)"
-        rgt: str = f"({sep}|$)"
+        lft: str = f"(?:^|{sep})"
+        mid: str = f"(?:{sep}+|{sep}+.+{sep}+)"
+        rgt: str = f"(?:{sep}|$)"
 
         # Convert glob pattern to regex pattern
 
@@ -192,21 +192,27 @@ class EnvFilter:
         # If the input looks like a regular expression pattern string,
         # return that unchanged
 
-        if input and (
-            ("^" in input) or \
-            ("$" in input) or \
-            ("|" in input) or \
-            ("(" in input)
-        ):
-            return input
+        inp_len: int = len(input)
 
-        return ("^(" if is_full else "(") + \
+        if (inp_len > 1) and (
+            ("|" in input) or \
+            ("(" in input) or \
+            ("^" == input[0]) or \
+            ("$" == input[inp_len - 1])
+        ):
+            return input if input[0] in "^(" else f"(?:{input})"
+
+        return ("^(?:" if is_full else "(?:") + \
             re.escape(input) \
                 .replace(",", "|") \
-                .replace("\\{", "(") \
-                .replace("\\}", ")") \
-                .replace("\\?", ".") \
-                .replace("\\*", ".*") + \
+                .replace(r"\{", "(?:") \
+                .replace(r"\}", ")") \
+                .replace(r"\[!", "[^") \
+                .replace(r"\[", "[") \
+                .replace(r"\]", "]") \
+                .replace(r"\^", "^") \
+                .replace(r"\?", ".") \
+                .replace(r"\*", ".*") + \
             (")$" if is_full else ")")
 
 
