@@ -33,9 +33,10 @@ from env_filter import EnvFilter
         ('ab{c,{de,f{g,h*}}f', False, '(?:ab(?:c|(?:de|f(?:g|h.*))f)'),
         ('ab{c,{de,f{g,h*}}f', True, '^(?:ab(?:c|(?:de|f(?:g|h.*))f)$'),
         ('ab{c,{de,f{g,h*}}f', True, '^(?:ab(?:c|(?:de|f(?:g|h.*))f)$'),
+        # regex-like inputs should be returned unchanged regardless of is_full,
+        # or at most, just wrapped into a non-captuing group
         ('dev|test|prod', False, '(?:dev|test|prod)'),
         ('dev|test|prod', True, '(?:dev|test|prod)'),
-        # regex-like inputs should be returned unchanged regardless of is_full
         ('(dev|test|prod)', False, '(dev|test|prod)'),
         ('(dev|test|prod)', True, '(dev|test|prod)'),
         ('^abc$', False, '^abc$'),
