@@ -1,54 +1,59 @@
 ###############################################################################
 # envara (C) Alexander Iurovetski 2026
 #
-# Filtering for DotEnv
+# Filtering for EnvFile
 ###############################################################################
 
 
 import re
 from typing import ClassVar
 
-from env import Env
-
 ###############################################################################
 # Implementation
 ###############################################################################
 
 
-class DotEnvFilter:
+class EnvFilter:
     # Default regex flags to compile with
     DEFAULT_RE_FLAGS: ClassVar[re.RegexFlag] = re.RegexFlag.IGNORECASE
 
+    # Default dot-env file type without leading extension separator
+    DEFAULT_INDICATOR: ClassVar[str] = "env"
+
     # Regex to strip all unnecessary blanks around every delimited field
-    DEFAULT_STRIP_RE: ClassVar[re.Pattern] = re.compile(r"^\s+|\s*(,)\s*|\s+$")
+    DEFAULT_STRIP_RE: ClassVar[re.Pattern] = re.compile(
+        r"^\s+|\s*(,)\s*|\s+$"
+    )
 
     def __init__(
         self,
-        ind: str | None,
-        cur: list[str] | str | None = None,
-        all: list[str] | str | None = None
+        indicator: str = DEFAULT_INDICATOR,
+        cur_values: list[str] | str | None = None,
+        all_values: list[str] | str | None = None
     ):
         """
         Constructor
         
         :param self: The object
-        :param ind: indicator - a necessary part, default: 'env'
-        :type ind: str | None
-        :param cur: One or more strings relevant to the current run passed
+        :param indicator: indicator - a necessary part, default: DEFAULT_INDICATOR
+        :type indicator: str | None
+        :param cur_values: One or more strings relevant to the current run passed
                     either as a list of strings or as a single string
-        :type cur: list[str] | str | None
-        :param all: All possible values passed as a list of strings
-        :type all: list[str]
+        :type cur_values: list[str] | str | None
+        :param all_values: All possible values passed as a list of strings
+        :type all_values: list[str]
         """
-        # Accept input data
+        # Accept parameters
     
-        self.all = all
-        self.cur = cur
+        self.indicator = indicator
+        self.all_values = all_values
+        self.cur_values = cur_values
 
-        # Parse input data into regular expressions
+        # Parse pattern-related parameters into regular expressions
     
-        self.all_regex = DotEnvFilter.to_regex(ind, all);
-        self.cur_regex = DotEnvFilter.to_regex(ind, cur);
+        self.ind_regex = EnvFilter.to_regex(indicator, is_full=False)
+        self.all_regex = EnvFilter.to_regex(indicator, all_values)
+        self.cur_regex = EnvFilter.to_regex(indicator, cur_values)
 
     ###########################################################################
 
@@ -66,14 +71,18 @@ class DotEnvFilter:
         if self.cur_regex.search(input):
             return True
 
+        if not self.ind_regex.search(input):
+            return False
+
         return not self.all_regex.search(input)
 
     ###########################################################################
 
     @staticmethod
     def to_regex(
-        src: list[str] | str | None,
-        ind: str | None = None
+        indicator: str = DEFAULT_INDICATOR,
+        input: list[str] | str | None = None,
+        is_full: bool = True
     ) -> re.Pattern:
         """
         Attach delimiters to input items, create patterns and append
@@ -86,33 +95,47 @@ class DotEnvFilter:
             with optional wildcards: "linux,*os" or ["en", "es", "fr"] or
             "dev,*test*,prod*"
         :type input: str
+        :param is_full: if True perform full match: from start to end
+        :type is_full: bool
+        :return: regular expression matching passed critera
+        :rtype: re.Pattern
         """
 
         # Ensure the indicator is a valid string
 
-        if ind is None:
-            ind = "env"
+        ind: str = EnvFilter.DEFAULT_INDICATOR \
+            if indicator is None else indicator
 
         # Define a pattern for all allowed separators as well as a minimum
         # pattern (if the indicator is not empty)
 
         sep: str = r"[\.\-_]"
-        min: str = f"^{sep}*{ind}{sep}*$" if ind else ""
+
+        # Define a minimum pattern (if the indicator is not empty)
+
+        min: str = ""
+
+        if ind:
+            min = f"{sep}*{ind}{sep}*"
+            if is_full:
+                min = f"^{min}$"
 
         # If input filters are not present, add the default regex and finish
 
-        if not src:
-            return re.compile(min, flags=DotEnvFilter.DEFAULT_RE_FLAGS) \
+        if not input:
+            return re.compile(min, flags=EnvFilter.DEFAULT_RE_FLAGS) \
                 if min else None
 
-        # Convert glob pattern to a regular expression pattern
+        # If input is a list, join it's elements into a string, but if
+        # input looks like a regular exprssion pattern string, compile that
+        # and return
 
-        if isinstance(src, list):
-            src = ",".join(src)
+        if isinstance(input, list):
+            input = ",".join(input)
 
         # Remove all unnecessary blanks around every delimited field
 
-        src = DotEnvFilter.DEFAULT_STRIP_RE.sub(r"\1", src)
+        input = EnvFilter.DEFAULT_STRIP_RE.sub(r"\1", input)
 
         # Define side and middle separator patterns
 
@@ -122,7 +145,7 @@ class DotEnvFilter:
 
         # Convert glob pattern to regex pattern
 
-        pat: str = DotEnvFilter.__limited_glob_str_to_regex_str(src)
+        pat: str = EnvFilter.__limited_glob_str_to_regex_str(input)
 
         # Compose the final pattern, compile that into a regular expression
         # and append to the target list
@@ -132,7 +155,7 @@ class DotEnvFilter:
         else:
             pat = f"{lft}{pat}{rgt}"
 
-        return re.compile(pat, flags=DotEnvFilter.DEFAULT_RE_FLAGS)
+        return re.compile(pat, flags=EnvFilter.DEFAULT_RE_FLAGS)
 
     ###########################################################################
 
@@ -144,8 +167,11 @@ class DotEnvFilter:
         """
         Convert a limited glob pattern string into a regular expression
         pattern string using comma, asterisk and curly brackets only, no
-        escaping, caret and dollar sign are not added if is_full = False:
+        escaping, caret and dollar sign are not added if is_full = False.
+        However, if the input looks like a regular expression pattern
+        string, return that unchanged ignoring is_full:
         ```
+            'dev|test|prod' => 'dev|test|prod'
             'dev,test,prod' => '^(dev|test|prod)$'
             'dev*,test,prod*' => '^(dev.*|test|prod)$'
             '{en,es,fr,jp}?' => '^(en|es|fr).$'
@@ -158,8 +184,21 @@ class DotEnvFilter:
         :rtype: str
         """
 
+        # Coalesce for validity of string operations
+
         if input is None:
             input = ""
+
+        # If the input looks like a regular expression pattern string,
+        # return that unchanged
+
+        if input and (
+            ("^" in input) or \
+            ("$" in input) or \
+            ("|" in input) or \
+            ("(" in input)
+        ):
+            return input
 
         return ("^(" if is_full else "(") + \
             re.escape(input) \

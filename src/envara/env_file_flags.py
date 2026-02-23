@@ -1,7 +1,7 @@
 ###############################################################################
 # envara (C) Alexander Iurovetski 2026
 #
-# Enumeration containing flags to control behaviour of DotEnv methods
+# Enumeration containing flags to control behaviour of EnvFile methods
 ###############################################################################
 
 from enum import IntFlag
@@ -9,7 +9,7 @@ from enum import IntFlag
 ###############################################################################
 
 
-class DotEnvFileFlags(IntFlag):
+class EnvFileFlags(IntFlag):
     # No flag set
     NONE = 0
 

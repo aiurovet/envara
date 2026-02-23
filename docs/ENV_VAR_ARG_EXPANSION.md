@@ -92,4 +92,4 @@ Windows-style percent-delimited expansions are provided by _Env.expand_symmetric
 
 ## Which expansion to choose?
 
-You don't have to decide in the code. It is all about what _DotEnv.load()_ encounters while analysing the content. Whatever comes first in each line ($ or %), will be used, and escape character will be chosen similarly. However, the POSIX-style assignemnts are by far more flexible. On the other hand, _DotEnv.load()_ handles both styles on any platform.
+You don't have to decide in the code. It is all about what _EnvFile.load()_ encounters while analysing the content. Whatever comes first in each line ($ or %), will be used, and escape character will be chosen similarly. However, the POSIX-style assignemnts are by far more flexible. On the other hand, _EnvFile.load()_ handles both styles on any platform.

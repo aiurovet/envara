@@ -822,10 +822,12 @@ class Env:
         if flags & EnvPlatformStackFlags.ADD_EMPTY:
             result.append("")
 
-        # Traverse the lists of platforms and append
+        # Traverse the lists of platforms and append distinct
 
-        for platforms in Env.__platform_map.values:
-            result.extend(platforms)
+        for platforms in Env.__platform_map.values():
+            for platform in platforms:
+                if platform not in result:
+                    result.append(platform)
 
         # Return the accumulated list
 
@@ -834,7 +836,7 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def get_platform_stack(
+    def get_cur_platforms(
         flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT,
         prefix: str | None = None,
         suffix: str | None = None,
@@ -842,7 +844,7 @@ class Env:
         """
         Get the stack (list) of platforms from more generic to more specific
         ones. Optionally add a prefix and/or suffix to every platform name
-        (used by DotEnv to form filenames like '.env' or '.linux.env').
+        (used by EnvFile to form filenames like '.env' or '.linux.env').
 
         :param flags: Controls which items will be added to the stack
         :type flags: EnvPlatformStackFlags

@@ -669,39 +669,39 @@ def test_expand_simple_custom_escape_behavior():
 
 
 # ---------------------------------------------------------------------------
-# Tests for Env.get_platform_stack method
+# Tests for Env.get_cur_platforms method
 # ---------------------------------------------------------------------------
 
 
-def test_get_platform_stack_no_flags():
+def test_get_cur_platforms_no_flags():
     # With EnvPlatformStackFlags.NONE, minimal platforms should be returned
-    result = Env.get_platform_stack(flags=EnvPlatformStackFlags.NONE)
+    result = Env.get_cur_platforms(flags=EnvPlatformStackFlags.NONE)
     # Should return a list with at least the current platform
     assert isinstance(result, list)
     assert len(result) > 0
 
 
-def test_get_platform_stack_add_empty(mocker):
+def test_get_cur_platforms_add_empty(mocker):
     # Patch to ensure we're on a known platform
     mocker.patch.object(Env, "PLATFORM_THIS", "linux")
     mocker.patch.object(Env, "IS_POSIX", True)
     
     # Get stack with ADD_EMPTY flag
-    result = Env.get_platform_stack(flags=EnvPlatformStackFlags.ADD_EMPTY)
+    result = Env.get_cur_platforms(flags=EnvPlatformStackFlags.ADD_EMPTY)
     
     # Empty string should be included
     assert "" in result
     assert isinstance(result, list)
 
 
-def test_get_platform_stack_add_max_includes_all(mocker):
+def test_get_cur_platforms_add_max_includes_all(mocker):
     # Patch platform details for Linux + POSIX
     mocker.patch.object(Env, "PLATFORM_THIS", "linux")
     mocker.patch.object(Env, "IS_POSIX", True)
     mocker.patch.object(Env, "IS_WINDOWS", False)
     
     # Get full stack with ADD_MAX flag
-    result = Env.get_platform_stack(flags=EnvPlatformStackFlags.ADD_MAX)
+    result = Env.get_cur_platforms(flags=EnvPlatformStackFlags.ADD_MAX)
     
     # Result should contain multiple platforms
     assert len(result) > 0
@@ -710,10 +710,10 @@ def test_get_platform_stack_add_max_includes_all(mocker):
     assert "linux" in result
 
 
-def test_get_platform_stack_with_prefix_and_suffix(mocker):
+def test_get_cur_platforms_with_prefix_and_suffix(mocker):
     mocker.patch.object(Env, "PLATFORM_THIS", "linux")
     mocker.patch.object(Env, "IS_POSIX", True)
-    res = Env.get_platform_stack(flags=EnvPlatformStackFlags.ADD_MAX, prefix="pre-", suffix="-suf")
+    res = Env.get_cur_platforms(flags=EnvPlatformStackFlags.ADD_MAX, prefix="pre-", suffix="-suf")
     # every returned string should start with prefix and end with suffix
     assert all(r.startswith("pre-") and r.endswith("-suf") for r in res)
 

@@ -24,12 +24,13 @@ class Env:
     .expand()
     .expand_posix()
     .expand_simple() # Windows-like
-    .get_platform_stack()
+    .get_all_platforms()
+    .get_cur_platforms()
     .quote()
     .unescape()
     .unquote()
           
-class DotEnv:
+class EnvFile:
     .load()
     .load_from_str()
     .read_text()

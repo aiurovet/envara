@@ -3,21 +3,20 @@
 ###############################################################################
 # envara (C) Alexander Iurovetski 2026
 #
-# Tests for DotEnv
+# Tests for EnvFile
 ###############################################################################
 
 
 from pathlib import Path
-from dotenv import DotEnv
-from dotenv_file_flags import DotEnvFileFlags
-import re
+from env_file import EnvFile
+from env_file_flags import EnvFileFlags
 
-from dotenv_filter import DotEnvFilter
+from env_filter import EnvFilter
 
 
 def test_read_text_basic(mocker):
     # Arrange
-    DotEnv._loaded = []
+    EnvFile._loaded = []
     m1 = mocker.MagicMock(spec=Path)
     m1.read_text.return_value = "A"
     m1.__str__.return_value = "/tmp/one"
@@ -27,17 +26,17 @@ def test_read_text_basic(mocker):
     m2.__str__.return_value = "/tmp/two"
 
     # Act
-    result = DotEnv.read_text([m1, m2], flags=0)
+    result = EnvFile.read_text([m1, m2], flags=0)
 
     # Assert
     assert result == "A\nB"
-    assert "/tmp/one" in DotEnv._loaded
-    assert "/tmp/two" in DotEnv._loaded
+    assert "/tmp/one" in EnvFile._loaded
+    assert "/tmp/two" in EnvFile._loaded
 
 
 def test_read_text_skips_already_loaded(mocker):
     # Arrange - mark first file as already loaded
-    DotEnv._loaded = ["/tmp/one"]
+    EnvFile._loaded = ["/tmp/one"]
     m1 = mocker.MagicMock(spec=Path)
     m1.read_text.return_value = "A"
     m1.__str__.return_value = "/tmp/one"
@@ -47,17 +46,17 @@ def test_read_text_skips_already_loaded(mocker):
     m2.__str__.return_value = "/tmp/two"
 
     # Act
-    result = DotEnv.read_text([m1, m2], flags=0)
+    result = EnvFile.read_text([m1, m2], flags=0)
 
     # Assert - only second file's content is returned, both paths present in _loaded
     assert result == "B"
-    assert "/tmp/one" in DotEnv._loaded
-    assert "/tmp/two" in DotEnv._loaded
+    assert "/tmp/one" in EnvFile._loaded
+    assert "/tmp/two" in EnvFile._loaded
 
 
 def test_read_text_ignores_exceptions(mocker):
     # Arrange
-    DotEnv._loaded = []
+    EnvFile._loaded = []
     m1 = mocker.MagicMock(spec=Path)
     m1.read_text.return_value = "A"
     m1.__str__.return_value = "/tmp/one"
@@ -67,86 +66,86 @@ def test_read_text_ignores_exceptions(mocker):
     m2.__str__.return_value = "/tmp/two"
 
     # Act
-    result = DotEnv.read_text([m1, m2], flags=0)
+    result = EnvFile.read_text([m1, m2], flags=0)
 
     # Assert - exception from second file is ignored, but its path is still recorded
     assert result == "A"
-    assert "/tmp/one" in DotEnv._loaded
-    assert "/tmp/two" in DotEnv._loaded
+    assert "/tmp/one" in EnvFile._loaded
+    assert "/tmp/two" in EnvFile._loaded
 
 
 def test_read_text_reset_flag(mocker):
     # Arrange - _loaded contains a previous entry but RESET should clear it
-    DotEnv._loaded = ["/tmp/one"]
+    EnvFile._loaded = ["/tmp/one"]
     m1 = mocker.MagicMock(spec=Path)
     m1.read_text.return_value = "A"
     m1.__str__.return_value = "/tmp/one"
 
     # Act
-    result = DotEnv.read_text([m1], flags=DotEnvFileFlags.RESET)
+    result = EnvFile.read_text([m1], flags=EnvFileFlags.RESET)
 
     # Assert - content read and _loaded contains the file again
     assert result == "A"
-    assert "/tmp/one" in DotEnv._loaded
+    assert "/tmp/one" in EnvFile._loaded
 
 
 def test_load_with_empty_stack(mocker):
     # Arrange - no files found
-    mocker.patch("dotenv.DotEnv.get_files", return_value=[])
-    m_read_text = mocker.patch("dotenv.DotEnv.read_text", return_value="")
-    m_load_from_str = mocker.patch("dotenv.DotEnv.load_from_str")
+    mocker.patch("env_file.EnvFile.get_files", return_value=[])
+    m_read_text = mocker.patch("env_file.EnvFile.read_text", return_value="")
+    m_load_from_str = mocker.patch("env_file.EnvFile.load_from_str")
     m_dir = mocker.MagicMock(spec=Path)
 
     # Act
-    result = DotEnv.load(m_dir)
+    result = EnvFile.load(m_dir)
 
     # Assert
     m_read_text.assert_called_once()
-    m_load_from_str.assert_called_once_with("", exp_flags=DotEnv.DEFAULT_EXPAND_FLAGS)
+    m_load_from_str.assert_called_once_with("", exp_flags=EnvFile.DEFAULT_EXPAND_FLAGS)
     assert result == ""
 
 
 def test_load_reads_files_and_passes_flags(mocker):
     # Arrange - simulate get_files returning two files and read_text returning content
     fake_files = [mocker.MagicMock(spec=Path), mocker.MagicMock(spec=Path)]
-    mocker.patch("dotenv.DotEnv.get_files", return_value=fake_files)
-    m_read_text = mocker.patch("dotenv.DotEnv.read_text", return_value="K=V")
-    m_load_from_str = mocker.patch("dotenv.DotEnv.load_from_str")
+    mocker.patch("env_file.EnvFile.get_files", return_value=fake_files)
+    m_read_text = mocker.patch("env_file.EnvFile.read_text", return_value="K=V")
+    m_load_from_str = mocker.patch("env_file.EnvFile.load_from_str")
     m_dir = mocker.MagicMock(spec=Path)
-    flags = DotEnvFileFlags.DEFAULT
+    flags = EnvFileFlags.DEFAULT
 
     # Act
-    result = DotEnv.load(m_dir, file_flags=flags)
+    result = EnvFile.load(m_dir, file_flags=flags)
 
     # Assert
     m_read_text.assert_called_once()
-    m_load_from_str.assert_called_once_with("K=V", exp_flags=DotEnv.DEFAULT_EXPAND_FLAGS)
+    m_load_from_str.assert_called_once_with("K=V", exp_flags=EnvFile.DEFAULT_EXPAND_FLAGS)
 
 
 def test_load_from_str_uses_env_expand(mocker):
     # Arrange
     m_environ = mocker.patch("os.environ", {})
-    m_expand = mocker.patch("dotenv.Env.expand", return_value=("EXPANDED", None))
+    m_expand = mocker.patch("env.Env.expand", return_value=("EXPANDED", None))
     data = "KEY=VALUE"
 
     # Act
-    DotEnv.load_from_str(data)
+    EnvFile.load_from_str(data)
 
     # Assert
-    m_expand.assert_called_once_with("VALUE", None, DotEnv.DEFAULT_EXPAND_FLAGS)
+    m_expand.assert_called_once_with("VALUE", None, EnvFile.DEFAULT_EXPAND_FLAGS)
     assert m_environ["KEY"] == "EXPANDED"
 
 
 def test_load_from_str_passes_args_and_flags(mocker):
     # Arrange
     m_environ = mocker.patch("os.environ", {})
-    m_expand = mocker.patch("dotenv.Env.expand", return_value=("X", None))
+    m_expand = mocker.patch("env.Env.expand", return_value=("X", None))
     data = "K=$1"
     args = ["a1"]
-    flags = DotEnv.DEFAULT_EXPAND_FLAGS
+    flags = EnvFile.DEFAULT_EXPAND_FLAGS
 
     # Act
-    DotEnv.load_from_str(data, args=args, exp_flags=flags)
+    EnvFile.load_from_str(data, args=args, exp_flags=flags)
 
     # Assert
     m_expand.assert_called_once_with("$1", args, flags)
@@ -159,32 +158,36 @@ def test_get_files_basic_filtering(tmp_path):
         (tmp_path / name).write_text('')
 
     # a simple filter object that matches 'dev' or 'prod' and only 'prod' as current
-    filt = DotEnvFilter(all=r"dev|prod", cur=r"prod", ind=None)
+    filt = EnvFilter(all_values="dev,prod", cur_values=r"prod")
 
     # Act
-    result = DotEnv.get_files(tmp_path, 0, filt)
+    result = EnvFile.get_files(tmp_path, "env", 0, filt)
 
     # Assert - operate on names for clarity
     names = [p.name for p in result]
     assert 'prod.env' in names
-    assert 'other.txt' in names
+    assert 'other.txt' not in names
     assert 'dev.env' not in names
 
 
 def test_get_files_adds_platform_filter(tmp_path, mocker):
     # Arrange - stub platform filter so only names containing "plat" stay
-    fake_platform = ["plat1", "plat2", "plat3"]
-    m_platform = mocker.patch('dotenv.Env.get_platform_stack', return_value=fake_platform)
+    fake_cur_platforms = ["plat1", "plat2", "plat3"]
+    m_platform = mocker.patch('env.Env.get_cur_platforms', return_value=fake_cur_platforms)
+
+    fake_all_platforms = ["plat1", "plat2", "plat3", "plat4", "plat5", "plat6"]
+    m_platform = mocker.patch('env.Env.get_all_platforms', return_value=fake_all_platforms)
 
     # create files in temp directory
-    for name in ['file.plat2.env', 'file.other.env']:
+    for name in ['file.plat2.env', 'file.plat4.env', 'file.other.env']:
         (tmp_path / name).write_text('')
 
     # Act
-    result = DotEnv.get_files(tmp_path)
+    result = EnvFile.get_files(tmp_path)
 
     # Assert - platform filter applied automatically
     assert m_platform.called
     names = [p.name for p in result]
     assert 'file.plat2.env' in names
-    assert 'file.other.env' not in names
+    assert 'file.other.env' in names
+    assert 'file.plat4.env' not in names

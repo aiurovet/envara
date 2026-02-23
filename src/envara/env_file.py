@@ -18,8 +18,8 @@ import pathlib
 import re
 from typing import Final
 
-from dotenv_file_flags import DotEnvFileFlags
-from dotenv_filter import DotEnvFilter
+from env_file_flags import EnvFileFlags
+from env_filter import EnvFilter
 from env import Env
 from env_exp_flags import EnvExpFlags
 from env_platform_stack_flags import EnvPlatformStackFlags
@@ -29,7 +29,7 @@ from env_platform_stack_flags import EnvPlatformStackFlags
 ###############################################################################
 
 
-class DotEnv:
+class EnvFile:
 
     # Default set of string expansion flags
     DEFAULT_EXPAND_FLAGS: Final[EnvExpFlags] = (
@@ -38,9 +38,6 @@ class DotEnv:
         | EnvExpFlags.REMOVE_QUOTES
         | EnvExpFlags.SKIP_SINGLE_QUOTED
     )
-
-    # Default dot-env file type without leading extension separator
-    INDICATOR: Final[str] = "env"
 
     # Regex to split a string into key and value
     RE_KEY_VALUE: Final[re.Pattern] = re.compile(r"\s*=\s*")
@@ -53,8 +50,9 @@ class DotEnv:
     @staticmethod
     def get_files(
         dir: Path | None = None,
-        flags: DotEnvFileFlags = DotEnvFileFlags.ADD_PLATFORMS,
-        *filters: list[DotEnvFilter] | DotEnvFilter,
+        indicator: str | None = None,
+        flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS,
+        *filters: list[EnvFilter] | EnvFilter,
     ) -> list[Path]:
         """
         Get list of eligible files. Adds a list of platform names if
@@ -63,13 +61,13 @@ class DotEnv:
         :param dir: directory to look in
         :type dir: Path | None
         :param flags: add platform names to filters
-        :type flags: DotEnvFileFlags, default: DotEnvFileFlags.ADD_PLATFORMS
-        :param filters: one or more DotEnvFilter objects showing what is the
+        :type flags: EnvFileFlags, default: EnvFileFlags.ADD_PLATFORMS
+        :param filters: one or more EnvFilter objects showing what is the
             current value, and what are the possibilities; should be matched
-            against: `DotEnv.get_files(DotEnvFilter(cur='prod*', all=['dev',
-            'test', 'prod', 'production']), DotEnvFilter(cur='jp', all=['en',
+            against: `EnvFile.get_files(EnvFilter(cur='prod*', all=['dev',
+            'test', 'prod', 'production']), EnvFilter(cur='jp', all=['en',
             'fr', 'de']))`
-        :type filters: unlimited arguments of type DotEnvFilter
+        :type filters: unlimited arguments of type EnvFilter
         :rtype: list[Path]
         """
 
@@ -80,7 +78,7 @@ class DotEnv:
         # Define extended filters as a growable list and append
         # the ones passed as separate arguments
 
-        filters_ex: list[DotEnvFilter] = []
+        filters_ex: list[EnvFilter] = []
 
         for x in filters:
             if isinstance(x, list):
@@ -90,15 +88,16 @@ class DotEnv:
 
         # Add the platform filter if required
 
-        if flags & DotEnvFileFlags.ADD_PLATFORMS:
-            platforms = Env.get_platform_stack(EnvPlatformStackFlags.NONE)
-            for x in platforms:
-                filters_ex.append(DotEnvFilter(x))
+        if flags & EnvFileFlags.ADD_PLATFORMS:
+            pfl: EnvPlatformStackFlags = EnvPlatformStackFlags.NONE
+            all: list[str] = Env.get_all_platforms(flags=pfl)
+            cur: list[str] = Env.get_cur_platforms(flags=pfl)
+            filters_ex.append(EnvFilter(indicator, cur, all))
 
         # Fallback: append a minimal set of filters
 
         if len(filters_ex) <= 0:
-            filters_ex.append(DotEnvFilter())
+            filters_ex.append(EnvFilter())
 
         # Grab all files and filter those to the result list
 
@@ -121,7 +120,7 @@ class DotEnv:
     @staticmethod
     def load(
         dir: Path | None = None,
-        file_flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT,
+        file_flags: EnvFileFlags = EnvFileFlags.DEFAULT,
         exp_flags: EnvExpFlags = DEFAULT_EXPAND_FLAGS,
         *filters: list[str] | str | None,
     ) -> str:
@@ -131,15 +130,15 @@ class DotEnv:
         :param dir: default directory to locate platform-specific files
         :type dir: Path | str | None
         :param file_flags: Describes what and how to load
-        :type file_flags: DotEnvFileFlags
+        :type file_flags: EnvFileFileFlags
         :param file_flags: Describes how to expand env vars and app args
         :type exp_flags: EnvExpandFlags
         """
 
-        files: list[Path] = DotEnv.get_files(dir, file_flags, filters)
-        content: str = DotEnv.read_text(files, file_flags, dir)
+        files: list[Path] = EnvFile.get_files(dir, file_flags, filters)
+        content: str = EnvFile.read_text(files, file_flags, dir)
 
-        DotEnv.load_from_str(content, exp_flags=exp_flags)
+        EnvFile.load_from_str(content, exp_flags=exp_flags)
 
         return content
 
@@ -168,7 +167,7 @@ class DotEnv:
         for line in data.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
             # Break into key and value and skip if can't
 
-            parts = DotEnv.RE_KEY_VALUE.split(line, maxsplit=1)
+            parts = EnvFile.RE_KEY_VALUE.split(line, maxsplit=1)
             if len(parts) < 2:
                 continue
 
@@ -187,7 +186,7 @@ class DotEnv:
     @staticmethod
     def read_text(
         files: list[Path],
-        flags: DotEnvFileFlags = DotEnvFileFlags.DEFAULT
+        flags: EnvFileFlags = EnvFileFlags.DEFAULT
     ) -> str:
         """
         Load the content of all files as text and return. May
@@ -197,7 +196,7 @@ class DotEnv:
         :param files: list of Paths to read text from
         :type files: list[Path]
         :param flags: Describes what and how to load
-        :type flags: DotEnvFileFlags
+        :type flags: EnvFileFlags
         """
 
         # Initialise the content
@@ -206,8 +205,8 @@ class DotEnv:
 
         # If required, discard information about the files already loaded
 
-        if flags & DotEnvFileFlags.RESET:
-            DotEnv._loaded = []
+        if flags & EnvFileFlags.RESET:
+            EnvFile._loaded = []
 
         # Accumulate the content
 
@@ -216,12 +215,12 @@ class DotEnv:
 
             # If the file of that path was loaded aready, skip it
 
-            if file_str in DotEnv._loaded:
+            if file_str in EnvFile._loaded:
                 continue
 
             # Avoid multiple loads of the same file 
 
-            DotEnv._loaded.append(file_str)
+            EnvFile._loaded.append(file_str)
 
             # Read the file content ignoring any issue
 

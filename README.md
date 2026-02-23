@@ -18,7 +18,7 @@ The application does not depend on any special Python package.
    ...
    Env.expand("Home $HOME, arg #1: $1", plain_args)
    ...
-   DotEnv.load(dir="/home/user/local/bin")
+   EnvFile.load(dir="/home/user/local/bin")
    ```
 
 ### How to Expand Environment Variables and Arguments in a String
@@ -39,7 +39,7 @@ __*Env.expand*__ _(input: str, args: list\[str\] = None, flags: EnvExpandFlags =
    - _REMOVE\_LINE\_COMMENT_: remove hash _#_ (outside the quotes if found) and everything beyond that
    - _REMOVE\_QUOTES_: remove leading and trailing quotes
    - _SKIP\_ENVIRON_: do not expand environment variables
-   - _SKIP\_SINGLE\_QUOTED_: if a string is enclosed in apostrophes, don't expand it (default in _DotEnv.read\_text()_).
+   - _SKIP\_SINGLE\_QUOTED_: if a string is enclosed in apostrophes, don't expand it (default in _EnvFile.read\_text()_).
    - _UNESCAPE_: expand escaped characters: _\\\\_, _\\n_, _\\uNNNN_, etc.
 
 4. _default\_dir_: directory to locate the default files
@@ -64,7 +64,7 @@ __*Env.expandargs*__ _(input: str, args: list\[str\] = None) -> str_
 
    A copy of the first parameter expanded as described above.
 
-__*Env.get_platform_stack*__ _(flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT, prefix: str = None, suffix: str = None) -> list\[str\]_
+__*Env.get_cur_platforms*__ _(flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT, prefix: str = None, suffix: str = None) -> list\[str\]_
 
 1. Param _flags_
 
@@ -77,11 +77,11 @@ __*Env.get_platform_stack*__ _(flags: EnvPlatformStackFlags = EnvPlatformStackFl
 
 2. Param _prefix_
 
-   An optional free text to put in front of every platform name in the resulting list; in a call from _DotEnv.read\_text()_, is set to a dot when needed.
+   An optional free text to put in front of every platform name in the resulting list; in a call from _EnvFile.read\_text()_, is set to a dot when needed.
 
 3. Param _suffix_
 
-   An optional free text to put after every platform name in the resulting list; in a call from _DotEnv.read\_text()_, is set to _.env_ always.
+   An optional free text to put after every platform name in the resulting list; in a call from _EnvFile.read\_text()_, is set to _.env_ always.
 
 4. Return value
 
@@ -219,6 +219,6 @@ Windows-style percent-delimited expansions are provided by _Env.expand_symmetric
 
 ## Which expansion to choose?
 
-You don't have to decide in the code. It is all about what _DotEnv.load()_ encounters while analysing the content. Whatever comes first in each line ($ or %), will be used, and escape character will be chosen similarly. However, the POSIX-style assignemnts are by far more flexible. On the other hand, _DotEnv.load()_ handles both styles on any platform.
+You don't have to decide in the code. It is all about what _EnvFile.load()_ encounters while analysing the content. Whatever comes first in each line ($ or %), will be used, and escape character will be chosen similarly. However, the POSIX-style assignemnts are by far more flexible. On the other hand, _EnvFile.load()_ handles both styles on any platform.
 
 ## __Good Luck!__
