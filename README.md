@@ -27,7 +27,7 @@ This library does not depend on any special Python package.
 
 ### How to Expand Environment Variables and Arguments in a String
 
-__*Env.expand*__ _(input: str, args: list\[str\] = None, flags: EnvExpandFlags = EnvExpandFlags.DEFAULT, ) -> str_
+__*Env.expand*__ _(input: str, args: list\[str\] = None, flags: EnvExpandFlags = EnvExpandFlags.DEFAULT, strip\_spaces: bool = True, escape\_chars: str = None, expand\_chars: str = None, hard\_quotes: str = None, cutter\_chars: str = None) -> tuple[str, EnvParseInfo]_
 
 (see also _POSIX-style expansions implemented in envara_ at the bottom of this page)
 
@@ -48,9 +48,7 @@ __*Env.expand*__ _(input: str, args: list\[str\] = None, flags: EnvExpandFlags =
    - _SKIP\_SINGLE\_QUOTED_: if a string is enclosed in apostrophes, don't expand it (default in _EnvFile.read\_text()_).
    - _UNESCAPE_: expand escaped characters: _\\\\_, _\\n_, _\\uNNNN_, etc.
 
-4. _default\_dir_: directory to locate the default files
-
-   If not specified, the directory of the first parameter will be used (a parent of a file if file, or itself if directory). If the first parameter is not specified either, the current directory will be used.
+4. _strip\_spaces_: True if can remove spaces from the start and end of _input_
 
 5. _Return value_
 

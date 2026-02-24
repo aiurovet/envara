@@ -119,6 +119,10 @@ class Env:
         :type args: str
         :param flags: Flags controlling what/how to expand input
         :type flags: EnvExpandFlags
+
+        :param strip_spaces: True if can remove spaces from the start and end of _input_
+        :type strip_spaces: bool
+        
         :return: Expanded string
         :rtype: str
         """
