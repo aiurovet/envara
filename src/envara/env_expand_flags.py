@@ -9,7 +9,7 @@ from enum import IntFlag
 ###############################################################################
 
 
-class EnvExpFlags(IntFlag):
+class EnvExpandFlags(IntFlag):
     # No flag set
     NONE = 0
 

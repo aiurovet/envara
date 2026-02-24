@@ -20,7 +20,7 @@ class EnvPlatformFlags(IntFlag):
     ADD_MAX = 1 << 1
 
     # Default set of platforms
-    DEFAULT = ADD_EMPTY
+    DEFAULT = NONE
 
 
 ###############################################################################

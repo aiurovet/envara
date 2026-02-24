@@ -19,7 +19,7 @@ import subprocess
 import shlex
 from typing import ClassVar
 
-from env_exp_flags import EnvExpFlags
+from env_expand_flags import EnvExpandFlags
 from env_platform_flags import EnvPlatformFlags
 from env_quote_type import EnvQuoteType
 from env_parse_info import EnvParseInfo
@@ -61,13 +61,18 @@ class Env:
 
     # Special characters when they follow an odd number of ESCAPEs
     SPECIAL: ClassVar[dict[str, str]] = {
-        "a": "\a", "b": "\b", "f": "\f", "n": "\n",
-        "r": "\r", "t": "\t", "v": "\v"
+        "a": "\a",
+        "b": "\b",
+        "f": "\f",
+        "n": "\n",
+        "r": "\r",
+        "t": "\t",
+        "v": "\v",
     }
 
     # Internal dictionary: regex => list-of-platform-names
     __platform_map: ClassVar[dict[str, list[str]]] = {
-        "": ["", PLATFORM_POSIX], # the latter is checked
+        "": ["", PLATFORM_POSIX],  # the latter is checked
         "^aix": ["aix"],
         "android": ["linux", "android"],
         "^atheos": ["atheos"],
@@ -95,12 +100,12 @@ class Env:
     def expand(
         input: str,
         args: list[str] | None = None,
-        flags: EnvExpFlags | None = None,
+        flags: EnvExpandFlags | None = None,
         strip_spaces: bool = True,
-        escapes: str = None,
-        expands: str = None,
+        escape_chars: str = None,
+        expand_chars: str = None,
         hard_quotes: str = None,
-        cutters: str = None,
+        cutter_chars: str = None,
     ) -> tuple[str, EnvParseInfo]:
         """
         Unquote the input if required, remove trailing line comment if
@@ -123,49 +128,57 @@ class Env:
         if flags is None:
             flags = 0
 
-        # Map flags to cutters/hard_quotes/unescape behaviours
+        # Map flags to cutter_chars/hard_quotes/unescape behaviours
 
-        if (flags & EnvExpFlags.REMOVE_LINE_COMMENT) and (cutters is None):
-            cutters = "#"
+        if (flags & EnvExpandFlags.REMOVE_LINE_COMMENT) and (cutter_chars is None):
+            cutter_chars = "#"
 
         info: EnvParseInfo
 
         _, info = Env.unquote(
             input,
             strip_spaces=strip_spaces,
-            esc_chrs=escapes,
-            exp_chrs=expands,
-            cutters=cutters,
+            escape_chars=escape_chars,
+            expand_chars=expand_chars,
+            cutter_chars=cutter_chars,
             hard_quotes=hard_quotes,
         )
 
         # SKIP_SINGLE_QUOTED prevents any expansion
 
-        if (flags & EnvExpFlags.SKIP_SINGLE_QUOTED) and (info.quote_type.name == "SINGLE"):
+        if (flags & EnvExpandFlags.SKIP_SINGLE_QUOTED) and (
+            info.quote_type.name == "SINGLE"
+        ):
             return (info.result, info)
 
         # SKIP_ENVIRON forcefully disables env var expansion.
 
-        vars_dict = {} if (flags & EnvExpFlags.SKIP_ENV_VARS) else os.environ
+        vars_dict = {} if (flags & EnvExpandFlags.SKIP_ENV_VARS) else os.environ
 
         # Perform POSIX-style or Windows-style expansions based on
         # the first active expand character detected during unquoting
 
-        if info.exp_chr == EnvParseInfo.POSIX_EXP_CHR:
+        if info.expand_char == EnvParseInfo.POSIX_EXPAND_CHAR:
             info.result = Env.expand_posix(
-                info.result, args=args, vars=vars_dict,
-                exp_chr=info.exp_chr, esc_chr=info.esc_chr
+                info.result,
+                args=args,
+                vars=vars_dict,
+                expand_char=info.expand_char,
+                escape_char=info.escape_char,
             )
         else:
             info.result = Env.expand_simple(
-                info.result, args=args, vars=vars_dict,
-                exp_chr=info.exp_chr, esc_chr=info.esc_chr
+                info.result,
+                args=args,
+                vars=vars_dict,
+                expand_char=info.expand_char,
+                escape_char=info.escape_char,
             )
 
         # Perform unescape if requested
 
-        if (flags & EnvExpFlags.UNESCAPE):
-            info.result = Env.unescape(info.result, escape=info.esc_chr)
+        if flags & EnvExpandFlags.UNESCAPE:
+            info.result = Env.unescape(info.result, escape=info.escape_char)
 
         # Return the final result
 
@@ -178,9 +191,9 @@ class Env:
         input: str,
         args: list[str] | None = None,
         vars: dict[str, str] | None = os.environ,
-        exp_chr: str = "$",
-        esc_chr: str = "\\",
-        exp_flags: EnvExpFlags = EnvExpFlags.DEFAULT,
+        expand_char: str = "$",
+        escape_char: str = "\\",
+        expand_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
         subprocess_timeout: float | None = None,
     ) -> str:
         if input is None:
@@ -189,19 +202,18 @@ class Env:
         if vars is None:
             vars = os.environ
 
-        allow_shell: bool =\
-            (exp_flags & EnvExpFlags.ALLOW_SHELL) != 0
+        allow_shell: bool = (expand_flags & EnvExpandFlags.ALLOW_SHELL) != 0
 
-        allow_subprocess: bool =\
-            allow_shell or\
-            ((exp_flags & EnvExpFlags.ALLOW_SUBPROC) != 0)
+        allow_subprocess: bool = allow_shell or (
+            (expand_flags & EnvExpandFlags.ALLOW_SUBPROC) != 0
+        )
 
         s = input
         res: list[str] = []
         i = 0
         inp_len = len(s)
         bktick = "`"
-        is_bktick_cmd = bktick != esc_chr
+        is_bktick_cmd = bktick != escape_char
 
         def get_var(name: str):
             return vars.get(name) if vars is not None else os.environ.get(name)
@@ -212,34 +224,34 @@ class Env:
                 name = inner[1:]
                 val = get_var(name)
                 if val is None:
-                    return f"{exp_chr}{{{inner}}}"
+                    return f"{expand_char}{{{inner}}}"
                 return str(len(val))
 
             # Parse name
-            m = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)', inner)
+            m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)", inner)
             if not m:
                 # Support numeric positional parameters inside braces: ${1}, ${2}
-                md = re.match(r'^(\d+)$', inner)
+                md = re.match(r"^(\d+)$", inner)
                 if md:
                     idx = int(md.group(1)) - 1
                     if args and 0 <= idx < len(args):
                         return args[idx]
-                    return f"{exp_chr}{{{inner}}}"
-                return f"{exp_chr}{{{inner}}}"
+                    return f"{expand_char}{{{inner}}}"
+                return f"{expand_char}{{{inner}}}"
             name = m.group(1)
-            rest = inner[m.end():]
+            rest = inner[m.end() :]
 
             val = get_var(name)
             is_set = val is not None
             is_null = (val == "") if is_set else False
 
             # Substring: :offset[:length]
-            sm = re.match(r'^:(-?\d+)(?::(-?\d+))?$', rest)
+            sm = re.match(r"^:(-?\d+)(?::(-?\d+))?$", rest)
             if sm:
                 offset = int(sm.group(1))
                 length = int(sm.group(2)) if sm.group(2) is not None else None
                 if not is_set:
-                    return f"{exp_chr}{{{inner}}}"
+                    return f"{expand_char}{{{inner}}}"
                 text = val
                 if offset < 0:
                     offset = len(text) + offset
@@ -247,14 +259,20 @@ class Env:
                         offset = 0
                 if length is None:
                     return text[offset:]
-                return text[offset:offset + length]
+                return text[offset : offset + length]
 
             # Parameter expansion operators
             if rest.startswith(":=") or rest.startswith("="):
                 assign_colon = rest.startswith(":=")
                 word = rest[2:] if assign_colon else rest[1:]
                 if (not is_set) or (assign_colon and is_null):
-                    new_val = Env.expand_posix(word, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
+                    new_val = Env.expand_posix(
+                        word,
+                        args=args,
+                        vars=vars,
+                        expand_flags=expand_flags,
+                        subprocess_timeout=subprocess_timeout,
+                    )
                     try:
                         if vars is not None:
                             vars[name] = new_val
@@ -267,7 +285,7 @@ class Env:
             if rest.startswith("##") or rest.startswith("#"):
                 pattern = rest[2:] if rest.startswith("##") else rest[1:]
                 if not is_set:
-                    return f"{exp_chr}{{{inner}}}"
+                    return f"{expand_char}{{{inner}}}"
                 text = val
                 best_i = None
                 for i in range(0, len(text) + 1):
@@ -283,11 +301,11 @@ class Env:
             if rest.startswith("%%") or rest.startswith("%"):
                 pattern = rest[2:] if rest.startswith("%%") else rest[1:]
                 if not is_set:
-                    return f"{exp_chr}{{{inner}}}"
+                    return f"{expand_char}{{{inner}}}"
                 text = val
                 best_i = None
                 for i in range(0, len(text) + 1):
-                    sub = text[len(text) - i:]
+                    sub = text[len(text) - i :]
                     if fnmatch.fnmatchcase(sub, pattern):
                         if rest.startswith("%%"):
                             best_i = i
@@ -296,7 +314,7 @@ class Env:
                             break
                 if best_i is None:
                     return text
-                return text[:len(text) - best_i]
+                return text[: len(text) - best_i]
 
             # Substitutions
             anchor = None
@@ -329,13 +347,19 @@ class Env:
                 pass
             else:
                 if not is_set:
-                    return f"{exp_chr}{{{inner}}}"
+                    return f"{expand_char}{{{inner}}}"
 
                 core = fnmatch.translate(pat)
                 if core.startswith("(?s:") and core.endswith(")\\Z"):
                     core = core[4:-3]
 
-                repl_eval = Env.expand_posix(repl, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
+                repl_eval = Env.expand_posix(
+                    repl,
+                    args=args,
+                    vars=vars,
+                    expand_flags=expand_flags,
+                    subprocess_timeout=subprocess_timeout,
+                )
 
                 if anchor == "#":
                     text = val
@@ -366,9 +390,9 @@ class Env:
                         while True:
                             changed = False
                             for i in range(1, len(text) + 1):
-                                sub = text[len(text) - i:]
+                                sub = text[len(text) - i :]
                                 if fnmatch.fnmatchcase(sub, pat):
-                                    new_text = text[:len(text) - i] + repl_eval
+                                    new_text = text[: len(text) - i] + repl_eval
                                     if new_text == text:
                                         changed = False
                                         break
@@ -380,9 +404,9 @@ class Env:
                         return text
                     else:
                         for i in range(1, len(text) + 1):
-                            sub = text[len(text) - i:]
+                            sub = text[len(text) - i :]
                             if fnmatch.fnmatchcase(sub, pat):
-                                return text[:len(text) - i] + repl_eval
+                                return text[: len(text) - i] + repl_eval
                         return val
 
                 pattern = core
@@ -395,48 +419,91 @@ class Env:
             if rest.startswith(":-"):
                 word = rest[2:]
                 if (not is_set) or is_null:
-                    return Env.expand_posix(word, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
+                    return Env.expand_posix(
+                        word,
+                        args=args,
+                        vars=vars,
+                        expand_flags=expand_flags,
+                        subprocess_timeout=subprocess_timeout,
+                    )
                 return val
             if rest.startswith("-"):
                 word = rest[1:]
                 if not is_set:
-                    return Env.expand_posix(word, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
+                    return Env.expand_posix(
+                        word,
+                        args=args,
+                        vars=vars,
+                        expand_flags=expand_flags,
+                        subprocess_timeout=subprocess_timeout,
+                    )
                 return val
             if rest.startswith(":+"):
                 word = rest[2:]
                 if is_set and not is_null:
-                    return Env.expand_posix(word, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
+                    return Env.expand_posix(
+                        word,
+                        args=args,
+                        vars=vars,
+                        expand_flags=expand_flags,
+                        subprocess_timeout=subprocess_timeout,
+                    )
                 return ""
             if rest.startswith("+"):
                 word = rest[1:]
                 if is_set:
-                    return Env.expand_posix(word, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
+                    return Env.expand_posix(
+                        word,
+                        args=args,
+                        vars=vars,
+                        expand_flags=expand_flags,
+                        subprocess_timeout=subprocess_timeout,
+                    )
                 return ""
             if rest.startswith(":?"):
                 word = rest[2:]
                 if (not is_set) or is_null:
-                    raise ValueError(Env.expand_posix(word, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout) or f"{name}: parameter null or not set")
+                    raise ValueError(
+                        Env.expand_posix(
+                            word,
+                            args=args,
+                            vars=vars,
+                            expand_flags=expand_flags,
+                            subprocess_timeout=subprocess_timeout,
+                        )
+                        or f"{name}: parameter null or not set"
+                    )
                 return val
             if rest.startswith("?"):
                 word = rest[1:]
                 if not is_set:
-                    raise ValueError(Env.expand_posix(word, args=args, vars=vars, subprocess_timeout=subprocess_timeout) or f"{name}: parameter not set")
+                    raise ValueError(
+                        Env.expand_posix(
+                            word,
+                            args=args,
+                            vars=vars,
+                            subprocess_timeout=subprocess_timeout,
+                        )
+                        or f"{name}: parameter not set"
+                    )
                 return val
 
             if is_set:
                 return val
-            return f"{exp_chr}{{{inner}}}"
+            return f"{expand_char}{{{inner}}}"
 
         while i < inp_len:
             ch = s[i]
 
-            if ch == esc_chr:
+            if ch == escape_char:
                 j = i
-                while j < inp_len and s[j] == esc_chr:
+                while j < inp_len and s[j] == escape_char:
                     j += 1
                 escape_count = j - i
-                if (j < inp_len) and ((s[j] == exp_chr) or (is_bktick_cmd and (s[j] == bktick))):
-                    res.append(esc_chr * (escape_count // 2))
+                if (j < inp_len) and (
+                    (s[j] == expand_char) or (is_bktick_cmd and (s[j] == bktick))
+                ):
+                    res.append(escape_char * (escape_count // 2))
                     if (escape_count % 2) == 1:
                         res.append(s[j])
                         i = j + 1
@@ -444,7 +511,7 @@ class Env:
                     i = j
                     continue
                 else:
-                    res.append(esc_chr * escape_count)
+                    res.append(escape_char * escape_count)
                     i = j
                     continue
 
@@ -453,38 +520,62 @@ class Env:
                 while j < inp_len:
                     if s[j] == bktick:
                         break
-                    if s[j] == esc_chr and (j + 1) < inp_len and s[j + 1] == bktick:
+                    if s[j] == escape_char and (j + 1) < inp_len and s[j + 1] == bktick:
                         j += 2
                         continue
                     j += 1
                 if j >= inp_len:
-                    raise ValueError(f"Unterminated backtick command substitution in: {input}")
-                inner = s[i + 1:j]
-                cmd = Env.expand_posix(inner, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
+                    raise ValueError(
+                        f"Unterminated backtick command substitution in: {input}"
+                    )
+                inner = s[i + 1 : j]
+                cmd = Env.expand_posix(
+                    inner,
+                    args=args,
+                    vars=vars,
+                    expand_flags=expand_flags,
+                    subprocess_timeout=subprocess_timeout,
+                )
                 if not allow_subprocess:
-                    res.append(s[i:j + 1])
+                    res.append(s[i : j + 1])
                     i = j + 1
                     continue
                 try:
                     if allow_shell:
-                        proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=subprocess_timeout)
+                        proc = subprocess.run(
+                            cmd,
+                            shell=True,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            text=True,
+                            timeout=subprocess_timeout,
+                        )
                     else:
-                        proc = subprocess.run(shlex.split(cmd), shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=subprocess_timeout)
+                        proc = subprocess.run(
+                            shlex.split(cmd),
+                            shell=False,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            text=True,
+                            timeout=subprocess_timeout,
+                        )
                 except subprocess.TimeoutExpired:
                     raise ValueError(f"Command substitution timed out: {cmd}")
                 if proc.returncode != 0:
-                    raise ValueError(f"Command substitution failed: {cmd}: {proc.stderr.strip()}")
-                out = proc.stdout.rstrip('\n')
+                    raise ValueError(
+                        f"Command substitution failed: {cmd}: {proc.stderr.strip()}"
+                    )
+                out = proc.stdout.rstrip("\n")
                 res.append(out)
                 i = j + 1
                 continue
 
-            if ch != exp_chr:
+            if ch != expand_char:
                 res.append(ch)
                 i += 1
                 continue
 
-            if (i + 1) < inp_len and s[i + 1] == exp_chr:
+            if (i + 1) < inp_len and s[i + 1] == expand_char:
                 res.append(str(os.getpid()))
                 i += 2
                 continue
@@ -502,22 +593,44 @@ class Env:
                     j += 1
                 if j >= inp_len:
                     raise ValueError(f"Unterminated command substitution in: {input}")
-                inner = s[i + 2:j]
-                cmd = Env.expand_posix(inner, args=args, vars=vars, exp_flags=exp_flags, subprocess_timeout=subprocess_timeout)
+                inner = s[i + 2 : j]
+                cmd = Env.expand_posix(
+                    inner,
+                    args=args,
+                    vars=vars,
+                    expand_flags=expand_flags,
+                    subprocess_timeout=subprocess_timeout,
+                )
                 if not allow_subprocess:
-                    res.append(s[i:j + 1])
+                    res.append(s[i : j + 1])
                     i = j + 1
                     continue
                 try:
                     if allow_shell:
-                        proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=subprocess_timeout)
+                        proc = subprocess.run(
+                            cmd,
+                            shell=True,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            text=True,
+                            timeout=subprocess_timeout,
+                        )
                     else:
-                        proc = subprocess.run(shlex.split(cmd), shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=subprocess_timeout)
+                        proc = subprocess.run(
+                            shlex.split(cmd),
+                            shell=False,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            text=True,
+                            timeout=subprocess_timeout,
+                        )
                 except subprocess.TimeoutExpired:
                     raise ValueError(f"Command substitution timed out: {cmd}")
                 if proc.returncode != 0:
-                    raise ValueError(f"Command substitution failed: {cmd}: {proc.stderr.strip()}")
-                out = proc.stdout.rstrip('\n')
+                    raise ValueError(
+                        f"Command substitution failed: {cmd}: {proc.stderr.strip()}"
+                    )
+                out = proc.stdout.rstrip("\n")
                 res.append(out)
                 i = j + 1
                 continue
@@ -535,7 +648,7 @@ class Env:
                     j += 1
                 if j >= inp_len:
                     raise ValueError(f"Unterminated braced expansion in: {input}")
-                inner = s[i + 2:j]
+                inner = s[i + 2 : j]
                 res.append(eval_braced(inner))
                 i = j + 1
                 continue
@@ -568,7 +681,7 @@ class Env:
                     i = j
                     continue
 
-            res.append(exp_chr)
+            res.append(expand_char)
             i += 1
 
         return "".join(res)
@@ -580,8 +693,8 @@ class Env:
         input: str,
         args: list[str] | None = None,
         vars: dict[str, str] | None = None,
-        exp_chr: str = "%",
-        esc_chr: str = "^",
+        expand_char: str = "%",
+        escape_char: str = "^",
     ) -> str:
         if input is None:
             return ""
@@ -597,44 +710,44 @@ class Env:
         while i < ln:
             ch = s[i]
 
-            if ch == esc_chr:
+            if ch == escape_char:
                 if (i + 1) < ln:
                     nxt = s[i + 1]
-                    if nxt == exp_chr:
-                        if (i + 2) < ln and s[i + 2] == exp_chr:
-                            out.append(exp_chr)
+                    if nxt == expand_char:
+                        if (i + 2) < ln and s[i + 2] == expand_char:
+                            out.append(expand_char)
                             i += 3
                             continue
                         if (i + 2) < ln and s[i + 2].isdigit():
                             j = i + 2
                             while j < ln and s[j].isdigit():
                                 j += 1
-                            out.append(exp_chr + s[i + 2:j])
+                            out.append(expand_char + s[i + 2 : j])
                             i = j
                             continue
-                        k = s.find(exp_chr, i + 2)
+                        k = s.find(expand_char, i + 2)
                         if k != -1:
-                            out.append(s[i + 1:k + 1])
+                            out.append(s[i + 1 : k + 1])
                             i = k + 1
                             continue
-                        out.append(exp_chr)
+                        out.append(expand_char)
                         i += 2
                         continue
                     out.append(nxt)
                     i += 2
                     continue
                 else:
-                    out.append(esc_chr)
+                    out.append(escape_char)
                     i += 1
                     continue
 
-            if ch != exp_chr:
+            if ch != expand_char:
                 out.append(ch)
                 i += 1
                 continue
 
-            if (i + 1) < ln and s[i + 1] == exp_chr:
-                out.append(exp_chr)
+            if (i + 1) < ln and s[i + 1] == expand_char:
+                out.append(expand_char)
                 i += 2
                 continue
 
@@ -650,25 +763,30 @@ class Env:
                     while k < ln and s[k].isdigit():
                         k += 1
                     token = s[start:k]
-                    end_with_exp_chr = False
-                    if k < ln and s[k] == exp_chr:
-                        end_with_exp_chr = True
+                    end_with_expand_char = False
+                    if k < ln and s[k] == expand_char:
+                        end_with_expand_char = True
                         k += 1
 
                     idx = int(token) - 1
                     if args and 0 <= idx < len(args):
                         tokval = args[idx]
+
                         def part_drive(t):
                             return os.path.splitdrive(t)[0]
+
                         def part_path(t):
                             p = os.path.dirname(t)
                             if p and not p.endswith(os.sep):
                                 p = p + os.sep
                             return p
+
                         def part_name(t):
                             return os.path.splitext(os.path.basename(t))[0]
+
                         def part_ext(t):
                             return os.path.splitext(t)[1]
+
                         def part_full(t):
                             return os.path.abspath(t)
 
@@ -688,10 +806,10 @@ class Env:
                                 pass
                         out.append("".join(out_frag))
                     else:
-                        if end_with_exp_chr:
-                            out.append(exp_chr + s[j:k] + exp_chr)
+                        if end_with_expand_char:
+                            out.append(expand_char + s[j:k] + expand_char)
                         else:
-                            out.append(exp_chr + s[j:k])
+                            out.append(expand_char + s[j:k])
                     i = k
                     continue
 
@@ -699,9 +817,9 @@ class Env:
                 start = j
                 while j < ln and s[j].isdigit():
                     j += 1
-                end_with_exp_chr = False
-                if j < ln and s[j] == exp_chr:
-                    end_with_exp_chr = True
+                end_with_expand_char = False
+                if j < ln and s[j] == expand_char:
+                    end_with_expand_char = True
                     token = s[start:j]
                     j += 1
                 else:
@@ -711,41 +829,41 @@ class Env:
                 if args and 0 <= idx < len(args):
                     out.append(args[idx])
                 else:
-                    if end_with_exp_chr:
-                        out.append(exp_chr + token + exp_chr)
+                    if end_with_expand_char:
+                        out.append(expand_char + token + expand_char)
                     else:
-                        out.append(exp_chr + token)
+                        out.append(expand_char + token)
                 i = j
                 continue
 
             if j < ln and s[j] == "*":
                 j += 1
-                if j < ln and s[j] == exp_chr:
+                if j < ln and s[j] == expand_char:
                     j += 1
                 if args:
                     out.append(" ".join(args))
                 else:
-                    out.append(exp_chr + "*")
+                    out.append(expand_char + "*")
                 i = j
                 continue
 
-            k = s.find(exp_chr, j)
+            k = s.find(expand_char, j)
             if k == -1:
-                out.append(exp_chr)
+                out.append(expand_char)
                 i += 1
                 continue
 
             token = s[j:k]
             if not token:
-                out.append(exp_chr)
-                out.append(exp_chr)
+                out.append(expand_char)
+                out.append(expand_char)
                 i = k + 1
                 continue
 
             if ":~" in token:
                 base, suff = token.split(":~", 1)
                 if not base:
-                    out.append(exp_chr + token + exp_chr)
+                    out.append(expand_char + token + expand_char)
                     i = k + 1
                     continue
                 if "," in suff:
@@ -755,15 +873,19 @@ class Env:
                     length_str = None
                 try:
                     start = int(start_str)
-                    length = int(length_str) if (length_str is not None and length_str != "") else None
+                    length = (
+                        int(length_str)
+                        if (length_str is not None and length_str != "")
+                        else None
+                    )
                 except Exception:
-                    out.append(exp_chr + token + exp_chr)
+                    out.append(expand_char + token + expand_char)
                     i = k + 1
                     continue
 
                 val = vars.get(base)
                 if val is None:
-                    out.append(exp_chr + token + exp_chr)
+                    out.append(expand_char + token + expand_char)
                     i = k + 1
                     continue
 
@@ -778,7 +900,7 @@ class Env:
                     if length < 0:
                         substr = ""
                     else:
-                        substr = text[start:start + length]
+                        substr = text[start : start + length]
                 out.append(substr)
                 i = k + 1
                 continue
@@ -786,7 +908,7 @@ class Env:
             name = token
             val = vars.get(name)
             if val is None:
-                out.append(exp_chr + name + exp_chr)
+                out.append(expand_char + name + expand_char)
             else:
                 out.append(val)
 
@@ -798,13 +920,13 @@ class Env:
 
     @staticmethod
     def get_all_platforms(
-        flags: EnvPlatformFlags = EnvPlatformFlags.DEFAULT
+        flags: EnvPlatformFlags = EnvPlatformFlags.DEFAULT,
     ) -> list[str]:
         """
         Get all supported platforms
 
         :param flags: Controls which items will be added to the stack
-        :type flags: EnvPlatformStackFlags
+        :type flags: EnvPlatformFlags
         :param prefix: optional string to prepend to every platform name
         :type prefix: str | None
         :param suffix: optional string to append to every platform name
@@ -847,7 +969,7 @@ class Env:
         (used by EnvFile to form filenames like '.env' or '.linux.env').
 
         :param flags: Controls which items will be added to the stack
-        :type flags: EnvPlatformStackFlags
+        :type flags: EnvPlatformFlags
         :param prefix: optional string to prepend to every platform name
         :type prefix: str | None
         :param suffix: optional string to append to every platform name
@@ -909,9 +1031,7 @@ class Env:
 
     @staticmethod
     def quote(
-        input: str,
-        type: EnvQuoteType = EnvQuoteType.DOUBLE,
-        escape: str = None
+        input: str, type: EnvQuoteType = EnvQuoteType.DOUBLE, escape: str = None
     ) -> str:
         """
         Enclose input in quotes. Neither leading, nor trailing whitespaces
@@ -933,8 +1053,8 @@ class Env:
 
         result = "" if (input is None) else input
 
-        if (not escape):
-            escape = EnvParseInfo.POSIX_ESC_CHR
+        if not escape:
+            escape = EnvParseInfo.POSIX_ESCAPE_CHAR
 
         # Define the quote being used
 
@@ -990,8 +1110,8 @@ class Env:
         # If escape character is not known yet, use the default one, and
         # if input does not contain the default escape char, then finish
 
-        if (not escape):
-            escape = EnvParseInfo.POSIX_ESC_CHR
+        if not escape:
+            escape = EnvParseInfo.POSIX_ESCAPE_CHAR
             if escape not in input:
                 return input
 
@@ -1008,48 +1128,48 @@ class Env:
         acc_beg_pos: int = -1
         acc_end_pos: int = -1
 
-        for cur_chr in input:
+        for cur_char in input:
             cur_pos = cur_pos + 1
 
             if (cur_pos >= acc_beg_pos) and (cur_pos < acc_end_pos):
-                if (cur_chr not in string.hexdigits):
+                if cur_char not in string.hexdigits:
                     Env.__fail_unescape(input, esc_pos, cur_pos)
                 continue
 
-            if (cur_pos == acc_end_pos):
+            if cur_pos == acc_end_pos:
                 chr_lst.append(chr(int(input[acc_beg_pos:acc_end_pos], 16)))
                 is_escaped = False
 
-            if (cur_chr == escape):
+            if cur_char == escape:
                 is_escaped = not is_escaped
                 esc_pos = cur_pos if (is_escaped) else -1
                 continue
 
-            if (is_escaped):
-                if (cur_chr in Env.SPECIAL):
-                    cur_chr = Env.SPECIAL[cur_chr]
-                elif (cur_chr == "u"):
+            if is_escaped:
+                if cur_char in Env.SPECIAL:
+                    cur_char = Env.SPECIAL[cur_char]
+                elif cur_char == "u":
                     acc_beg_pos = cur_pos + 1
                     acc_end_pos = acc_beg_pos + 4
                     continue
-                elif (cur_chr == "x"):
+                elif cur_char == "x":
                     acc_beg_pos = cur_pos + 1
                     acc_end_pos = acc_beg_pos + 2
                     continue
                 is_escaped = False
 
-            chr_lst.append(cur_chr)
+            chr_lst.append(cur_char)
 
         # If escaped char (by code) is the last one, accumulation
         # action was missed from the loop: fulfilling here
 
         if is_escaped:
-            if (acc_end_pos > 0):
-                if (cur_pos >= acc_end_pos - 1):
+            if acc_end_pos > 0:
+                if cur_pos >= acc_end_pos - 1:
                     chr_lst.append(chr(int(input[acc_beg_pos:acc_end_pos], 16)))
-                elif (esc_pos >= 0):
+                elif esc_pos >= 0:
                     Env.__fail_unescape(input, esc_pos, cur_pos + 1)
-            elif (esc_pos >= 0):
+            elif esc_pos >= 0:
                 Env.__fail_unescape(input, esc_pos, cur_pos + 1)
 
         # Join all characters into a string
@@ -1060,10 +1180,11 @@ class Env:
 
         res_len = len(result) if strip_blanks else 0
 
-        has_blanks: bool = \
-            (res_len > 0) and \
-            (result[0] in string.whitespace) and \
-            (result[res_len - 1] in string.whitespace)
+        has_blanks: bool = (
+            (res_len > 0)
+            and (result[0] in string.whitespace)
+            and (result[res_len - 1] in string.whitespace)
+        )
 
         return result.strip() if (has_blanks) else result
 
@@ -1073,20 +1194,20 @@ class Env:
     def unquote(
         input: str,
         strip_spaces: bool = True,
-        esc_chrs: str = None,
-        exp_chrs: str = None,
+        escape_chars: str = None,
+        expand_chars: str = None,
         hard_quotes: str = None,
-        cutters: str = None,
+        cutter_chars: str = None,
     ) -> tuple[str, EnvParseInfo]:
         """
         Remove enclosing quotes from a string ignoring everything beyond the
         closing quote ignoring escaped quotes. Raise ValueError if a dangling
         escape or no closing quote found.
-        
+
         In most cases, you'd rather use _Env.unquote()_ that calls this method,
         then expands environment variables, arguments, and unescapes special
         characters.
-        
+
         :param input: String to remove enclosing quotes from
         :type input: str
         :param escape: Escape characters: whichever comes first in the input
@@ -1101,10 +1222,9 @@ class Env:
         :param hard_quotes: A string containing all quote characters that
                             require to ignore escaping (e.g., a single quote)
         :type hard_quotes: bool
-        :param cutters: A string of characters where each indicates a string
-                         end when found non-escaped and either outside quotes
-                         or in an unquoted input (e.g., a line comment: "#")
-        :type cutters: str
+        :param cutter_chars: A string of characters where each indicates a string
+            end when found non-escaped and not in quotes (e.g., "#")
+        :type cutter_chars: str
         :return: unquoted input and details: see _EnvUnquoteData_
         :rtype: tuple[str, EnvUnquoteData]
         """
@@ -1115,54 +1235,54 @@ class Env:
 
         # If the input is None or empty, return the empty string
 
-        if (not input):
+        if not input:
             return (info.result, info)
 
         # Ensure required arguments are populated
 
-        if (exp_chrs is None):
-            exp_chrs = EnvParseInfo.POSIX_EXP_CHR
-        if (esc_chrs is None):
-            esc_chrs = EnvParseInfo.POSIX_ESC_CHR
+        if expand_chars is None:
+            expand_chars = EnvParseInfo.POSIX_EXPAND_CHAR
+        if escape_chars is None:
+            escape_chars = EnvParseInfo.POSIX_ESCAPE_CHAR
 
         # Initialize position beyond the last character and results
 
         end_pos: int = 0
         info.result = input.lstrip() if (strip_spaces) else input
 
-        if (not info.result):
+        if not info.result:
             return (info.result, info)
 
         # Initialise quote and determine quote type
 
         info.quote = info.result[0]
 
-        if (info.quote == '"'):
+        if info.quote == '"':
             info.quote_type = EnvQuoteType.DOUBLE
-        elif (info.quote == "'"):
+        elif info.quote == "'":
             info.quote_type = EnvQuoteType.SINGLE
         else:
             info.quote = ""
 
         # Initialise flags for escaping and quoting
 
-        has_cutters: bool = True if cutters else False
+        has_cutter_chars: bool = True if cutter_chars else False
         is_escaped: bool = False
         is_quoted: bool = info.quote_type != EnvQuoteType.NONE
 
         # Avoid Nones
 
-        if (hard_quotes is None):
+        if hard_quotes is None:
             hard_quotes = "'"
 
         # No escape is relevant if the given quote is the hard one
 
         if is_quoted and (info.quote in hard_quotes):
-            esc_chrs = ""
+            escape_chars = ""
 
         # Loop through each input character and analyze
 
-        for cur_chr in info.result:
+        for cur_char in info.result:
             # Advance the end position and skip opening quote if present
 
             end_pos = end_pos + 1
@@ -1172,22 +1292,22 @@ class Env:
 
             # If an escape encountered, flip the flag and loop
 
-            if (cur_chr in esc_chrs):
-                info.esc_chr = cur_chr
+            if cur_char in escape_chars:
+                info.escape_char = cur_char
                 is_escaped = not is_escaped
                 continue
 
             # When a quote is encountered, if escaped, loop, else,
             # this quote is the closing one, so return the result.
 
-            if (cur_chr == info.quote):
+            if cur_char == info.quote:
                 if is_quoted and (info.quote in hard_quotes):
                     is_quoted = False
                     break
-                if (is_escaped):
+                if is_escaped:
                     is_escaped = False
                     continue
-                if (is_quoted):
+                if is_quoted:
                     is_quoted = False
                     break
                 else:
@@ -1195,15 +1315,15 @@ class Env:
 
             # Set expand character if found first time
 
-            if (cur_chr in exp_chrs):
-                if (not info.exp_chr) and (not is_escaped):
-                    info.exp_chr = cur_chr
+            if cur_char in expand_chars:
+                if (not info.expand_char) and (not is_escaped):
+                    info.expand_char = cur_char
 
             # Break out if the stopper character was encountered outside
             # the quotes, and it was not escaped
 
             if (not is_quoted) and (not is_escaped):
-                if has_cutters and (cur_chr in cutters):
+                if has_cutter_chars and (cur_char in cutter_chars):
                     end_pos = end_pos - 1
                     break
 
@@ -1247,7 +1367,7 @@ class Env:
     def __fail_unescape(input: str, beg_pos: int, end_pos: int):
         """
         Error handler for Env.unescape()
-        
+
         :param input: Full string at fault
         :type input: str
         :param beg_pos: Starting position of the fragment at fault
@@ -1261,7 +1381,7 @@ class Env:
         dtl: str = input[beg_pos:end_pos]
 
         raise ValueError(
-            f"Incomplete escape sequence from [{beg_pos}]: \"{dtl}\" in \"{input}\""
+            f'Incomplete escape sequence from [{beg_pos}]: "{dtl}" in "{input}"'
         )
 
 

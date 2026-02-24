@@ -19,14 +19,14 @@ class EnvParseInfo:
 
     # Pre-defined constants
 
-    POSIX_EXP_CHR: ClassVar[str] = "$"
-    POSIX_ESC_CHR: ClassVar[str] = "\\"
+    POSIX_EXPAND_CHAR: ClassVar[str] = "$"
+    POSIX_ESCAPE_CHAR: ClassVar[str] = "\\"
 
-    PWSH_EXP_CHR: ClassVar[str] = POSIX_EXP_CHR
-    PWSH_ESC_CHR: ClassVar[str] = "`"
+    PWSH_EXPAND_CHAR: ClassVar[str] = POSIX_EXPAND_CHAR
+    PWSH_ESCAPE_CHAR: ClassVar[str] = "`"
 
-    WINDOWS_EXP_CHR: ClassVar[str] = "%"
-    WINDOWS_ESC_CHR: ClassVar[str] = "^"
+    WINDOWS_EXPAND_CHAR: ClassVar[str] = "%"
+    WINDOWS_ESCAPE_CHAR: ClassVar[str] = "^"
 
     ###########################################################################
 
@@ -34,32 +34,33 @@ class EnvParseInfo:
         self,
         input: str | None = None,
         result: str | None = None,
-        exp_chr: str | None = None,
-        esc_chr: str | None = None,
-        quote_type: EnvQuoteType = EnvQuoteType.NONE
+        expand_char: str | None = None,
+        escape_char: str | None = None,
+        quote_type: EnvQuoteType = EnvQuoteType.NONE,
     ):
         """
         Constructor
-        
+
         :param self: The object
         :param input: String being unquoted
         :type input: str
         :param result: Result of unquoting
         :type result: str
-        :param exp_chr: First active expand character encountered
+        :param expand_char: First active expand character encountered
                         (e.g., "$", "%", "<")
-        :type exp_chr: str
-        :param esc_chr: First active escape character encountered
+        :type expand_char: str
+        :param escape_char: First active escape character encountered
                         (e.g., "\\\\", "`", "^")
-        :type esc_chr: str
+        :type escape_char: str
         :param quote_type: Type of enclosing quotes found
         :type quote_type: EnvQuoteType
         """
 
-        self.exp_chr: str = exp_chr
-        self.esc_chr: str = esc_chr
+        self.expand_char: str = expand_char
+        self.escape_char: str = escape_char
         self.input: str = input
         self.quote_type: EnvQuoteType = quote_type
         self.result: str = result
+
 
 ###############################################################################

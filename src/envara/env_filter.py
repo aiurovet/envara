@@ -21,19 +21,17 @@ class EnvFilter:
     DEFAULT_INDICATOR: ClassVar[str] = "env"
 
     # Regex to strip all unnecessary blanks around every delimited field
-    DEFAULT_STRIP_RE: ClassVar[re.Pattern] = re.compile(
-        r"^\s+|\s*(,)\s*|\s+$"
-    )
+    DEFAULT_STRIP_RE: ClassVar[re.Pattern] = re.compile(r"^\s+|\s*(,)\s*|\s+$")
 
     def __init__(
         self,
         indicator: str = DEFAULT_INDICATOR,
         cur_values: list[str] | str | None = None,
-        all_values: list[str] | str | None = None
+        all_values: list[str] | str | None = None,
     ):
         """
         Constructor
-        
+
         :param self: The object
         :param indicator: indicator - a necessary part, default: DEFAULT_INDICATOR
         :type indicator: str | None
@@ -44,13 +42,13 @@ class EnvFilter:
         :type all_values: list[str]
         """
         # Accept parameters
-    
+
         self.indicator = indicator
         self.all_values = all_values
         self.cur_values = cur_values
 
         # Parse pattern-related parameters into regular expressions
-    
+
         self.ind_regex = EnvFilter.to_regex(indicator, is_full=False)
         self.all_regex = EnvFilter.to_regex(indicator, all_values)
         self.cur_regex = EnvFilter.to_regex(indicator, cur_values)
@@ -82,12 +80,12 @@ class EnvFilter:
     def to_regex(
         indicator: str = DEFAULT_INDICATOR,
         input: list[str] | str | None = None,
-        is_full: bool = True
+        is_full: bool = True,
     ) -> re.Pattern:
         """
         Attach delimiters to input items, create patterns and append
         those to the target list
-      
+
         :param ind: indicator - a part to be always present, if None, then
             set as the default one
         :type ind: str | None
@@ -103,8 +101,7 @@ class EnvFilter:
 
         # Ensure the indicator is a valid string
 
-        ind: str = EnvFilter.DEFAULT_INDICATOR \
-            if indicator is None else indicator
+        ind: str = EnvFilter.DEFAULT_INDICATOR if indicator is None else indicator
 
         # Define a pattern for all allowed separators as well as a minimum
         # pattern (if the indicator is not empty)
@@ -123,8 +120,7 @@ class EnvFilter:
         # If input filters are not present, add the default regex and finish
 
         if not input:
-            return re.compile(min, flags=EnvFilter.DEFAULT_RE_FLAGS) \
-                if min else None
+            return re.compile(min, flags=EnvFilter.DEFAULT_RE_FLAGS) if min else None
 
         # If input is a list, join it's elements into a string, but if
         # input looks like a regular exprssion pattern string, compile that
@@ -161,8 +157,7 @@ class EnvFilter:
 
     @staticmethod
     def __limited_glob_str_to_regex_str(
-        input: str | None,
-        is_full: bool = False
+        input: str | None, is_full: bool = False
     ) -> str:
         """
         Convert a limited glob pattern string into a regular expression
@@ -195,25 +190,27 @@ class EnvFilter:
         inp_len: int = len(input)
 
         if (inp_len > 1) and (
-            ("|" in input) or \
-            ("(" in input) or \
-            ("^" == input[0]) or \
-            ("$" == input[inp_len - 1])
+            ("|" in input)
+            or ("(" in input)
+            or ("^" == input[0])
+            or ("$" == input[inp_len - 1])
         ):
             return input if input[0] in "^(" else f"(?:{input})"
 
-        return ("^(?:" if is_full else "(?:") + \
-            re.escape(input) \
-                .replace(",", "|") \
-                .replace(r"\{", "(?:") \
-                .replace(r"\}", ")") \
-                .replace(r"\[!", "[^") \
-                .replace(r"\[", "[") \
-                .replace(r"\]", "]") \
-                .replace(r"\^", "^") \
-                .replace(r"\?", ".") \
-                .replace(r"\*", ".*") + \
-            (")$" if is_full else ")")
+        return (
+            ("^(?:" if is_full else "(?:")
+            + re.escape(input)
+            .replace(",", "|")
+            .replace(r"\{", "(?:")
+            .replace(r"\}", ")")
+            .replace(r"\[!", "[^")
+            .replace(r"\[", "[")
+            .replace(r"\]", "]")
+            .replace(r"\^", "^")
+            .replace(r"\?", ".")
+            .replace(r"\*", ".*")
+            + (")$" if is_full else ")")
+        )
 
 
 ###############################################################################

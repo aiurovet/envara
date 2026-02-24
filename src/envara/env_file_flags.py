@@ -17,10 +17,7 @@ class EnvFileFlags(IntFlag):
     ADD_PLATFORMS = 1 << 0
 
     # Drop internal accumulations from the previous runs
-    RESET = 1 << 1
-
-    # Default combination
-    DEFAULT = ADD_PLATFORMS
+    RESET_ACCUMULATED = 1 << 1
 
 
 ###############################################################################

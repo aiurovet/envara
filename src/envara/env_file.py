@@ -21,7 +21,7 @@ from typing import Final
 from env_file_flags import EnvFileFlags
 from env_filter import EnvFilter
 from env import Env
-from env_exp_flags import EnvExpFlags
+from env_expand_flags import EnvExpandFlags
 from env_platform_flags import EnvPlatformFlags
 
 ###############################################################################
@@ -32,11 +32,11 @@ from env_platform_flags import EnvPlatformFlags
 class EnvFile:
 
     # Default set of string expansion flags
-    DEFAULT_EXPAND_FLAGS: Final[EnvExpFlags] = (
-        EnvExpFlags.UNESCAPE
-        | EnvExpFlags.REMOVE_LINE_COMMENT
-        | EnvExpFlags.REMOVE_QUOTES
-        | EnvExpFlags.SKIP_SINGLE_QUOTED
+    DEFAULT_EXPAND_FLAGS: Final[EnvExpandFlags] = (
+        EnvExpandFlags.UNESCAPE
+        | EnvExpandFlags.REMOVE_LINE_COMMENT
+        | EnvExpandFlags.REMOVE_QUOTES
+        | EnvExpandFlags.SKIP_SINGLE_QUOTED
     )
 
     # Regex to split a string into key and value
@@ -64,9 +64,9 @@ class EnvFile:
         :type flags: EnvFileFlags, default: EnvFileFlags.ADD_PLATFORMS
         :param filters: one or more EnvFilter objects showing what is the
             current value, and what are the possibilities; should be matched
-            against: `EnvFile.get_files(EnvFilter(cur='prod*', all=['dev',
-            'test', 'prod', 'production']), EnvFilter(cur='jp', all=['en',
-            'fr', 'de']))`
+            against: `EnvFile.get_files(EnvFilter(cur_values='prod*',
+            all_values=['dev', 'test', 'prod', 'production']), EnvFilter(
+            cur_values='jp', all=['en', 'fr', 'de']))`
         :type filters: unlimited arguments of type EnvFilter
         :rtype: list[Path]
         """
@@ -89,10 +89,13 @@ class EnvFile:
         # Add the platform filter if required
 
         if flags & EnvFileFlags.ADD_PLATFORMS:
-            pfl: EnvPlatformFlags = EnvPlatformFlags.NONE
-            all: list[str] = Env.get_all_platforms(flags=pfl)
-            cur: list[str] = Env.get_cur_platforms(flags=pfl)
-            filters_ex.append(EnvFilter(indicator, cur, all))
+            filters_ex.append(
+                EnvFilter(
+                    indicator,
+                    cur_values=Env.get_cur_platforms(flags=EnvPlatformFlags.NONE),
+                    all_values=Env.get_all_platforms(flags=EnvPlatformFlags.NONE),
+                )
+            )
 
         # Fallback: append a minimal set of filters
 
@@ -120,8 +123,8 @@ class EnvFile:
     @staticmethod
     def load(
         dir: Path | None = None,
-        file_flags: EnvFileFlags = EnvFileFlags.DEFAULT,
-        exp_flags: EnvExpFlags = DEFAULT_EXPAND_FLAGS,
+        file_flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS,
+        expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
         *filters: list[str] | str | None,
     ) -> str:
         """
@@ -132,13 +135,13 @@ class EnvFile:
         :param file_flags: Describes what and how to load
         :type file_flags: EnvFileFileFlags
         :param file_flags: Describes how to expand env vars and app args
-        :type exp_flags: EnvExpandFlags
+        :type expand_flags: EnvExpandFlags
         """
 
         files: list[Path] = EnvFile.get_files(dir, file_flags, filters)
         content: str = EnvFile.read_text(files, file_flags, dir)
 
-        EnvFile.load_from_str(content, exp_flags=exp_flags)
+        EnvFile.load_from_str(content, expand_flags=expand_flags)
 
         return content
 
@@ -148,7 +151,7 @@ class EnvFile:
     def load_from_str(
         data: str | None,
         args: list[str] | None = None,
-        exp_flags: EnvExpFlags = DEFAULT_EXPAND_FLAGS,
+        expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
     ):
         """
         Load environment variables from a string
@@ -176,7 +179,7 @@ class EnvFile:
             # Expand the value and add to the dict of enviroment variables
 
             if val:
-                expanded, _ = Env.expand(val, args, exp_flags)
+                expanded, _ = Env.expand(val, args, expand_flags)
                 environ[key] = expanded
             elif key and key in environ:
                 del environ[key]
@@ -185,8 +188,7 @@ class EnvFile:
 
     @staticmethod
     def read_text(
-        files: list[Path],
-        flags: EnvFileFlags = EnvFileFlags.DEFAULT
+        files: list[Path], flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS
     ) -> str:
         """
         Load the content of all files as text and return. May
@@ -205,7 +207,7 @@ class EnvFile:
 
         # If required, discard information about the files already loaded
 
-        if flags & EnvFileFlags.RESET:
+        if flags & EnvFileFlags.RESET_ACCUMULATED:
             EnvFile._loaded = []
 
         # Accumulate the content
@@ -218,7 +220,7 @@ class EnvFile:
             if file_str in EnvFile._loaded:
                 continue
 
-            # Avoid multiple loads of the same file 
+            # Avoid multiple loads of the same file
 
             EnvFile._loaded.append(file_str)
 

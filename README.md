@@ -1,10 +1,8 @@
 # envara (C) Alexander Iurovetski 2026
 
-## A library to expand environment variables, application arguments and special characters in a string, execute sub-commands, as well as parse general and OS-specific .env  files
+## A library to remove line comments, expand environment variables, application arguments and special characters in a string, execute sub-commands, as well as parse general and OS-specific .env files
 
-This library allows to expand environment variables and program arguments in a string, parse general and OS-specific .env  files.
-
-The application does not depend on any special Python package.
+This library does not depend on any special Python package.
 
 ### Sample Usage
 
@@ -13,17 +11,25 @@ The application does not depend on any special Python package.
 2. In some _.py_ file, try the following:
 
    ```py
+   import os
    from pathlib import Path
    from env import Env
    ...
-   Env.expand("Home $HOME, arg #1: $1", plain_args)
+   # Expand inlline and print the result
+   print(Env.expand(r"Home ${HOME:-$USERPROFILE}, arg \#1: $1 # Line comment", plain_args))
    ...
+   # Place some .env files into directory below
    EnvFile.load(dir="/home/user/local/bin")
+
+   # Log and check the newly added environment variables
+   print(os.environ)
    ```
 
 ### How to Expand Environment Variables and Arguments in a String
 
-__*Env.expand*__ _(input: str, args: list\[str\] = None, flags: EnvExpandFlags = EnvExpandFlags.DEFAULT) -> str_
+__*Env.expand*__ _(input: str, args: list\[str\] = None, flags: EnvExpandFlags = EnvExpandFlags.DEFAULT, ) -> str_
+
+(see also _POSIX-style expansions implemented in envara_ at the bottom of this page)
 
 1. _input_: a string to expand
 
@@ -64,7 +70,7 @@ __*Env.expandargs*__ _(input: str, args: list\[str\] = None) -> str_
 
    A copy of the first parameter expanded as described above.
 
-__*Env.get_cur_platforms*__ _(flags: EnvPlatformStackFlags = EnvPlatformStackFlags.DEFAULT, prefix: str = None, suffix: str = None) -> list\[str\]_
+__*Env.get_cur_platforms*__ _(flags: EnvPlatformFlags = EnvPlatformFlags.DEFAULT, prefix: str = None, suffix: str = None) -> list\[str\]_
 
 1. Param _flags_
 
@@ -179,7 +185,7 @@ This document describes the behaviour implemented in _Env.expand_posix()_ and th
 
 The following parameters control execution of command substitutions and improve safety:
 
-- _exp_flags: EnvExpFlags_ (default _EnvExpFlags.DEFAULT_) - controls expansion.
+- _expand_flags: EnvExpFlags_ (default _EnvExpFlags.DEFAULT_) - controls expansion.
   1. _ALLOW_SHELL_ - when set (default), command substitutions are executed with _shell=True_ (less safe, but more flexible).
 
   2. _ALLOW_SUBPROC_ - when set, command substitutions are executed with _shell=False_ using _shlex.split()_ (safer, but requires simple commands and proper quoting).
@@ -206,11 +212,11 @@ from env import Env
 
 \# Expand a string with environment variables and defaults
 
-res = Env.expand_posix("Home: ${HOME:-/home/default}, first arg: $1", args=["app"], exp_flags=EnvExpFlags.ALLOW_SHELL)
+res = Env.expand_posix("Home: ${HOME:-/home/default}, first arg: $1", args=["app"], expand_flags=EnvExpFlags.ALLOW_SHELL)
 
 \# Run a simple command substitution without shell
 
-res2 = Env.expand_posix('$(printf "%s" $FOO)', exp_flags=EnvExpFlags.ALLOW_SUBPROCESS)
+res2 = Env.expand_posix('$(printf "%s" $FOO)', expand_flags=EnvExpFlags.ALLOW_SUBPROCESS)
 ___
 
 ## Symmetric (Windows-like) expansions implemented in envara

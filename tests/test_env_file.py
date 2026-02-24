@@ -82,7 +82,7 @@ def test_read_text_reset_flag(mocker):
     m1.__str__.return_value = "/tmp/one"
 
     # Act
-    result = EnvFile.read_text([m1], flags=EnvFileFlags.RESET)
+    result = EnvFile.read_text([m1], flags=EnvFileFlags.RESET_ACCUMULATED)
 
     # Assert - content read and _loaded contains the file again
     assert result == "A"
@@ -101,7 +101,9 @@ def test_load_with_empty_stack(mocker):
 
     # Assert
     m_read_text.assert_called_once()
-    m_load_from_str.assert_called_once_with("", exp_flags=EnvFile.DEFAULT_EXPAND_FLAGS)
+    m_load_from_str.assert_called_once_with(
+        "", expand_flags=EnvFile.DEFAULT_EXPAND_FLAGS
+    )
     assert result == ""
 
 
@@ -112,14 +114,16 @@ def test_load_reads_files_and_passes_flags(mocker):
     m_read_text = mocker.patch("env_file.EnvFile.read_text", return_value="K=V")
     m_load_from_str = mocker.patch("env_file.EnvFile.load_from_str")
     m_dir = mocker.MagicMock(spec=Path)
-    flags = EnvFileFlags.DEFAULT
+    flags = EnvFileFlags.ADD_PLATFORMS
 
     # Act
     result = EnvFile.load(m_dir, file_flags=flags)
 
     # Assert
     m_read_text.assert_called_once()
-    m_load_from_str.assert_called_once_with("K=V", exp_flags=EnvFile.DEFAULT_EXPAND_FLAGS)
+    m_load_from_str.assert_called_once_with(
+        "K=V", expand_flags=EnvFile.DEFAULT_EXPAND_FLAGS
+    )
 
 
 def test_load_from_str_uses_env_expand(mocker):
@@ -145,7 +149,7 @@ def test_load_from_str_passes_args_and_flags(mocker):
     flags = EnvFile.DEFAULT_EXPAND_FLAGS
 
     # Act
-    EnvFile.load_from_str(data, args=args, exp_flags=flags)
+    EnvFile.load_from_str(data, args=args, expand_flags=flags)
 
     # Assert
     m_expand.assert_called_once_with("$1", args, flags)
@@ -154,8 +158,8 @@ def test_load_from_str_passes_args_and_flags(mocker):
 
 def test_get_files_basic_filtering(tmp_path):
     # Arrange - create a few fake files in a temporary directory
-    for name in ['dev.env', 'prod.env', 'other.txt']:
-        (tmp_path / name).write_text('')
+    for name in ["dev.env", "prod.env", "other.txt"]:
+        (tmp_path / name).write_text("")
 
     # a simple filter object that matches 'dev' or 'prod' and only 'prod' as current
     filt = EnvFilter(all_values="dev|prod", cur_values=r"prod")
@@ -165,22 +169,26 @@ def test_get_files_basic_filtering(tmp_path):
 
     # Assert - operate on names for clarity
     names = [p.name for p in result]
-    assert 'prod.env' in names
-    assert 'other.txt' not in names
-    assert 'dev.env' not in names
+    assert "prod.env" in names
+    assert "other.txt" not in names
+    assert "dev.env" not in names
 
 
 def test_get_files_adds_platform_filter(tmp_path, mocker):
     # Arrange - stub platform filter so only names containing "plat" stay
     fake_cur_platforms = ["plat1", "plat2", "plat3"]
-    m_platform = mocker.patch('env.Env.get_cur_platforms', return_value=fake_cur_platforms)
+    m_platform = mocker.patch(
+        "env.Env.get_cur_platforms", return_value=fake_cur_platforms
+    )
 
     fake_all_platforms = ["plat1", "plat2", "plat3", "plat4", "plat5", "plat6"]
-    m_platform = mocker.patch('env.Env.get_all_platforms', return_value=fake_all_platforms)
+    m_platform = mocker.patch(
+        "env.Env.get_all_platforms", return_value=fake_all_platforms
+    )
 
     # create files in temp directory
-    for name in ['file.plat2.env', 'file.plat4.env', 'file.other.env']:
-        (tmp_path / name).write_text('')
+    for name in ["file.plat2.env", "file.plat4.env", "file.other.env"]:
+        (tmp_path / name).write_text("")
 
     # Act
     result = EnvFile.get_files(tmp_path)
@@ -188,6 +196,6 @@ def test_get_files_adds_platform_filter(tmp_path, mocker):
     # Assert - platform filter applied automatically
     assert m_platform.called
     names = [p.name for p in result]
-    assert 'file.plat2.env' in names
-    assert 'file.other.env' in names
-    assert 'file.plat4.env' not in names
+    assert "file.plat2.env" in names
+    assert "file.other.env" in names
+    assert "file.plat4.env" not in names
