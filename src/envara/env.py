@@ -31,35 +31,29 @@ class Env:
     """
     Class for string expansions
     """
-
-    # Default escape character
-    POSIX_ESCAPE: ClassVar[str] = "\\"
-
-    # Default expand character
-    POSIX_EXPAND: ClassVar[str] = "$"
-
-    # True if the app is running under Linux, UNIX, BSD, macOS or smimilar
+    #: True if the app is running under Linux, UNIX, BSD, macOS or smimilar
     IS_POSIX: ClassVar[bool] = os.sep == "/"
 
-    # True if the app is running under Risc OS
+    #: True if the app is running under Risc OS
     IS_RISCOS: ClassVar[bool] = os.sep == "."
 
-    # True if the app is running under OpenVMS or similar
+    #: True if the app is running under OpenVMS or similar
     IS_VMS: ClassVar[bool] = os.sep == ":"
 
-    # True if the app is running under Windows or OS/2
+    #: True if the app is running under Windows or OS/2
     IS_WINDOWS: ClassVar[bool] = os.sep == "\\"
 
-    # A text indicating a POSIX-compatible platform
+    #: A text indicating a POSIX-compatible platform
     PLATFORM_POSIX: ClassVar[str] = "posix"
 
-    # A text indicating a Windows-compatible platform
+    #: A text indicating a Windows-compatible platform
     PLATFORM_WINDOWS: ClassVar[str] = "windows"
 
-    # A text indicating the running platform
+    #: A text indicating the running platform
     PLATFORM_THIS: ClassVar[str] = sys.platform.lower()
 
-    # Special characters when they follow an odd number of ESCAPEs
+    #: Rules on how to convert special characters when they
+    #: follow an odd number of escape characters
     SPECIAL: ClassVar[dict[str, str]] = {
         "a": "\a",
         "b": "\b",
@@ -70,7 +64,7 @@ class Env:
         "v": "\v",
     }
 
-    # Internal dictionary: regex => list-of-platform-names
+    #: Internal dictionary: regex => list-of-platform-names
     __platform_map: ClassVar[dict[str, list[str]]] = {
         "": ["", PLATFORM_POSIX],  # the latter is checked
         "^aix": ["aix"],
