@@ -68,7 +68,7 @@ __*Env.expandargs*__ _(input: str, args: list\[str\] = None) -> str_
 
    A copy of the first parameter expanded as described above.
 
-__*Env.get_cur_platforms*__ _(flags: EnvPlatformFlags = EnvPlatformFlags.DEFAULT, prefix: str = None, suffix: str = None) -> list\[str\]_
+__*Env.get_cur_platforms*__ _(flags: EnvPlatformFlags = EnvPlatformFlags.NONE) -> list\[str\]_
 
 1. Param _flags_
 

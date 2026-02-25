@@ -11,14 +11,14 @@ from enum import IntEnum
 
 
 class EnvQuoteType(IntEnum):
-    # String with no leading quote
     NONE = 0
+    """String with no leading quote"""
 
-    # Single-quoted string
     SINGLE = 1
+    """Single-quoted string"""
 
-    # Double-quoted string
     DOUBLE = 2
+    """Double-quoted string"""
 
 
 ###############################################################################

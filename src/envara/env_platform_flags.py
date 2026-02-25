@@ -10,17 +10,11 @@ from enum import IntFlag
 
 
 class EnvPlatformFlags(IntFlag):
-    # No flag set
     NONE = 0
+    """No flag set"""
 
-    # Add empty: relevant to any platform
     ADD_EMPTY = 1 << 0
-
-    # Add maximum platforms (compatibility with README/tests)
-    ADD_MAX = 1 << 1
-
-    # Default set of platforms
-    DEFAULT = NONE
+    """Add empty: relevant to any platform"""
 
 
 ###############################################################################

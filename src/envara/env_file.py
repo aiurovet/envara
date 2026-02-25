@@ -31,19 +31,19 @@ from env_platform_flags import EnvPlatformFlags
 
 class EnvFile:
 
-    # Default set of string expansion flags
     DEFAULT_EXPAND_FLAGS: Final[EnvExpandFlags] = (
         EnvExpandFlags.UNESCAPE
         | EnvExpandFlags.REMOVE_LINE_COMMENT
         | EnvExpandFlags.REMOVE_QUOTES
         | EnvExpandFlags.SKIP_SINGLE_QUOTED
     )
+    """Default set of string expansion flags"""
 
-    # Regex to split a string into key and value
     RE_KEY_VALUE: Final[re.Pattern] = re.compile(r"\s*=\s*")
+    """Regex to split a string into key and value"""
 
-    # Internal list of files that were loaded already
     _loaded: list[str] = []
+    """Internal list of files that were loaded already"""
 
     ###########################################################################
 
@@ -60,14 +60,20 @@ class EnvFile:
 
         :param dir: directory to look in
         :type dir: Path | None
+
+        :param indicator: necessary part of every relevant filename
+        :type indicator: str
+
         :param flags: add platform names to filters
         :type flags: EnvFileFlags, default: EnvFileFlags.ADD_PLATFORMS
+
         :param filters: one or more EnvFilter objects showing what is the
             current value, and what are the possibilities; should be matched
             against: `EnvFile.get_files(EnvFilter(cur_values='prod*',
             all_values=['dev', 'test', 'prod', 'production']), EnvFilter(
             cur_values='jp', all=['en', 'fr', 'de']))`
         :type filters: unlimited arguments of type EnvFilter
+
         :rtype: list[Path]
         """
 

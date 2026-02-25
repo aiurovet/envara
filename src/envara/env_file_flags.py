@@ -10,14 +10,14 @@ from enum import IntFlag
 
 
 class EnvFileFlags(IntFlag):
-    # No flag set
     NONE = 0
+    """No flag set"""
 
-    # Add platforms to be present in the filenames
     ADD_PLATFORMS = 1 << 0
+    """Add platforms to be present in the filenames"""
 
-    # Drop internal accumulations from the previous runs
     RESET_ACCUMULATED = 1 << 1
+    """Drop internal accumulations from the previous runs"""
 
 
 ###############################################################################

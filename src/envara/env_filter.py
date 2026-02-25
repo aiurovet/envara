@@ -14,14 +14,14 @@ from typing import ClassVar
 
 
 class EnvFilter:
-    # Default regex flags to compile with
     DEFAULT_RE_FLAGS: ClassVar[re.RegexFlag] = re.RegexFlag.IGNORECASE
+    """Default regex flags to compile with"""
 
-    # Default dot-env file type without leading extension separator
     DEFAULT_INDICATOR: ClassVar[str] = "env"
+    """Default dot-env file type without leading extension separator"""
 
-    # Regex to strip all unnecessary blanks around every delimited field
     DEFAULT_STRIP_RE: ClassVar[re.Pattern] = re.compile(r"^\s+|\s*(,)\s*|\s+$")
+    """Regex to strip all unnecessary blanks around every delimited field"""
 
     def __init__(
         self,
@@ -32,12 +32,16 @@ class EnvFilter:
         """
         Constructor
 
-        :param self: The object
-        :param indicator: indicator - a necessary part, default: DEFAULT_INDICATOR
+        :param self: the object
+
+        :param indicator: a necessary part (always present), default:
+            DEFAULT_INDICATOR
         :type indicator: str | None
-        :param cur_values: One or more strings relevant to the current run passed
-                    either as a list of strings or as a single string
+
+        :param cur_values: One or more strings relevant to the current run
+            passed either as a list of strings or as a single string
         :type cur_values: list[str] | str | None
+
         :param all_values: All possible values passed as a list of strings
         :type all_values: list[str]
         """

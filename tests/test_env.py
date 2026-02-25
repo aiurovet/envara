@@ -60,7 +60,7 @@ def test_expand_uses_posix_and_unescape(mocker):
     assert called_kwargs["expand_char"] == info.expand_char
     assert called_kwargs["escape_char"] == info.escape_char
     # unescape must be invoked with expand_posix's result and the escape char
-    m_unescape.assert_called_once_with("posix-expanded", escape=info.escape_char)
+    m_unescape.assert_called_once_with("posix-expanded", escape_char=info.escape_char)
     assert out == "final-unescaped"
     assert got is info
 
@@ -151,12 +151,12 @@ def test_unescape_empty_returns_empty():
 
 
 def test_unescape_custom_escape_not_present_returns_input():
-    assert Env.unescape("plain-text", escape="^") == "plain-text"
+    assert Env.unescape("plain-text", escape_char="^") == "plain-text"
 
 
 def test_unescape_custom_escape_character_is_processed():
     # custom escape '`' should translate `n into newline
-    assert Env.unescape("`n", escape="`") == "\n"
+    assert Env.unescape("`n", escape_char="`") == "\n"
 
 
 def test_unescape_strip_blanks_requires_both_ends():
@@ -284,7 +284,7 @@ def test_quote_none_input_returns_empty_quotes():
 def test_quote_with_custom_escape_arg():
     # custom escape character should be used instead of default; when no
     # quote char is present the implementation does not double escapes
-    out = Env.quote("a^b^c", type=EnvQuoteType.DOUBLE, escape="^")
+    out = Env.quote("a^b^c", type=EnvQuoteType.DOUBLE, escape_char="^")
     assert out == '"a^b^c"'
 
 
@@ -779,8 +779,8 @@ def test_get_cur_platforms_add_max_includes_all(mocker):
 def test_get_cur_platforms_with_prefix_and_suffix(mocker):
     mocker.patch.object(Env, "PLATFORM_THIS", "linux")
     mocker.patch.object(Env, "IS_POSIX", True)
-    res = Env.get_cur_platforms(
-        flags=EnvPlatformFlags.ADD_MAX, prefix="pre-", suffix="-suf"
-    )
+    res = Env.get_cur_platforms(flags=EnvPlatformFlags.ADD_MAX)
     # every returned string should start with prefix and end with suffix
-    assert all(r.startswith("pre-") and r.endswith("-suf") for r in res)
+    assert len(res) == 2
+    assert "posix" in res
+    assert "linux" in res

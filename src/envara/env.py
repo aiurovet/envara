@@ -31,29 +31,28 @@ class Env:
     """
     Class for string expansions
     """
-    #: True if the app is running under Linux, UNIX, BSD, macOS or smimilar
+
     IS_POSIX: ClassVar[bool] = os.sep == "/"
+    """True if the app is running under Linux, UNIX, BSD, macOS or smimilar"""
 
-    #: True if the app is running under Risc OS
     IS_RISCOS: ClassVar[bool] = os.sep == "."
+    """True if the app is running under Risc OS"""
 
-    #: True if the app is running under OpenVMS or similar
     IS_VMS: ClassVar[bool] = os.sep == ":"
+    """True if the app is running under OpenVMS or similar"""
 
-    #: True if the app is running under Windows or OS/2
     IS_WINDOWS: ClassVar[bool] = os.sep == "\\"
+    """True if the app is running under Windows or OS/2"""
 
-    #: A text indicating a POSIX-compatible platform
     PLATFORM_POSIX: ClassVar[str] = "posix"
+    """A text indicating a POSIX-compatible platform"""
 
-    #: A text indicating a Windows-compatible platform
     PLATFORM_WINDOWS: ClassVar[str] = "windows"
+    """A text indicating a Windows-compatible platform"""
 
-    #: A text indicating the running platform
     PLATFORM_THIS: ClassVar[str] = sys.platform.lower()
+    """A text indicating the running platform"""
 
-    #: Rules on how to convert special characters when they
-    #: follow an odd number of escape characters
     SPECIAL: ClassVar[dict[str, str]] = {
         "a": "\a",
         "b": "\b",
@@ -63,8 +62,9 @@ class Env:
         "t": "\t",
         "v": "\v",
     }
+    """Rules on how to convert special characters when they
+    follow an odd number of escape characters"""
 
-    #: Internal dictionary: regex => list-of-platform-names
     __platform_map: ClassVar[dict[str, list[str]]] = {
         "": ["", PLATFORM_POSIX],  # the latter is checked
         "^aix": ["aix"],
@@ -87,6 +87,7 @@ class Env:
         "^win": [PLATFORM_WINDOWS],
         ".+": [PLATFORM_THIS],
     }
+    """Internal dictionary: regex => list-of-platform-names"""
 
     ###########################################################################
 
@@ -102,20 +103,28 @@ class Env:
         cutter_chars: str = None,
     ) -> tuple[str, EnvParseInfo]:
         """
-        Unquote the input if required, remove trailing line comment if
-        required, expand the result with the arguments if required, expand
-        the result with the environment variables' values. The method follows
-        minimal POSIX conventions: $ABC and ${ABC}, as well as %ABC% on Windows
+        Unquote the input if required via flags, remove trailing line comment
+        if required via flags, expand the result with the arguments if
+        required via flags, expand the result with the environment variables'
+        values. The method follows POSIX and DOS/Windows expansion conventions
+        depending on what was found first: dollar or percent, then backslash
+        or caret (obviously, the POSIX style is by far more advanced)
 
-        :param input: Input string to expand
+        :param input: string to expand
         :type input: str
-        :param args: List of arguments to expand from $1, ...
+
+        :param args: list of arguments to expand $#, $1, $2, ...
         :type args: str
+
         :param flags: Flags controlling what/how to expand input
         :type flags: EnvExpandFlags
 
-        :param strip_spaces: True if can remove spaces from the start and end of _input_
+        :param strip_spaces: True if can remove spaces from the start and the
+            end of _input_
         :type strip_spaces: bool
+
+        :param escape_chars: string of chars to treat as escape chars
+        :type escape_chars: str
         
         :return: Expanded string
         :rtype: str
@@ -129,7 +138,7 @@ class Env:
         # Map flags to cutter_chars/hard_quotes/unescape behaviours
 
         if (flags & EnvExpandFlags.REMOVE_LINE_COMMENT) and (cutter_chars is None):
-            cutter_chars = "#"
+            cutter_chars = EnvParseInfo.POSIX_CUTTER_CHAR
 
         info: EnvParseInfo
 
@@ -176,7 +185,7 @@ class Env:
         # Perform unescape if requested
 
         if flags & EnvExpandFlags.UNESCAPE:
-            info.result = Env.unescape(info.result, escape=info.escape_char)
+            info.result = Env.unescape(info.result, escape_char=info.escape_char)
 
         # Return the final result
 
@@ -189,11 +198,16 @@ class Env:
         input: str,
         args: list[str] | None = None,
         vars: dict[str, str] | None = os.environ,
-        expand_char: str = "$",
-        escape_char: str = "\\",
+        expand_char: str = EnvParseInfo.POSIX_EXPAND_CHAR,
+        escape_char: str = EnvParseInfo.POSIX_ESCAPE_CHAR,
         expand_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
         subprocess_timeout: float | None = None,
     ) -> str:
+        """
+        Expand environment variables and sub-processes according to complex
+        POSIX rules: like ${ABC:-${DEF:-$(uname -a)}. See the description
+        of arguments under the main method expand(...)
+        """
         if input is None:
             return ""
 
@@ -691,9 +705,14 @@ class Env:
         input: str,
         args: list[str] | None = None,
         vars: dict[str, str] | None = None,
-        expand_char: str = "%",
-        escape_char: str = "^",
+        expand_char: str = EnvParseInfo.WINDOWS_EXPAND_CHAR,
+        escape_char: str = EnvParseInfo.WINDOWS_ESCAPE_CHAR,
     ) -> str:
+        """
+        Expand environment variables and sub-processes according to simple
+        rules and symmetric expand characters: like %ABC% in Windows. See
+        the description of arguments under the main method expand(...)
+        """
         if input is None:
             return ""
 
@@ -918,18 +937,15 @@ class Env:
 
     @staticmethod
     def get_all_platforms(
-        flags: EnvPlatformFlags = EnvPlatformFlags.DEFAULT,
+        flags: EnvPlatformFlags = EnvPlatformFlags.NONE,
     ) -> list[str]:
         """
-        Get all supported platforms
+        Get the list of all supported platforms
 
-        :param flags: Controls which items will be added to the stack
+        :param flags: controls which items will be added to the stack
         :type flags: EnvPlatformFlags
-        :param prefix: optional string to prepend to every platform name
-        :type prefix: str | None
-        :param suffix: optional string to append to every platform name
-        :type suffix: str | None
-        :return: A list of all relevant platforms (optionally decorated)
+
+        :return: list of all relevant platforms
         :rtype: list[str]
         """
 
@@ -957,22 +973,15 @@ class Env:
 
     @staticmethod
     def get_cur_platforms(
-        flags: EnvPlatformFlags = EnvPlatformFlags.DEFAULT,
-        prefix: str | None = None,
-        suffix: str | None = None,
+        flags: EnvPlatformFlags = EnvPlatformFlags.NONE
     ) -> list[str]:
         """
-        Get the stack (list) of platforms from more generic to more specific
-        ones. Optionally add a prefix and/or suffix to every platform name
-        (used by EnvFile to form filenames like '.env' or '.linux.env').
+        Get the list of platforms from more generic to more specific ones.
 
-        :param flags: Controls which items will be added to the stack
+        :param flags: controls which items will be added to the list
         :type flags: EnvPlatformFlags
-        :param prefix: optional string to prepend to every platform name
-        :type prefix: str | None
-        :param suffix: optional string to append to every platform name
-        :type suffix: str | None
-        :return: A list of all relevant platforms (optionally decorated)
+
+        :return: A list of all relevant platforms
         :rtype: list[str]
         """
 
@@ -1014,13 +1023,6 @@ class Env:
                 if platform not in result:
                     result.append(platform)
 
-        # Optionally decorate with prefix/suffix
-        if prefix or suffix:
-            decorated: list[str] = []
-            for p in result:
-                decorated.append(f"{prefix or ''}{p}{suffix or ''}")
-            return decorated
-
         # Return the accumulated list
 
         return result
@@ -1029,20 +1031,25 @@ class Env:
 
     @staticmethod
     def quote(
-        input: str, type: EnvQuoteType = EnvQuoteType.DOUBLE, escape: str = None
+        input: str,
+        type: EnvQuoteType = EnvQuoteType.DOUBLE,
+        escape_char: str = None
     ) -> str:
         """
         Enclose input in quotes. Neither leading, nor trailing whitespaces
         removed before checking the leading quotes. Use .strip() yourself
         before calling this method if needed.
 
-        :param input: String being expanded
+        :param input: string being expanded
         :type input: str
-        :param type: Type of quotes to enclose in
+
+        :param type: type of quotes to enclose in
         :type type: EnvQuoteType
-        :param escape: Escape character to use
-        :type escape: str
-        :return: Quoted string with possible quotes and escape characters from
+
+        :param escape_char: escape character to use
+        :type escape_char: str
+
+        :return: quoted string with possible quotes and escape characters from
                  the inside being escaped
         :rtype: str
         """
@@ -1051,8 +1058,8 @@ class Env:
 
         result = "" if (input is None) else input
 
-        if not escape:
-            escape = EnvParseInfo.POSIX_ESCAPE_CHAR
+        if not escape_char:
+            escape_char = EnvParseInfo.POSIX_ESCAPE_CHAR
 
         # Define the quote being used
 
@@ -1073,9 +1080,9 @@ class Env:
         # and return
 
         if result and (quote in result):
-            if escape in result:
-                result = result.replace(escape, f"{escape}{escape}")
-            result = result.replace(quote, f"{escape}{quote}")
+            if escape_char in result:
+                result = result.replace(escape_char, f"{escape_char}{escape_char}")
+            result = result.replace(quote, f"{escape_char}{quote}")
 
         return f"{quote}{result}{quote}"
 
@@ -1084,7 +1091,7 @@ class Env:
     @staticmethod
     def unescape(
         input: str,
-        escape: str = None,
+        escape_char: str = None,
         strip_blanks: bool = False,
     ) -> str:
         """
@@ -1092,10 +1099,13 @@ class Env:
 
         :param input: Input string to unescape escaped characters in
         :type input: str
-        :param escape: String to be treated as escape character
-        :type expand_info: str
+
+        :param escape_char: String to be treated as escape character
+        :type escape_char: str
+
         :param strip_blanks: True = remove leading and trailing blanks
         :type strip_blanks: bool
+
         :return: Unescaped string, optionally, stripped of blanks
         :rtype: str
         """
@@ -1108,9 +1118,9 @@ class Env:
         # If escape character is not known yet, use the default one, and
         # if input does not contain the default escape char, then finish
 
-        if not escape:
-            escape = EnvParseInfo.POSIX_ESCAPE_CHAR
-            if escape not in input:
+        if not escape_char:
+            escape_char = EnvParseInfo.POSIX_ESCAPE_CHAR
+            if escape_char not in input:
                 return input
 
         # Loop through the input and accumulate valid characters in chr_lst
@@ -1138,7 +1148,7 @@ class Env:
                 chr_lst.append(chr(int(input[acc_beg_pos:acc_end_pos], 16)))
                 is_escaped = False
 
-            if cur_char == escape:
+            if cur_char == escape_char:
                 is_escaped = not is_escaped
                 esc_pos = cur_pos if (is_escaped) else -1
                 continue
@@ -1194,8 +1204,8 @@ class Env:
         strip_spaces: bool = True,
         escape_chars: str = None,
         expand_chars: str = None,
-        hard_quotes: str = None,
         cutter_chars: str = None,
+        hard_quotes: str = None
     ) -> tuple[str, EnvParseInfo]:
         """
         Remove enclosing quotes from a string ignoring everything beyond the
@@ -1206,24 +1216,36 @@ class Env:
         then expands environment variables, arguments, and unescapes special
         characters.
 
-        :param input: String to remove enclosing quotes from
+        :param input: string to remove enclosing quotes from
         :type input: str
-        :param escape: Escape characters: whichever comes first in the input
-                       will be returned in the dedicated info
-        :type escapes: str
-        :param strip_spaces: True = strip leading and trailing spaces. If
-                             quoted, don't strip again after unquoting
+
+        :param strip_spaces: True if should strip leading and trailing spaces
+            (if quoted, don't strip again after unquoting)
         :type strip_spaces: bool
-        :param expands: A string of characters where each indicates a start
-                        of env var or arg expansion (e.g., "$%")
-        :type expands: str
-        :param hard_quotes: A string containing all quote characters that
-                            require to ignore escaping (e.g., a single quote)
-        :type hard_quotes: bool
-        :param cutter_chars: A string of characters where each indicates a string
-            end when found non-escaped and not in quotes (e.g., "#")
+
+        :param escape_chars: character(s) that will be treated as candidates
+            for escaping; whichever comes first in the input will be returned
+            in the dedicated info as .escape_char
+        :type escape_chars: str
+
+        :param expand_chars: character(s) that will be treated as candidates
+            for expanding environment variables when found non-escaped;
+            whichever comes first in the input will be returned in the
+            dedicated info as .expand_char
+        :type expand_chars: str
+
+        :param cutter_chars: character(s) that will be treated as candidates
+            for the end of a string as data (i.e. as beginning of a line
+            comment) when found non-escaped and not inside of a quoted
+            sub-string; whichever comes first in the input will be returned
+            in the dedicated info as .cutter_char
         :type cutter_chars: str
-        :return: unquoted input and details: see _EnvUnquoteData_
+
+        :param hard_quotes: string containing all quote characters that
+            require to ignore escaping (e.g., a single quote)
+        :type hard_quotes: bool
+
+        :return: unquoted input and details (see EnvUnquoteData)
         :rtype: tuple[str, EnvUnquoteData]
         """
 
@@ -1238,6 +1260,8 @@ class Env:
 
         # Ensure required arguments are populated
 
+        if cutter_chars is None:
+            cutter_chars = EnvParseInfo.POSIX_CUTTER_CHAR
         if expand_chars is None:
             expand_chars = EnvParseInfo.POSIX_EXPAND_CHAR
         if escape_chars is None:
@@ -1264,7 +1288,8 @@ class Env:
 
         # Initialise flags for escaping and quoting
 
-        has_cutter_chars: bool = True if cutter_chars else False
+        has_cutters: bool = True if cutter_chars else False
+        is_cut: bool = False
         is_escaped: bool = False
         is_quoted: bool = info.quote_type != EnvQuoteType.NONE
 
@@ -1321,7 +1346,10 @@ class Env:
             # the quotes, and it was not escaped
 
             if (not is_quoted) and (not is_escaped):
-                if has_cutter_chars and (cur_char in cutter_chars):
+                if has_cutters and (cur_char in cutter_chars):
+                    if not is_cut:
+                        is_cut = True
+                        info.cutter_char = cur_char
                     end_pos = end_pos - 1
                     break
 
@@ -1368,11 +1396,14 @@ class Env:
 
         :param input: Full string at fault
         :type input: str
-        :param beg_pos: Starting position of the fragment at fault
+
+        :param beg_pos: first index of the faulty fragment
         :type beg_pos: int
-        :param end_pos: Ending position of the fragment at fault
+
+        :param end_pos: last index of the faulty fragment
         :type end_pos: int
-        :return: Raise exception
+
+        :return: no return, exception raised
         :rtype: None
         """
 
