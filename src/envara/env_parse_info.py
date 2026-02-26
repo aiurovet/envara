@@ -45,22 +45,31 @@ class EnvParseInfo:
         """
         Constructor
 
-        :param self: the object
+        :param self: The object
 
-        :param input: string being unquoted
+        :param input: String being unquoted
         :type input: str
 
-        :param result: result of unquoting
+        :param result: Result of unquoting
         :type result: str
 
-        :param expand_char: first non-escaped and non-quoted expand character
+        :param expand_char: First non-escaped and non-quoted expand character
             encountered: dollar, percent, angle bracket
         :type expand_char: str
 
-        :param escape_char: first non-escaped and non-quoted character
+        :param escape_char: First non-escaped and non-quoted character
             encountered: backslash, backtick, caret
         :type escape_char: str
 
+        :param cutter_char: First non-escaped and non-quoted character
+            recognised as the end of data in a string (like a line comment
+            start): hash
+        :type cutter_char: str
+
+        :param cutter_char: First character recognised as the end of data in a
+            string (like a line comment start): hash
+        :type cutter_chars: str
+        
         :param quote_type: Type of enclosing quotes found
         :type quote_type: EnvQuoteType
         """

@@ -110,10 +110,10 @@ class Env:
         depending on what was found first: dollar or percent, then backslash
         or caret (obviously, the POSIX style is by far more advanced)
 
-        :param input: string to expand
+        :param input: String to expand
         :type input: str
 
-        :param args: list of arguments to expand $#, $1, $2, ...
+        :param args: List of arguments to expand $#, $1, $2, ...
         :type args: str
 
         :param flags: Flags controlling what/how to expand input
@@ -123,7 +123,7 @@ class Env:
             end of _input_
         :type strip_spaces: bool
 
-        :param escape_chars: string of chars to treat as escape chars
+        :param escape_chars: String of chars to treat as escape chars
         :type escape_chars: str
         
         :return: Expanded string
@@ -940,12 +940,12 @@ class Env:
         flags: EnvPlatformFlags = EnvPlatformFlags.NONE,
     ) -> list[str]:
         """
-        Get the list of all supported platforms
+        Get the list of all supported platforms (see Env.__platform_map).
 
-        :param flags: controls which items will be added to the stack
+        :param flags: Controls which items will be added to the stack
         :type flags: EnvPlatformFlags
 
-        :return: list of all relevant platforms
+        :return: List of all relevant platforms
         :rtype: list[str]
         """
 
@@ -977,11 +977,17 @@ class Env:
     ) -> list[str]:
         """
         Get the list of platforms from more generic to more specific ones.
+        For instance, if an application is running on Linux, it could be
+        ["posix", "linux", Env.PLATFORM_THIS], or for macOS it could be
+        ["posix", "bsd", "darwin", "macos", Env.PLATFORM_THIS]. The last
+        item will be added only if more specific than "macOS". An empty
+        string is added first to the returned list if you set the
+        EnvPlatformFlags.ADD_EMPTY bit in flags.
 
-        :param flags: controls which items will be added to the list
+        :param flags: Controls which items will be added to the list
         :type flags: EnvPlatformFlags
 
-        :return: A list of all relevant platforms
+        :return: List of all relevant platforms
         :rtype: list[str]
         """
 
@@ -1040,16 +1046,16 @@ class Env:
         removed before checking the leading quotes. Use .strip() yourself
         before calling this method if needed.
 
-        :param input: string being expanded
+        :param input: String being expanded
         :type input: str
 
-        :param type: type of quotes to enclose in
+        :param type: Type of quotes to enclose in
         :type type: EnvQuoteType
 
-        :param escape_char: escape character to use
+        :param escape_char: Escape character to use
         :type escape_char: str
 
-        :return: quoted string with possible quotes and escape characters from
+        :return: Quoted string with possible quotes and escape characters from
                  the inside being escaped
         :rtype: str
         """
@@ -1216,36 +1222,36 @@ class Env:
         then expands environment variables, arguments, and unescapes special
         characters.
 
-        :param input: string to remove enclosing quotes from
+        :param input: String to remove enclosing quotes from
         :type input: str
 
         :param strip_spaces: True if should strip leading and trailing spaces
             (if quoted, don't strip again after unquoting)
         :type strip_spaces: bool
 
-        :param escape_chars: character(s) that will be treated as candidates
+        :param escape_chars: Character(s) that will be treated as candidates
             for escaping; whichever comes first in the input will be returned
             in the dedicated info as .escape_char
         :type escape_chars: str
 
-        :param expand_chars: character(s) that will be treated as candidates
+        :param expand_chars: Character(s) that will be treated as candidates
             for expanding environment variables when found non-escaped;
             whichever comes first in the input will be returned in the
             dedicated info as .expand_char
         :type expand_chars: str
 
-        :param cutter_chars: character(s) that will be treated as candidates
+        :param cutter_chars: Character(s) that will be treated as candidates
             for the end of a string as data (i.e. as beginning of a line
             comment) when found non-escaped and not inside of a quoted
             sub-string; whichever comes first in the input will be returned
             in the dedicated info as .cutter_char
         :type cutter_chars: str
 
-        :param hard_quotes: string containing all quote characters that
+        :param hard_quotes: String containing all quote characters that
             require to ignore escaping (e.g., a single quote)
-        :type hard_quotes: bool
+        :type hard_quotes: str
 
-        :return: unquoted input and details (see EnvUnquoteData)
+        :return: Unquoted input and details (see EnvUnquoteData)
         :rtype: tuple[str, EnvUnquoteData]
         """
 
@@ -1397,13 +1403,13 @@ class Env:
         :param input: Full string at fault
         :type input: str
 
-        :param beg_pos: first index of the faulty fragment
+        :param beg_pos: First index of the faulty fragment
         :type beg_pos: int
 
-        :param end_pos: last index of the faulty fragment
+        :param end_pos: Last index of the faulty fragment
         :type end_pos: int
 
-        :return: no return, exception raised
+        :return: No return, exception raised
         :rtype: None
         """
 

@@ -58,22 +58,23 @@ class EnvFile:
         Get list of eligible files. Adds a list of platform names if
         `with_platforms = True` (default)
 
-        :param dir: directory to look in
+        :param dir: Directory to look in
         :type dir: Path | None
 
-        :param indicator: necessary part of every relevant filename
+        :param indicator: Necessary part of every relevant filename
         :type indicator: str
 
-        :param flags: add platform names to filters
+        :param flags: Add platform names to filters
         :type flags: EnvFileFlags, default: EnvFileFlags.ADD_PLATFORMS
 
-        :param filters: one or more EnvFilter objects showing what is the
+        :param filters: One or more EnvFilter objects showing what is the
             current value, and what are the possibilities; should be matched
             against: `EnvFile.get_files(EnvFilter(cur_values='prod*',
             all_values=['dev', 'test', 'prod', 'production']), EnvFilter(
-            cur_values='jp', all=['en', 'fr', 'de']))`
+            cur_values=['jp', 'en'], all='en,fr,de,jp'))`
         :type filters: unlimited arguments of type EnvFilter
 
+        :return: List of matching paths in the given directory
         :rtype: list[Path]
         """
 
@@ -130,26 +131,31 @@ class EnvFile:
     def load(
         dir: Path | None = None,
         file_flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS,
+        args: list[str] | None = None,
         expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
         *filters: list[str] | str | None,
-    ) -> str:
+    ):
         """
-        Load environment variables from a .env-compliant file(s)
+        Add key-expanded-value pairs from .env-compliant file(s) to os.environ
 
-        :param dir: default directory to locate platform-specific files
+        :param dir: Default directory to locate platform-specific files
         :type dir: Path | str | None
+
         :param file_flags: Describes what and how to load
-        :type file_flags: EnvFileFileFlags
-        :param file_flags: Describes how to expand env vars and app args
+        :type file_flags: EnvFileFlags
+
+        :param args: List of arguments (e.g. application args) to expand
+            placeholders like $1, ${2}, ...
+        :type args: list[str]
+
+        :param expand_flags: Describes how to expand env vars and app args
         :type expand_flags: EnvExpandFlags
         """
 
         files: list[Path] = EnvFile.get_files(dir, file_flags, filters)
         content: str = EnvFile.read_text(files, file_flags, dir)
 
-        EnvFile.load_from_str(content, expand_flags=expand_flags)
-
-        return content
+        EnvFile.load_from_str(content, args=args, expand_flags=expand_flags)
 
     ###########################################################################
 
@@ -160,13 +166,17 @@ class EnvFile:
         expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
     ):
         """
-        Load environment variables from a string
+        Add key-expanded-value pairs from a string buffer to os.environ
 
-        :param data: a string to parse, then load env variables from
+        :param data: String to parse, then load env variables from
         :type data: str
-        :param args: a list of arguments (e.g. application args) to expand
-                     placeholders like $1, ${2}, ...
+
+        :param args: List of arguments (e.g. application args) to expand
+            placeholders like $1, ${2}, ...
         :type args: list[str]
+
+        :param expand_flags: Describes how to expand env vars and app args
+        :type expand_flags: EnvExpandFlags
         """
 
         # Split data into lines and loop through every line
@@ -194,15 +204,17 @@ class EnvFile:
 
     @staticmethod
     def read_text(
-        files: list[Path], flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS
+        files: list[Path],
+        flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS
     ) -> str:
         """
         Load the content of all files as text and return. May
         discard previously loaded content if the special flag
         is set
 
-        :param files: list of Paths to read text from
+        :param files: List of Paths to read text from
         :type files: list[Path]
+
         :param flags: Describes what and how to load
         :type flags: EnvFileFlags
         """

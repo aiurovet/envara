@@ -7,6 +7,7 @@
 ###############################################################################
 
 
+import os
 from pathlib import Path
 from env_file import EnvFile
 from env_file_flags import EnvFileFlags
@@ -89,7 +90,7 @@ def test_read_text_reset_flag(mocker):
     assert "/tmp/one" in EnvFile._loaded
 
 
-def test_load_with_empty_stack(mocker):
+def test_load_with_empty_args_and_empty_file_list(mocker):
     # Arrange - no files found
     mocker.patch("env_file.EnvFile.get_files", return_value=[])
     m_read_text = mocker.patch("env_file.EnvFile.read_text", return_value="")
@@ -97,14 +98,32 @@ def test_load_with_empty_stack(mocker):
     m_dir = mocker.MagicMock(spec=Path)
 
     # Act
-    result = EnvFile.load(m_dir)
+    EnvFile.load(m_dir)
 
     # Assert
     m_read_text.assert_called_once()
     m_load_from_str.assert_called_once_with(
-        "", expand_flags=EnvFile.DEFAULT_EXPAND_FLAGS
+        "", args=None, expand_flags=EnvFile.DEFAULT_EXPAND_FLAGS
     )
-    assert result == ""
+
+
+def test_load_with_nonempty_args_and_empty_file_list(mocker):
+    # Arrange - no files found
+    content = "V1=$1\nV2=$2"
+    args = ["a1", "a2"]
+    mocker.patch("env_file.EnvFile.get_files", return_value=[])
+    m_read_text = mocker.patch("env_file.EnvFile.read_text", return_value=content)
+    m_load_from_str = mocker.patch("env_file.EnvFile.load_from_str")
+    m_dir = mocker.MagicMock(spec=Path)
+
+    # Act
+    EnvFile.load(m_dir, args=args)
+
+    # Assert
+    m_read_text.assert_called_once()
+    m_load_from_str.assert_called_once_with(
+        content, args=args, expand_flags=EnvFile.DEFAULT_EXPAND_FLAGS
+    )
 
 
 def test_load_reads_files_and_passes_flags(mocker):
@@ -122,7 +141,7 @@ def test_load_reads_files_and_passes_flags(mocker):
     # Assert
     m_read_text.assert_called_once()
     m_load_from_str.assert_called_once_with(
-        "K=V", expand_flags=EnvFile.DEFAULT_EXPAND_FLAGS
+        "K=V", args=None, expand_flags=EnvFile.DEFAULT_EXPAND_FLAGS
     )
 
 

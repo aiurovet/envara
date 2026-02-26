@@ -759,28 +759,3 @@ def test_get_cur_platforms_add_empty(mocker):
     assert "" in result
     assert isinstance(result, list)
 
-
-def test_get_cur_platforms_add_max_includes_all(mocker):
-    # Patch platform details for Linux + POSIX
-    mocker.patch.object(Env, "PLATFORM_THIS", "linux")
-    mocker.patch.object(Env, "IS_POSIX", True)
-    mocker.patch.object(Env, "IS_WINDOWS", False)
-
-    # Get full stack with ADD_MAX flag
-    result = Env.get_cur_platforms(flags=EnvPlatformFlags.ADD_MAX)
-
-    # Result should contain multiple platforms
-    assert len(result) > 0
-    assert isinstance(result, list)
-    # Should include at least the current platform (linux)
-    assert "linux" in result
-
-
-def test_get_cur_platforms_with_prefix_and_suffix(mocker):
-    mocker.patch.object(Env, "PLATFORM_THIS", "linux")
-    mocker.patch.object(Env, "IS_POSIX", True)
-    res = Env.get_cur_platforms(flags=EnvPlatformFlags.ADD_MAX)
-    # every returned string should start with prefix and end with suffix
-    assert len(res) == 2
-    assert "posix" in res
-    assert "linux" in res

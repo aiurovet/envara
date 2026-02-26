@@ -32,10 +32,10 @@ class EnvFilter:
         """
         Constructor
 
-        :param self: the object
+        :param self: The object
 
-        :param indicator: a necessary part (always present), default:
-            DEFAULT_INDICATOR
+        :param indicator: A necessary part of a name (always present),
+            default: DEFAULT_INDICATOR
         :type indicator: str | None
 
         :param cur_values: One or more strings relevant to the current run
@@ -65,6 +65,7 @@ class EnvFilter:
     ) -> bool:
         """
         Check the input matches given filters:
+
         - should match the default one
         - should either match the current one or not match the whole set at
           all: `.en.prod` should match `.env.en`, `fr.env` and `_jp_env`,
@@ -87,19 +88,21 @@ class EnvFilter:
         is_full: bool = True,
     ) -> re.Pattern:
         """
-        Attach delimiters to input items, create patterns and append
-        those to the target list
+        Convert glob or regex pattern string into regex
 
-        :param ind: indicator - a part to be always present, if None, then
-            set as the default one
-        :type ind: str | None
-        :param input: comma-separated string or a list of input filters
-            with optional wildcards: "linux,*os" or ["en", "es", "fr"] or
-            "dev,*test*,prod*"
+        :param indicator: Required part of a name (always present),
+            default: DEFAULT_INDICATOR
+        :type indicator: str | None
+
+        :param input: Comma-separated string or a list of strings with the
+           optional wildcards: "linux,*os" or ["en", "es", "fr"] or
+           "dev,*test*,prod*"
         :type input: str
-        :param is_full: if True perform full match: from start to end
+
+        :param is_full: True = wrap into ^...$
         :type is_full: bool
-        :return: regular expression matching passed critera
+
+        :return: Regular expression matching passed critera
         :rtype: re.Pattern
         """
 
@@ -175,10 +178,12 @@ class EnvFilter:
             'dev*,test,prod*' => '^(dev.*|test|prod)$'
             '{en,es,fr,jp}?' => '^(en|es|fr).$'
         ```
-        :param input: a string to convert
+        :param input: String to convert
         :type input: str | None
+    
         :param is_full: if True, full string match is required: `^(...)$`
         :type is_full: bool
+    
         :return: input converted to a regular expression pattern string
         :rtype: str
         """

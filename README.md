@@ -1,6 +1,6 @@
 # envara (C) Alexander Iurovetski 2026
 
-## A library to remove line comments, expand environment variables, application arguments and special characters in a string, execute sub-commands, as well as parse general and OS-specific .env files
+## A library to remove line comments, expand environment variables, application arguments and special characters in a string, execute sub-commands, as well as parse general and OS-specific env files
 
 This library does not depend on any special Python package.
 
