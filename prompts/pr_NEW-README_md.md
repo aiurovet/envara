@@ -1,0 +1,1 @@
+Create markdown file NEW-README.md from docstrings, ensure code snippets are Python-style, the return value in methods is described in a line below the heading
