@@ -180,10 +180,10 @@ class EnvFilter:
         ```
         :param input: String to convert
         :type input: str | None
-    
+
         :param is_full: if True, full string match is required: `^(...)$`
         :type is_full: bool
-    
+
         :return: input converted to a regular expression pattern string
         :rtype: str
         """

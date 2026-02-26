@@ -69,7 +69,7 @@ class EnvParseInfo:
         :param cutter_char: First character recognised as the end of data in a
             string (like a line comment start): hash
         :type cutter_chars: str
-        
+
         :param quote_type: Type of enclosing quotes found
         :type quote_type: EnvQuoteType
         """

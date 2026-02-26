@@ -204,8 +204,7 @@ class EnvFile:
 
     @staticmethod
     def read_text(
-        files: list[Path],
-        flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS
+        files: list[Path], flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS
     ) -> str:
         """
         Load the content of all files as text and return. May

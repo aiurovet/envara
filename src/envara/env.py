@@ -125,7 +125,7 @@ class Env:
 
         :param escape_chars: String of chars to treat as escape chars
         :type escape_chars: str
-        
+
         :return: Expanded string
         :rtype: str
         """
@@ -972,9 +972,7 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def get_cur_platforms(
-        flags: EnvPlatformFlags = EnvPlatformFlags.NONE
-    ) -> list[str]:
+    def get_cur_platforms(flags: EnvPlatformFlags = EnvPlatformFlags.NONE) -> list[str]:
         """
         Get the list of platforms from more generic to more specific ones.
         For instance, if an application is running on Linux, it could be
@@ -1037,9 +1035,7 @@ class Env:
 
     @staticmethod
     def quote(
-        input: str,
-        type: EnvQuoteType = EnvQuoteType.DOUBLE,
-        escape_char: str = None
+        input: str, type: EnvQuoteType = EnvQuoteType.DOUBLE, escape_char: str = None
     ) -> str:
         """
         Enclose input in quotes. Neither leading, nor trailing whitespaces
@@ -1211,7 +1207,7 @@ class Env:
         escape_chars: str = None,
         expand_chars: str = None,
         cutter_chars: str = None,
-        hard_quotes: str = None
+        hard_quotes: str = None,
     ) -> tuple[str, EnvParseInfo]:
         """
         Remove enclosing quotes from a string ignoring everything beyond the
@@ -1269,9 +1265,13 @@ class Env:
         if cutter_chars is None:
             cutter_chars = EnvParseInfo.POSIX_CUTTER_CHAR
         if expand_chars is None:
-            expand_chars = EnvParseInfo.POSIX_EXPAND_CHAR
+            expand_chars = (
+                EnvParseInfo.POSIX_EXPAND_CHAR + EnvParseInfo.WINDOWS_EXPAND_CHAR
+            )
         if escape_chars is None:
-            escape_chars = EnvParseInfo.POSIX_ESCAPE_CHAR
+            escape_chars = (
+                EnvParseInfo.POSIX_ESCAPE_CHAR + EnvParseInfo.WINDOWS_ESCAPE_CHAR
+            )
 
         # Initialize position beyond the last character and results
 
@@ -1319,10 +1319,18 @@ class Env:
             if (end_pos == 1) and is_quoted:
                 continue
 
-            # If an escape encountered, flip the flag and loop
+            # If an escape encountered, flip the flag, set escape char and loop
+            # Do not allow Windows-like escape char be combined with POSIX-like
+            # expand char (default to POSIX-like escape char then)
 
             if cur_char in escape_chars:
-                info.escape_char = cur_char
+                if not info.escape_char:
+                    if (info.expand_char == EnvParseInfo.POSIX_EXPAND_CHAR) and (
+                        cur_char == EnvParseInfo.WINDOWS_ESCAPE_CHAR
+                    ):
+                        info.escape_char = EnvParseInfo.POSIX_ESCAPE_CHAR
+                    else:
+                        info.escape_char = cur_char
                 is_escaped = not is_escaped
                 continue
 

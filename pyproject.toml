@@ -1,6 +1,6 @@
 [project]
 name = "envara"
-version = "0.1.0"
+version = "0.0.2"
 description = "Expand environment variables and program arguments in a string, parse general and OS-specific .env files"
 authors = [{name="Alexander Iurovetski", email="aiurovet@gmail.com"}]
 maintainers = [{name="Alexander Iurovetski", email="aiurovet@gmail.com"}]

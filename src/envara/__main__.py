@@ -7,17 +7,16 @@
 ###############################################################################
 
 
-if __name__ == "__main__":
+def main():
     print(
         """
 
 envara (c) Alexander Iurovetski 2026
 
 A library to expand environment variables, application arguments and escaped
-in arbitrary strings, as well as to load stacked dot-env files, remove line
-comments, unquote and and expand values as above (if the input was unquoted
-or enclosed in single quotes), execute sub-commands, and finally, extend the
-environment.
+in arbitrary strings, as well as to load stacked env files, remove line comments,
+unquote and and expand values as above (if the input was unquoted or enclosed in
+single quotes), execute sub-commands, and finally, extend the environment.
 
 class Env:
     .expand()
@@ -132,7 +131,10 @@ The filterable elements can appear in a filename in any order
 """
     )
 
-    exit(0)
+    return 0
+
+if __name__ == "__main__":
+    exit(main())
 
 
 ###############################################################################

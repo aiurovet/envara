@@ -298,8 +298,13 @@ def test_quote_uses_mocked_default_escape(mocker):
 def test_unquote_respects_mocked_posix_expand_char(mocker):
     # patch the default POSIX expansion char and ensure unquote picks it up
     mocker.patch.object(EnvParseInfo, "POSIX_EXPAND_CHAR", "@")
-    res, info = Env.unquote("a@b")
+    _, info = Env.unquote("a@b")
     assert info.expand_char == "@"
+
+
+def test_unquote_disallows_posix_expand_char_with_windows_escape_char(mocker):
+    _, info = Env.unquote('"$a^b"')
+    assert info.escape_char == "\\"
 
 
 # ---------------------------------------------------------------------------
@@ -758,4 +763,3 @@ def test_get_cur_platforms_add_empty(mocker):
     # Empty string should be included
     assert "" in result
     assert isinstance(result, list)
-
