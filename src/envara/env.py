@@ -124,21 +124,18 @@ class Env:
         :type strip_spaces: bool
 
         :param escape_chars: Character(s) that will be treated as candidates
-            for escaping; whichever comes first in the input will be returned
-            in the dedicated info as .escape_char
+            for escaping; whichever comes first in the input will be considered
         :type escape_chars: str
 
         :param expand_chars: Character(s) that will be treated as candidates
             for expanding environment variables when found non-escaped;
-            whichever comes first in the input will be returned in the
-            dedicated info as .expand_char
+            whichever comes first in the input will be considered
         :type expand_chars: str
 
         :param cutter_chars: Character(s) that will be treated as candidates
             for the end of a string as data (i.e. as beginning of a line
             comment) when found non-escaped and not inside of a quoted
-            sub-string; whichever comes first in the input will be returned
-            in the dedicated info as .cutter_char
+            sub-string; whichever comes first in the input will be considered
         :type cutter_chars: str
 
         :param hard_quotes: String containing all quote characters that

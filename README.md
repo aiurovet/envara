@@ -100,9 +100,9 @@ def expand(
 | `args` | `list[str] \| None` | List of arguments to expand `$#`, `$1`, `$2`, … |
 | `flags` | `EnvExpandFlags \| None` | Flags controlling what/how to expand input |
 | `strip_spaces` | `bool` | `True` if can remove spaces from the start and end of `input` |
-| `escape_chars` | `str` | Character(s) treated as candidates for escaping; whichever comes first in the input will be returned in `.escape_char` |
-| `expand_chars` | `str` | Character(s) treated as candidates for expanding environment variables when found non-escaped; whichever comes first is returned in `.expand_char` |
-| `cutter_chars` | `str` | Character(s) treated as candidates for the end of data in a string (i.e. beginning of a line comment) when found non-escaped and outside a quoted sub-string; whichever comes first is returned in `.cutter_char` |
+| `escape_chars` | `str` | Character(s) treated as candidates for escaping; whichever comes first in the input will be considered |
+| `expand_chars` | `str` | Character(s) treated as candidates for expanding environment variables when found non-escaped; whichever comes first will be considered |
+| `cutter_chars` | `str` | Character(s) treated as candidates for the end of data in a string (i.e. beginning of a line comment) when found non-escaped and outside a quoted sub-string; whichever comes first will be considered |
 | `hard_quotes` | `str` | String containing all quote characters that require escaping to be ignored (e.g. a single quote) |
 
 **Returns** — Expanded string.
