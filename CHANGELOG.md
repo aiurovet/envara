@@ -1,3 +1,7 @@
+## 0.0.7
+
+- Documentation improved
+
 ## 0.0.6
 
 - Documentation extended, swapped the order of a couple of arguments in a method
