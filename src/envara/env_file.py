@@ -18,11 +18,13 @@ import pathlib
 import re
 from typing import Final
 
-from env_file_flags import EnvFileFlags
-from env_filter import EnvFilter
-from env import Env
-from env_expand_flags import EnvExpandFlags
-from env_platform_flags import EnvPlatformFlags
+from envara.env_file_flags import EnvFileFlags
+from envara.env_filter import EnvFilter
+from envara.env import Env
+from envara.env_expand_flags import EnvExpandFlags
+from envara.env_platform_flags import EnvPlatformFlags
+
+from envara.env_parse_info import EnvParseInfo
 
 ###############################################################################
 # Implementation
@@ -90,7 +92,7 @@ class EnvFile:
         for x in filters:
             if isinstance(x, list):
                 filters_ex.extend(x)
-            else:
+            elif x:
                 filters_ex.append(x)
 
         # Add the platform filter if required
@@ -130,6 +132,7 @@ class EnvFile:
     @staticmethod
     def load(
         dir: Path | None = None,
+        indicator: str = EnvFilter.DEFAULT_INDICATOR,
         file_flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS,
         args: list[str] | None = None,
         expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
@@ -139,7 +142,11 @@ class EnvFile:
         Add key-expanded-value pairs from .env-compliant file(s) to os.environ
 
         :param dir: Default directory to locate platform-specific files
-        :type dir: Path | str | None
+        :type dir: Path | None
+
+        :param indicator: Necessary part of every relevant filename,
+            default: EnvFilter.DEFAULT_INDICATOR
+        :type indicator: str
 
         :param file_flags: Describes what and how to load
         :type file_flags: EnvFileFlags
@@ -152,8 +159,8 @@ class EnvFile:
         :type expand_flags: EnvExpandFlags
         """
 
-        files: list[Path] = EnvFile.get_files(dir, file_flags, filters)
-        content: str = EnvFile.read_text(files, file_flags, dir)
+        files: list[Path] = EnvFile.get_files(dir, indicator, file_flags, filters)
+        content: str = EnvFile.read_text(files, file_flags)
 
         EnvFile.load_from_str(content, args=args, expand_flags=expand_flags)
 
@@ -195,8 +202,7 @@ class EnvFile:
             # Expand the value and add to the dict of enviroment variables
 
             if val:
-                expanded, _ = Env.expand(val, args, expand_flags)
-                environ[key] = expanded
+                environ[key] = Env.expand(val, args=args, flags=expand_flags)
             elif key and key in environ:
                 del environ[key]
 

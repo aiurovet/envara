@@ -9,7 +9,7 @@
 import re
 
 import pytest
-from env_filter import EnvFilter
+from envara.env_filter import EnvFilter
 
 ###############################################################################
 

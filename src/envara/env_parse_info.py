@@ -5,7 +5,7 @@
 ###############################################################################
 
 from typing import ClassVar
-from env_quote_type import EnvQuoteType
+from envara.env_quote_type import EnvQuoteType
 
 
 ###############################################################################

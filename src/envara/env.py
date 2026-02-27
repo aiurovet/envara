@@ -19,10 +19,10 @@ import subprocess
 import shlex
 from typing import ClassVar
 
-from env_expand_flags import EnvExpandFlags
-from env_platform_flags import EnvPlatformFlags
-from env_quote_type import EnvQuoteType
-from env_parse_info import EnvParseInfo
+from envara.env_expand_flags import EnvExpandFlags
+from envara.env_platform_flags import EnvPlatformFlags
+from envara.env_quote_type import EnvQuoteType
+from envara.env_parse_info import EnvParseInfo
 
 ###############################################################################
 
@@ -99,9 +99,9 @@ class Env:
         strip_spaces: bool = True,
         escape_chars: str = None,
         expand_chars: str = None,
-        hard_quotes: str = None,
         cutter_chars: str = None,
-    ) -> tuple[str, EnvParseInfo]:
+        hard_quotes: str = None,
+    ) -> str:
         """
         Unquote the input if required via flags, remove trailing line comment
         if required via flags, expand the result with the arguments if
@@ -123,8 +123,27 @@ class Env:
             end of _input_
         :type strip_spaces: bool
 
-        :param escape_chars: String of chars to treat as escape chars
+        :param escape_chars: Character(s) that will be treated as candidates
+            for escaping; whichever comes first in the input will be returned
+            in the dedicated info as .escape_char
         :type escape_chars: str
+
+        :param expand_chars: Character(s) that will be treated as candidates
+            for expanding environment variables when found non-escaped;
+            whichever comes first in the input will be returned in the
+            dedicated info as .expand_char
+        :type expand_chars: str
+
+        :param cutter_chars: Character(s) that will be treated as candidates
+            for the end of a string as data (i.e. as beginning of a line
+            comment) when found non-escaped and not inside of a quoted
+            sub-string; whichever comes first in the input will be returned
+            in the dedicated info as .cutter_char
+        :type cutter_chars: str
+
+        :param hard_quotes: String containing all quote characters that
+            require to ignore escaping (e.g., a single quote)
+        :type hard_quotes: str
 
         :return: Expanded string
         :rtype: str
@@ -156,7 +175,7 @@ class Env:
         if (flags & EnvExpandFlags.SKIP_SINGLE_QUOTED) and (
             info.quote_type.name == "SINGLE"
         ):
-            return (info.result, info)
+            return info.result
 
         # SKIP_ENVIRON forcefully disables env var expansion.
 
@@ -189,7 +208,7 @@ class Env:
 
         # Return the final result
 
-        return (info.result, info)
+        return info.result
 
     ###########################################################################
 

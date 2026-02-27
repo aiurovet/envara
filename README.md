@@ -15,18 +15,37 @@ Does not depend on any special Python package.
 2. In some _.py_ file, try the following:
 
    ```py
-   import os
-   from pathlib import Path
-   from env import Env
-   ...
-   # Expand inlline and print the result
-   print(Env.expand(r"Home ${HOME:-$USERPROFILE}, arg \#1: $1 # Line comment", plain_args))
-   ...
-   # Place some .env files into directory below
-   EnvFile.load(dir="/home/user/local/bin")
+    import os
+    from pathlib import Path
+    import sys
+    from envara.env import Env
+    from envara.env_file import EnvFile
 
-   # Log and check the newly added environment variables
-   print(os.environ)
+    def main():
+        """
+        Sample program showing the usage of the `envara` library
+        """
+
+        # Expand inline and print the result
+        input: str = r"Home ${HOME:-$USERPROFILE}, arg \#1: $1 # Line comment"
+        print(f"\n*** Expanded string ***\n\n{Env.expand(input, sys.argv)}")
+
+        # Make a copy of the old environment variables
+        old_env = os.environ.copy()
+
+        # Place some .env files into directory below
+        EnvFile.load(dir=Path("config"), args=sys.argv)
+
+        # Show new environment variables
+        print(f"\n*** New environment variables ***\n")
+        for key, val in os.environ.items():
+            if key not in old_env:
+                print(f"{key} => {val}")
+
+        return 0
+
+    if __name__ == "__main__":
+        exit(main())
    ```
 
 ## class `Env`
@@ -50,7 +69,7 @@ Class for string expansions.
 
 ### `Env.expand()`
 
-> `tuple[str, EnvParseInfo]`
+> `str`
 
 Unquote the input if required via flags, remove trailing line comment if
 required via flags, expand the result with the arguments if required via flags,
@@ -68,9 +87,9 @@ def expand(
     strip_spaces: bool = True,
     escape_chars: str = None,
     expand_chars: str = None,
-    hard_quotes: str = None,
     cutter_chars: str = None,
-) -> tuple[str, EnvParseInfo]: ...
+    hard_quotes: str = None,
+) -> str: ...
 ```
 
 **Parameters**
@@ -81,7 +100,10 @@ def expand(
 | `args` | `list[str] \| None` | List of arguments to expand `$#`, `$1`, `$2`, … |
 | `flags` | `EnvExpandFlags \| None` | Flags controlling what/how to expand input |
 | `strip_spaces` | `bool` | `True` if can remove spaces from the start and end of `input` |
-| `escape_chars` | `str` | String of chars to treat as escape chars |
+| `escape_chars` | `str` | Character(s) treated as candidates for escaping; whichever comes first in the input will be returned in `.escape_char` |
+| `expand_chars` | `str` | Character(s) treated as candidates for expanding environment variables when found non-escaped; whichever comes first is returned in `.expand_char` |
+| `cutter_chars` | `str` | Character(s) treated as candidates for the end of data in a string (i.e. beginning of a line comment) when found non-escaped and outside a quoted sub-string; whichever comes first is returned in `.cutter_char` |
+| `hard_quotes` | `str` | String containing all quote characters that require escaping to be ignored (e.g. a single quote) |
 
 **Returns** — Expanded string.
 
@@ -334,6 +356,7 @@ Add key-expanded-value pairs from `.env`-compliant file(s) to `os.environ`.
 @staticmethod
 def load(
     dir: Path | None = None,
+    indicator: str = EnvFilter.DEFAULT_INDICATOR,
     file_flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS,
     args: list[str] | None = None,
     expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
@@ -346,6 +369,7 @@ def load(
 | Name | Type | Description |
 |---|---|---|
 | `dir` | `Path \| str \| None` | Default directory to locate platform-specific files |
+| `indicator` | `str` | Necessary part of every relevant filename, default: `EnvFilter.DEFAULT_INDICATOR` |
 | `file_flags` | `EnvFileFlags` | Describes what and how to load |
 | `args` | `list[str] \| None` | List of arguments (e.g. application args) to expand placeholders like `$1`, `${2}`, … |
 | `expand_flags` | `EnvExpandFlags` | Describes how to expand env vars and app args |
@@ -648,19 +672,19 @@ EnvFile.get_files(
 APP_NAME = $1
 APP_VERSION = "${2}_$3"
 PROJECT_PATH = ~/Projects/$APP_NAME
-ARG_HEADLESS = "--headless --disable-gpu --default-background-color=00000000 --window-size={w},{h} --screenshot={o} file://{i}"
+BROWSER_ARGS = "--opt1 arg1 --opt2 arg2"
 
 # .env.linux  (or  .linux.env  or  linux.env)
-CMD_CHROME = "google-chrome $ARG_HEADLESS"
+CMD_CHROME = "google-chrome $BROWSER_ARGS"
 
 # .env.bsd  (or  .bsd.env  or  bsd.env)
-CMD_CHROME = "chrome $ARG_HEADLESS"
+CMD_CHROME = "chrome $BROWSER_ARGS"
 
 # .env.macos  (or  .macos.env  or  macos.env)
-CMD_CHROME = "\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" $ARG_HEADLESS"
+CMD_CHROME = "\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" $BROWSER_ARGS"
 
 # .env.windows
-CMD_CHROME = "chrome $ARG_HEADLESS"
+CMD_CHROME = "chrome $BROWSER_ARGS"
 ```
 
 ## POSIX-style expansions implemented in _envara_

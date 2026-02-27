@@ -98,23 +98,23 @@ variable CMD_CHROME as follows:
         APP_NAME = $1 # need to pass a list of command-line arguments
         APP_VERSION = "${2}_$3"
         PROJECT_PATH = ~/Projects/$APP_NAME
-        ARG_HEADLESS = "--headless --disable-gpu --default-background-color=00000000 --window-size={w},{h} --screenshot={o} file://{i}"
+        BROWSER_ARGS = "--opt1 arg1 --opt2 arg2"
 
     .env.linux OR .linux.env OR linux.env:
 
-        CMD_CHROME = "google-chrome $ARG_HEADLESS"
+        CMD_CHROME = "google-chrome $BROWSER_ARGS"
 
     .env.bsd OR .bsd.env OR bsd.env
 
-       CMD_CHROME = "chrome $ARG_HEADLESS"
+       CMD_CHROME = "chrome $BROWSER_ARGS"
 
     .env.macos OR .macos.env OR macos.env
 
-        CMD_CHROME = "\\\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\\\" $ARG_HEADLESS"
+        CMD_CHROME = "\\\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\\\" $BROWSER_ARGS"
 
     .env.windows
 
-        CMD_CHROME = "chrome $ARG_HEADLESS"
+        CMD_CHROME = "chrome $BROWSER_ARGS"
 
 == Extra filters ==
 
@@ -132,6 +132,7 @@ The filterable elements can appear in a filename in any order
     )
 
     return 0
+
 
 if __name__ == "__main__":
     exit(main())

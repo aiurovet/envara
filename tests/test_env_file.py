@@ -7,12 +7,13 @@
 ###############################################################################
 
 
-import os
 from pathlib import Path
-from env_file import EnvFile
-from env_file_flags import EnvFileFlags
+from envara.env_file import EnvFile
+from envara.env_file_flags import EnvFileFlags
 
-from env_filter import EnvFilter
+from envara.env_filter import EnvFilter
+
+from env_expand_flags import EnvExpandFlags
 
 
 def test_read_text_basic(mocker):
@@ -92,9 +93,9 @@ def test_read_text_reset_flag(mocker):
 
 def test_load_with_empty_args_and_empty_file_list(mocker):
     # Arrange - no files found
-    mocker.patch("env_file.EnvFile.get_files", return_value=[])
-    m_read_text = mocker.patch("env_file.EnvFile.read_text", return_value="")
-    m_load_from_str = mocker.patch("env_file.EnvFile.load_from_str")
+    mocker.patch("envara.env_file.EnvFile.get_files", return_value=[])
+    m_read_text = mocker.patch("envara.env_file.EnvFile.read_text", return_value="")
+    m_load_from_str = mocker.patch("envara.env_file.EnvFile.load_from_str")
     m_dir = mocker.MagicMock(spec=Path)
 
     # Act
@@ -111,9 +112,11 @@ def test_load_with_nonempty_args_and_empty_file_list(mocker):
     # Arrange - no files found
     content = "V1=$1\nV2=$2"
     args = ["a1", "a2"]
-    mocker.patch("env_file.EnvFile.get_files", return_value=[])
-    m_read_text = mocker.patch("env_file.EnvFile.read_text", return_value=content)
-    m_load_from_str = mocker.patch("env_file.EnvFile.load_from_str")
+    mocker.patch("envara.env_file.EnvFile.get_files", return_value=[])
+    m_read_text = mocker.patch(
+        "envara.env_file.EnvFile.read_text", return_value=content
+    )
+    m_load_from_str = mocker.patch("envara.env_file.EnvFile.load_from_str")
     m_dir = mocker.MagicMock(spec=Path)
 
     # Act
@@ -129,9 +132,9 @@ def test_load_with_nonempty_args_and_empty_file_list(mocker):
 def test_load_reads_files_and_passes_flags(mocker):
     # Arrange - simulate get_files returning two files and read_text returning content
     fake_files = [mocker.MagicMock(spec=Path), mocker.MagicMock(spec=Path)]
-    mocker.patch("env_file.EnvFile.get_files", return_value=fake_files)
-    m_read_text = mocker.patch("env_file.EnvFile.read_text", return_value="K=V")
-    m_load_from_str = mocker.patch("env_file.EnvFile.load_from_str")
+    mocker.patch("envara.env_file.EnvFile.get_files", return_value=fake_files)
+    m_read_text = mocker.patch("envara.env_file.EnvFile.read_text", return_value="K=V")
+    m_load_from_str = mocker.patch("envara.env_file.EnvFile.load_from_str")
     m_dir = mocker.MagicMock(spec=Path)
     flags = EnvFileFlags.ADD_PLATFORMS
 
@@ -148,21 +151,21 @@ def test_load_reads_files_and_passes_flags(mocker):
 def test_load_from_str_uses_env_expand(mocker):
     # Arrange
     m_environ = mocker.patch("os.environ", {})
-    m_expand = mocker.patch("env.Env.expand", return_value=("EXPANDED", None))
+    m_expand = mocker.patch("envara.env.Env.expand", return_value="EXPANDED")
     data = "KEY=VALUE"
 
     # Act
     EnvFile.load_from_str(data)
 
     # Assert
-    m_expand.assert_called_once_with("VALUE", None, EnvFile.DEFAULT_EXPAND_FLAGS)
+    m_expand.assert_called_once_with("VALUE", args=None, flags=EnvFile.DEFAULT_EXPAND_FLAGS)
     assert m_environ["KEY"] == "EXPANDED"
 
 
 def test_load_from_str_passes_args_and_flags(mocker):
     # Arrange
     m_environ = mocker.patch("os.environ", {})
-    m_expand = mocker.patch("env.Env.expand", return_value=("X", None))
+    m_expand = mocker.patch("envara.env.Env.expand", return_value="X")
     data = "K=$1"
     args = ["a1"]
     flags = EnvFile.DEFAULT_EXPAND_FLAGS
@@ -171,7 +174,7 @@ def test_load_from_str_passes_args_and_flags(mocker):
     EnvFile.load_from_str(data, args=args, expand_flags=flags)
 
     # Assert
-    m_expand.assert_called_once_with("$1", args, flags)
+    m_expand.assert_called_once_with("$1", args=args, flags=flags)
     assert m_environ["K"] == "X"
 
 
@@ -197,12 +200,12 @@ def test_get_files_adds_platform_filter(tmp_path, mocker):
     # Arrange - stub platform filter so only names containing "plat" stay
     fake_cur_platforms = ["plat1", "plat2", "plat3"]
     m_platform = mocker.patch(
-        "env.Env.get_cur_platforms", return_value=fake_cur_platforms
+        "envara.env.Env.get_cur_platforms", return_value=fake_cur_platforms
     )
 
     fake_all_platforms = ["plat1", "plat2", "plat3", "plat4", "plat5", "plat6"]
     m_platform = mocker.patch(
-        "env.Env.get_all_platforms", return_value=fake_all_platforms
+        "envara.env.Env.get_all_platforms", return_value=fake_all_platforms
     )
 
     # create files in temp directory

@@ -1,10 +1,10 @@
 import os
 import pytest
-from env import Env
-from env_expand_flags import EnvExpandFlags
-from env_platform_flags import EnvPlatformFlags
-from env_parse_info import EnvParseInfo
-from env_quote_type import EnvQuoteType
+from envara.env import Env
+from envara.env_expand_flags import EnvExpandFlags
+from envara.env_platform_flags import EnvPlatformFlags
+from envara.env_parse_info import EnvParseInfo
+from envara.env_quote_type import EnvQuoteType
 
 
 # ---------------------------------------------------------------------------
@@ -26,11 +26,10 @@ def test_expand_skips_single_quoted_when_flag_set(mocker):
     m_simple = mocker.patch.object(Env, "expand_simple")
 
     # Act
-    out, got = Env.expand("'x'", flags=EnvExpandFlags.SKIP_SINGLE_QUOTED)
+    out = Env.expand("'x'", flags=EnvExpandFlags.SKIP_SINGLE_QUOTED)
 
     # Assert - expansion functions must not be called and original result returned
     assert out == "quoted-result"
-    assert got is info
     m_posix.assert_not_called()
     m_simple.assert_not_called()
 
@@ -49,7 +48,7 @@ def test_expand_uses_posix_and_unescape(mocker):
     m_unescape = mocker.patch.object(Env, "unescape", return_value="final-unescaped")
 
     # Act
-    out, got = Env.expand("$A", args=["arg1"], flags=EnvExpandFlags.UNESCAPE)
+    out = Env.expand("$A", args=["arg1"], flags=EnvExpandFlags.UNESCAPE)
 
     # Assert
     m_posix.assert_called_once()
@@ -62,7 +61,6 @@ def test_expand_uses_posix_and_unescape(mocker):
     # unescape must be invoked with expand_posix's result and the escape char
     m_unescape.assert_called_once_with("posix-expanded", escape_char=info.escape_char)
     assert out == "final-unescaped"
-    assert got is info
 
 
 def test_expand_uses_simple_and_respects_skip_env_vars(mocker):
@@ -78,36 +76,33 @@ def test_expand_uses_simple_and_respects_skip_env_vars(mocker):
     m_simple = mocker.patch.object(Env, "expand_simple", return_value="simple-expanded")
 
     # Act - request SKIP_ENV_VARS so vars dict should be empty
-    out, got = Env.expand("%X%", flags=EnvExpandFlags.SKIP_ENV_VARS)
+    out = Env.expand("%X%", flags=EnvExpandFlags.SKIP_ENV_VARS)
 
     # Assert
     m_simple.assert_called_once()
     _, kw = m_simple.call_args
     assert kw["vars"] == {}
     assert out == "simple-expanded"
-    assert got is info
 
 
 def test_expand_with_none_input_returns_empty_and_info_result_set():
-    out, info = Env.expand(None)
+    out = Env.expand(None)
     assert out == ""
-    assert info.result == ""
 
 
 def test_expand_preserves_spaces_when_strip_false():
-    out, info = Env.expand("  val  ", strip_spaces=False)
+    out = Env.expand("  val  ", strip_spaces=False)
     assert out == "  val  "
-    assert info.quote_type == EnvQuoteType.NONE
 
 
 def test_expand_sets_cutter_chars_on_remove_line_comment_flag():
-    out, info = Env.expand("A #comment", flags=EnvExpandFlags.REMOVE_LINE_COMMENT)
+    out = Env.expand("A #comment", flags=EnvExpandFlags.REMOVE_LINE_COMMENT)
     assert out == "A"
 
 
 def test_expand_posix_respects_skip_env_vars(monkeypatch):
     monkeypatch.setenv("SILENT", "yes")
-    out, _ = Env.expand("$SILENT", flags=EnvExpandFlags.SKIP_ENV_VARS)
+    out = Env.expand("$SILENT", flags=EnvExpandFlags.SKIP_ENV_VARS)
     # when SKIP_ENV_VARS is set, env variables are not expanded
     assert out == "$SILENT"
 
@@ -200,7 +195,7 @@ def test_unquote_raises_for_dangling_escape():
 
 
 def test_unquote_constructs_envparseinfo_when_input_empty(mocker):
-    m = mocker.patch("env.EnvParseInfo")
+    m = mocker.patch("envara.env.EnvParseInfo")
     mock_inst = m.return_value
     mock_inst.result = ""
 
