@@ -107,6 +107,19 @@ def test_expand_posix_respects_skip_env_vars(monkeypatch):
     assert out == "$SILENT"
 
 
+def test_expand_fills_out_info(monkeypatch):
+    result = 'Empty = "$ABC\\n"'
+    out_info = EnvParseInfo()
+    out = Env.expand(f"{result} # this is empty", out_info=out_info)
+    # when SKIP_ENV_VARS is set, env variables are not expanded
+    assert out == result
+    assert out_info.expand_char == "$"
+    assert out_info.escape_char == "\\"
+    assert out_info.cutter_char == "#"
+    assert out_info.quote_type == EnvQuoteType.NONE
+    assert out_info.result == result
+
+
 # ---------------------------------------------------------------------------
 # Tests for Env.unescape and Env.unquote
 # ---------------------------------------------------------------------------

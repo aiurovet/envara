@@ -81,5 +81,32 @@ class EnvParseInfo:
         self.quote_type: EnvQuoteType = quote_type
         self.result: str = result
 
+    ###########################################################################
+
+    def copy_to(self, to):
+        """
+        Copy all properties to another object
+
+        :param self: The object (source)
+
+        :param to: Destination object
+        :type input: EnvParseInfo
+
+        :return: The destination object (to)
+        :rtype: EnvParseInfo
+        """
+
+        if not to:
+            return to
+
+        to.expand_char = self.expand_char
+        to.escape_char = self.escape_char
+        to.cutter_char = self.cutter_char
+        to.input = self.input
+        to.quote_type = self.quote_type
+        to.result = self.result
+
+        return to
+
 
 ###############################################################################

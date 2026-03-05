@@ -66,7 +66,7 @@ class Env:
     follow an odd number of escape characters"""
 
     __platform_map: ClassVar[dict[str, list[str]]] = {
-        "": ["", PLATFORM_POSIX],  # the latter is checked
+        "": ["", PLATFORM_POSIX],  # the latter is checked: IS_POSIX to be True
         "^aix": ["aix"],
         "android": ["linux", "android"],
         "^atheos": ["atheos"],
@@ -75,7 +75,7 @@ class Env:
         "cygwin": ["cygwin"],
         "hp-ux": ["hp-ux"],
         "darwin|macos": ["bsd", "darwin", "macos"],
-        "^ios|ipados": ["bsd", "ios"],
+        "^ios|^ipados": ["bsd", "ios"],
         "java": [PLATFORM_POSIX, PLATFORM_WINDOWS],  # only one will fit
         "^linux": ["linux"],
         "^os2": ["os2"],
@@ -101,6 +101,7 @@ class Env:
         expand_chars: str = None,
         cutter_chars: str = None,
         hard_quotes: str = None,
+        out_info: EnvParseInfo | None = None,
     ) -> str:
         """
         Unquote the input if required via flags, remove trailing line comment
@@ -172,6 +173,7 @@ class Env:
         if (flags & EnvExpandFlags.SKIP_SINGLE_QUOTED) and (
             info.quote_type.name == "SINGLE"
         ):
+            info.copy_to(out_info)
             return info.result
 
         # SKIP_ENVIRON forcefully disables env var expansion.
@@ -203,8 +205,9 @@ class Env:
         if flags & EnvExpandFlags.UNESCAPE:
             info.result = Env.unescape(info.result, escape_char=info.escape_char)
 
-        # Return the final result
+        # Copy parse info if required and return the final result
 
+        info.copy_to(out_info)
         return info.result
 
     ###########################################################################

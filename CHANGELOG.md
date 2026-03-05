@@ -1,3 +1,7 @@
+## 0.0.8
+
+- Added the out_info parameter to Env.expand() as well as a method EnvParseInfo.copy_to()
+
 ## 0.0.7
 
 - Documentation improved

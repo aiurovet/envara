@@ -22,9 +22,8 @@ from envara.env_file_flags import EnvFileFlags
 from envara.env_filter import EnvFilter
 from envara.env import Env
 from envara.env_expand_flags import EnvExpandFlags
+from envara.env_filters import EnvFilters
 from envara.env_platform_flags import EnvPlatformFlags
-
-from envara.env_parse_info import EnvParseInfo
 
 ###############################################################################
 # Implementation
@@ -84,48 +83,48 @@ class EnvFile:
 
         dir = dir or pathlib.Path()
 
-        # Define extended filters as a growable list and append
-        # the ones passed as separate arguments
+        # Define extended filters as a growable list that is initially empty
 
         filters_ex: list[EnvFilter] = []
 
-        for x in filters:
-            if isinstance(x, list):
-                filters_ex.extend(x)
-            elif x:
-                filters_ex.append(x)
-
-        # Add the platform filter if required
+        # Add the platform filter if required (the primary filter)
 
         if flags & EnvFileFlags.ADD_PLATFORMS:
+            plat_flags: EnvPlatformFlags = EnvPlatformFlags.NONE
             filters_ex.append(
                 EnvFilter(
                     indicator,
-                    cur_values=Env.get_cur_platforms(flags=EnvPlatformFlags.NONE),
-                    all_values=Env.get_all_platforms(flags=EnvPlatformFlags.NONE),
+                    cur_values=Env.get_cur_platforms(plat_flags),
+                    all_values=Env.get_all_platforms(plat_flags),
                 )
             )
+
+        # Append the filters passed as separate arguments
+
+        for filter in filters:
+            if isinstance(filter, list):
+                filters_ex.extend(filter)
+            elif filter:
+                filters_ex.append(filter)
 
         # Fallback: append a minimal set of filters
 
         if len(filters_ex) <= 0:
             filters_ex.append(EnvFilter())
 
-        # Grab all files and filter those to the result list
+        # Grab filenames of all files in the given directory
 
-        result: list[Path] = []
+        file_names: list[str] = [
+            entry.name for entry in dir.iterdir() if entry.is_file()
+        ]
 
-        for file in dir.iterdir():
-            name: str = file.name
+        # Filter and sort filenames
 
-            for x in filters_ex:
-                if x.is_match(name):
-                    result.append(dir / name)
-                    break
+        file_names = EnvFilters.process(file_names, filters_ex)
 
-        # Finish
+        # Return paths to the files filtered and sorted above
 
-        return result
+        return [dir / file_name for file_name in file_names]
 
     ###########################################################################
 

@@ -89,6 +89,7 @@ def expand(
     expand_chars: str = None,
     cutter_chars: str = None,
     hard_quotes: str = None,
+    out_info: EnvParseInfo | None = None,
 ) -> str: ...
 ```
 
@@ -104,6 +105,7 @@ def expand(
 | `expand_chars` | `str` | Character(s) treated as candidates for expanding environment variables when found non-escaped; whichever comes first will be considered |
 | `cutter_chars` | `str` | Character(s) treated as candidates for the end of data in a string (i.e. beginning of a line comment) when found non-escaped and outside a quoted sub-string; whichever comes first will be considered |
 | `hard_quotes` | `str` | String containing all quote characters that require escaping to be ignored (e.g. a single quote) |
+| `out_info` | `EnvParseInfo` \| None | If you need the details of how the string was parsed, set this argument to an instance of `EnvParseInfo` |
 
 **Returns** — Expanded string.
 
@@ -462,7 +464,7 @@ def __init__(
 
 ---
 
-### `EnvFilter.is_match()`
+### `EnvFilter.search()`
 
 > `bool`
 

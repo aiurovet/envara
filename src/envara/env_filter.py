@@ -23,203 +23,174 @@ class EnvFilter:
     DEFAULT_STRIP_RE: ClassVar[re.Pattern] = re.compile(r"^\s+|\s*(,)\s*|\s+$")
     """Regex to strip all unnecessary blanks around every delimited field"""
 
+    VALUE_SEPARATORS: ClassVar[str] = ".-_"
+    """Any of these characters separates values in an input string"""
+
     def __init__(
         self,
-        indicator: str = DEFAULT_INDICATOR,
-        cur_values: list[str] | str | None = None,
-        all_values: list[str] | str | None = None,
+        indicator: str | None = None,
+        cur_values: list[str] | None = None,
+        all_values: list[str] | None = None,
     ):
         """
         Constructor
 
         :param self: The object
 
-        :param indicator: A necessary part of a name (always present),
+        :param indicator: Nnecessary part of a name (always present),
             default: DEFAULT_INDICATOR
         :type indicator: str | None
 
-        :param cur_values: One or more strings relevant to the current run
-            passed either as a list of strings or as a single string
-        :type cur_values: list[str] | str | None
+        :param cur_values: List of zero, one or more strings representing
+            all available values for this machine and OS and run
+        :type cur_values: list[str] | None
 
-        :param all_values: All possible values passed as a list of strings
+        :param all_values: List of all theoretically possible f string values
+            regradless of this machine, OS and run
         :type all_values: list[str]
         """
         # Accept parameters
 
-        self.indicator = indicator
-        self.all_values = all_values
+        self.indicator = EnvFilter.DEFAULT_INDICATOR\
+            if indicator is None else indicator
+
         self.cur_values = cur_values
-
-        # Parse pattern-related parameters into regular expressions
-
-        self.ind_regex = EnvFilter.to_regex(indicator, is_full=False)
-        self.all_regex = EnvFilter.to_regex(indicator, all_values)
-        self.cur_regex = EnvFilter.to_regex(indicator, cur_values)
-
-    ###########################################################################
-
-    def is_match(
-        self,
-        input: list[str] | str | None,
-    ) -> bool:
-        """
-        Check the input matches given filters:
-
-        - should match the default one
-        - should either match the current one or not match the whole set at
-          all: `.en.prod` should match `.env.en`, `fr.env` and `_jp_env`,
-          but neither `.prod.es`, nor `.es_prod` matches
-        """
-        if self.cur_regex.search(input):
-            return True
-
-        if not self.ind_regex.search(input):
-            return False
-
-        return not self.all_regex.search(input)
+        self.all_values = all_values or self.cur_values
 
     ###########################################################################
 
     @staticmethod
-    def to_regex(
-        indicator: str = DEFAULT_INDICATOR,
-        input: list[str] | str | None = None,
-        is_full: bool = True,
-    ) -> re.Pattern:
+    def has_value(
+        input: str | None,
+        value: str | None,
+    ) -> tuple[bool, bool]:
         """
-        Convert glob or regex pattern string into regex
+        Search input for value surrounded by separators or at the edge:
 
-        :param indicator: Required part of a name (always present),
-            default: DEFAULT_INDICATOR
-        :type indicator: str | None
-
-        :param input: Comma-separated string or a list of strings with the
-           optional wildcards: "linux,*os" or ["en", "es", "fr"] or
-           "dev,*test*,prod*"
-        :type input: str
-
-        :param is_full: True = wrap into ^...$
-        :type is_full: bool
-
-        :return: Regular expression matching passed critera
-        :rtype: re.Pattern
-        """
-
-        # Ensure the indicator is a valid string
-
-        ind: str = EnvFilter.DEFAULT_INDICATOR if indicator is None else indicator
-
-        # Define a pattern for all allowed separators as well as a minimum
-        # pattern (if the indicator is not empty)
-
-        sep: str = r"[\.\-_]"
-
-        # Define a minimum pattern (if the indicator is not empty)
-
-        min: str = ""
-
-        if ind:
-            min = f"{sep}*{ind}{sep}*"
-            if is_full:
-                min = f"^{min}$"
-
-        # If input filters are not present, add the default regex and finish
-
-        if not input:
-            return re.compile(min, flags=EnvFilter.DEFAULT_RE_FLAGS) if min else None
-
-        # If input is a list, join it's elements into a string, but if
-        # input looks like a regular exprssion pattern string, compile that
-        # and return
-
-        if isinstance(input, list):
-            input = ",".join(input)
-
-        # Remove all unnecessary blanks around every delimited field
-
-        input = EnvFilter.DEFAULT_STRIP_RE.sub(r"\1", input)
-
-        # Define side and middle separator patterns
-
-        lft: str = f"(?:^|{sep})"
-        mid: str = f"(?:{sep}+|{sep}+.+{sep}+)"
-        rgt: str = f"(?:{sep}|$)"
-
-        # Convert glob pattern to regex pattern
-
-        pat: str = EnvFilter.__limited_glob_str_to_regex_str(input)
-
-        # Compose the final pattern, compile that into a regular expression
-        # and append to the target list
-
-        if min:
-            pat = f"{min}|{lft}{ind}{mid}{pat}{rgt}|{lft}{pat}{mid}{ind}{rgt}"
-        else:
-            pat = f"{lft}{pat}{rgt}"
-
-        return re.compile(pat, flags=EnvFilter.DEFAULT_RE_FLAGS)
-
-    ###########################################################################
-
-    @staticmethod
-    def __limited_glob_str_to_regex_str(
-        input: str | None, is_full: bool = False
-    ) -> str:
-        """
-        Convert a limited glob pattern string into a regular expression
-        pattern string using comma, asterisk and curly brackets only, no
-        escaping, caret and dollar sign are not added if is_full = False.
-        However, if the input looks like a regular expression pattern
-        string, return that unchanged ignoring is_full:
-        ```
-            'dev|test|prod' => 'dev|test|prod'
-            'dev,test,prod' => '^(dev|test|prod)$'
-            'dev*,test,prod*' => '^(dev.*|test|prod)$'
-            '{en,es,fr,jp}?' => '^(en|es|fr).$'
-        ```
-        :param input: String to convert
+        :param input: String to search value for
         :type input: str | None
 
-        :param is_full: if True, full string match is required: `^(...)$`
-        :type is_full: bool
+        :param value: String to search in the input
+        :type value: str | None
 
-        :return: input converted to a regular expression pattern string
-        :rtype: str
+        :return: (is_found, are_equal)
+        :rtype: tuple[bool, bool]
         """
 
-        # Coalesce for validity of string operations
+        # Initialise the output flag if required
 
-        if input is None:
-            input = ""
+        # If input or value is empoty or None, then not found
 
-        # If the input looks like a regular expression pattern string,
-        # return that unchanged
+        if not input or not value:
+            return (False, False)
+
+        # Get length of input and value
 
         inp_len: int = len(input)
+        val_len: int = len(value)
 
-        if (inp_len > 1) and (
-            ("|" in input)
-            or ("(" in input)
-            or ("^" == input[0])
-            or ("$" == input[inp_len - 1])
-        ):
-            return input if input[0] in "^(" else f"(?:{input})"
+        # If input is shorter than value, then not found
 
-        return (
-            ("^(?:" if is_full else "(?:")
-            + re.escape(input)
-            .replace(",", "|")
-            .replace(r"\{", "(?:")
-            .replace(r"\}", ")")
-            .replace(r"\[!", "[^")
-            .replace(r"\[", "[")
-            .replace(r"\]", "]")
-            .replace(r"\^", "^")
-            .replace(r"\?", ".")
-            .replace(r"\*", ".*")
-            + (")$" if is_full else ")")
+        if inp_len < val_len:
+            return (False, False)
+
+        # If input is of the same length as value, then
+        # found if and only if they are the same
+
+        if inp_len == val_len:
+            return (True, True) if input == value else (False, False)
+
+        # If input starts with value succeeded by one of the separators,
+        # then found, and if differ only by a separator, then equal
+
+        if input.startswith(value):
+            if input[val_len] in EnvFilter.VALUE_SEPARATORS:
+                return (True, inp_len == (val_len + 1))
+
+        # If input ends with value preceded by one of the separators,
+        # then found
+
+        if input.endswith(value):
+            if input[-val_len - 1] in EnvFilter.VALUE_SEPARATORS:
+                return (True, inp_len == (val_len + 1))
+
+        # If value is found in the input surrounded by any combination
+        # of separators, then found
+
+        for sep1 in EnvFilter.VALUE_SEPARATORS:
+            for sep2 in EnvFilter.VALUE_SEPARATORS:
+                if f"{sep1}{value}{sep2}" in input:
+                    return (True, inp_len == (val_len + 2))
+
+        # If no previous check succeeded, then not found
+
+        return (False, False)
+
+    ###########################################################################
+
+    def search(
+        self,
+        input: str | None,
+    ) -> int:
+        """
+        Find matching item no for the input string. Requirements:
+
+        - the indicator should be found if non-empty
+        - either one of the current values should be found or none of
+          all values (i.e.'any'): assuming runtime environments include
+          'dev', 'test' and 'prod', then '.env', '.env.en.prod`,
+          `fr-prod.env` and `prod_jp_env` should be found, but neither
+          `.env.dev`, `.env.dev.en`, nor `en_test.env`, nor `test-env`
+
+        :param self: The object
+        :type: EnvFilter
+
+        :param input: the string to match against current and all values
+        :type input: str
+
+        :return: Last matching group no or -1 if failed
+        :rtype: int
+        """
+
+        # If indicator found, and is equal to input, return 0
+        # If indicator is not found, return -1 (not found)
+
+        is_found, are_equal = EnvFilter.has_value(input, self.indicator)
+
+        if is_found:
+            if are_equal:
+                return 0
+        else:
+            return -1
+
+        # Initialize cur_values count as well as index related to position
+        # in the cur_values list
+
+        cur_index: int = 0
+        found_index: int = -1
+
+        # Find the first matching value
+
+        for x in self.cur_values:
+            cur_index = cur_index + 1
+            if EnvFilter.has_value(input, x)[0]:
+                found_index = cur_index
+                break
+
+        # If the first matching value found return respective index
+
+        if found_index >= 0:
+            return found_index
+
+        # Check whether input is in scope at all
+
+        in_scope = any(
+            EnvFilter.has_value(input, x)[0] for x in self.all_values
         )
+
+        # If input is not in scope, then top match. Otherwise, not found
+
+        return -1 if in_scope else 0
 
 
 ###############################################################################
