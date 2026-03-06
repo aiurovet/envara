@@ -193,6 +193,7 @@ class EnvFile:
             # Break into key and value and skip if can't
 
             parts = EnvFile.RE_KEY_VALUE.split(line, maxsplit=1)
+
             if len(parts) < 2:
                 continue
 

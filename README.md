@@ -662,8 +662,8 @@ filename in any order.
 
 ```python
 EnvFile.get_files(
-    EnvFilter(cur_values='prod*', all_values=['dev', 'test', 'prod', 'production']),
-    EnvFilter(cur_values=['jp', 'en'], all_values='en,fr,de,jp'),
+    EnvFilter(cur_values=['prod'], all_values=['dev', 'test', 'prod', 'production']),
+    EnvFilter(cur_values=['jp', 'en'], all_values=['en', 'fr', 'de', 'jp']),
 )
 ```
 

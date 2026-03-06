@@ -33,6 +33,11 @@ class EnvFilters:
         :rtype: list[str]
         """
 
+        # Check empty parameters
+
+        if (not filters) or (not input) or (len(input) <= 0):
+            return input
+
         # Initialize the output list
 
         filtered: list[str] = []

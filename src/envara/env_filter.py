@@ -51,8 +51,7 @@ class EnvFilter:
         """
         # Accept parameters
 
-        self.indicator = EnvFilter.DEFAULT_INDICATOR\
-            if indicator is None else indicator
+        self.indicator = EnvFilter.DEFAULT_INDICATOR if indicator is None else indicator
 
         self.cur_values = cur_values
         self.all_values = all_values or self.cur_values
@@ -100,31 +99,32 @@ class EnvFilter:
         if inp_len == val_len:
             return (True, True) if input == value else (False, False)
 
-        # If input starts with value succeeded by one of the separators,
-        # then found, and if differ only by a separator, then equal
+        # Initialize loop variables
 
-        if input.startswith(value):
-            if input[val_len] in EnvFilter.VALUE_SEPARATORS:
-                return (True, inp_len == (val_len + 1))
+        curr_pos: int = -1
+        last_pos: int = inp_len - 1
+        next_pos: int = curr_pos + 1
 
-        # If input ends with value preceded by one of the separators,
-        # then found
+        # Loop through every occurrence of value, and when it is
+        # surrounded with separators or edges, then found
 
-        if input.endswith(value):
-            if input[-val_len - 1] in EnvFilter.VALUE_SEPARATORS:
-                return (True, inp_len == (val_len + 1))
+        while True:
+            curr_pos = input.find(value, next_pos)
 
-        # If value is found in the input surrounded by any combination
-        # of separators, then found
+            if curr_pos < 0:
+                return (False, False)
 
-        for sep1 in EnvFilter.VALUE_SEPARATORS:
-            for sep2 in EnvFilter.VALUE_SEPARATORS:
-                if f"{sep1}{value}{sep2}" in input:
-                    return (True, inp_len == (val_len + 2))
+            next_pos = curr_pos + val_len
 
-        # If no previous check succeeded, then not found
+            if (curr_pos == 0) or (
+                (curr_pos > 0) and (input[curr_pos - 1] in EnvFilter.VALUE_SEPARATORS)
+            ):
+                if next_pos > last_pos:
+                    return (True, curr_pos <= 1)
+                if input[next_pos] in EnvFilter.VALUE_SEPARATORS:
+                    return (True, ((next_pos == last_pos) and (curr_pos <= 1)))
 
-        return (False, False)
+            curr_pos = next_pos
 
     ###########################################################################
 
@@ -184,9 +184,7 @@ class EnvFilter:
 
         # Check whether input is in scope at all
 
-        in_scope = any(
-            EnvFilter.has_value(input, x)[0] for x in self.all_values
-        )
+        in_scope = any(EnvFilter.has_value(input, x)[0] for x in self.all_values)
 
         # If input is not in scope, then top match. Otherwise, not found
 

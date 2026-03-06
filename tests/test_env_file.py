@@ -186,10 +186,10 @@ def test_get_files_basic_filtering(tmp_path):
         (tmp_path / name).write_text("")
 
     # a simple filter object that matches 'dev' or 'prod' and only 'prod' as current
-    filt = EnvFilter(all_values="dev|prod", cur_values=r"prod")
+    filter = EnvFilter(cur_values=["prod"], all_values=["dev", "prod"])
 
     # Act
-    result = EnvFile.get_files(tmp_path, "env", 0, filt)
+    result = EnvFile.get_files(tmp_path, "env", 0, filter)
 
     # Assert - operate on names for clarity
     names = [p.name for p in result]
