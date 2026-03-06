@@ -20,11 +20,43 @@ from env_filters import EnvFilters
         (None, None, None),
         (None, [], None),
         ([], None, []),
-        (["a", "env.bc"], [EnvFilter(None, ["bc"])], ["env.bc"]),
+        (
+            ["a", "bc", "env.bc", "bc_env"],
+            [EnvFilter(None, ["bc"])],
+            ["env.bc", "bc_env"]
+        ),
+        (
+            ["a", "bc", "bc_env", "env.bc"],
+            [EnvFilter(None, ["bc"])],
+            ["bc_env", "env.bc"]
+        ),
+        (
+            ["a", "bc", "env.prod", "dev_env"],
+            [EnvFilter(None, ["dev", "test", "prod"])],
+            ["dev_env", "env.prod"]
+        ),
+        (
+            ["a", "prod", ".env", "env-prod.en", "env_jp-prod", "env.en-prod", "env.prod", "dev_env", ".env.jp.dev"],
+            [
+                EnvFilter(None, ["prod"], ["dev", "prod"]),
+                EnvFilter(None, ["en", "jp"], ["en", "fr", "jp"])
+            ],
+            [".env", "env.prod", "env-prod.en", "env.en-prod", "env_jp-prod"]
+        ),
+        (
+            ["a", "prod", ".env", "env-prod.en", ".env.linux", "env_jp-prod", ".env.posix", ".env.posix.prod", "env.en-prod", "env.prod", "dev_env", ".env.jp.dev"],
+            [
+                EnvFilter(None, ["prod"], ["dev", "prod"]),
+                EnvFilter(None, ["en"], ["en", "fr", "jp"]),
+                EnvFilter(None, ["posix", "linux"])
+            ],
+            [".env", ".env.posix", ".env.linux", "env.prod", "env-prod.en", "env.en-prod", "env-prod.en", ".env.posix.prod"]
+        ),
     ],
 )
 def test_process(input, filters, expected):
-    assert EnvFilters.process(input, filters) == expected
+    result = EnvFilters.process(input, filters)
+    assert result == expected
 
 
 ###############################################################################

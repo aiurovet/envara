@@ -1,3 +1,7 @@
+## 0.0.9
+
+Switched to the string search instead of complex regexes when looking for a given value in a string
+
 ## 0.0.8
 
 - Added the out_info parameter to Env.expand() as well as a method EnvParseInfo.copy_to()
