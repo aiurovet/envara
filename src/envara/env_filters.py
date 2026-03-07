@@ -75,13 +75,10 @@ class EnvFilters:
                 if dif != 0:
                     return dif
 
-            if item1 == item2:
-                return 0
-
             if item1 < item2:
                 return -1
 
-            return 1
+            return 0 if item1 == item2 else 1
 
         # Sort the filtered items and return
 
