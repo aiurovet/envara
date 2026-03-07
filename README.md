@@ -306,7 +306,7 @@ def unquote(
 
 ## class `EnvFile`
 
-Reads series of `key=value` lines from dot-env files, removes line comments,
+Reads series of `key=value` lines from env files, removes line comments,
 expands environment values and arguments, expands escaped characters, and sets
 or updates those as environment variables. Also allows hierarchical
 OS-specific stacking of such files.
@@ -324,7 +324,7 @@ OS-specific stacking of such files.
 
 > `list[Path]`
 
-Get list of eligible dot-env files. Adds a list of platform names if
+Get list of eligible env files. Adds a list of platform names if
 `flags` includes `EnvFileFlags.ADD_PLATFORMS` (default).
 
 ```python
@@ -436,7 +436,7 @@ Environment-related filtering, mainly for use with `EnvFile`.
 | Name | Type | Description |
 |---|---|---|
 | `DEFAULT_RE_FLAGS` | `re.RegexFlag` | Default regex flags to compile with |
-| `DEFAULT_INDICATOR` | `str` | Default dot-env file type without leading extension separator (`"env"`) |
+| `DEFAULT_INDICATOR` | `str` | Default env file type without leading extension separator (`"env"`) |
 | `DEFAULT_STRIP_RE` | `re.Pattern` | Regex to strip all unnecessary blanks around every delimited field |
 
 ---
@@ -620,10 +620,7 @@ def __init__(
 
 ## Dot-env file lookup
 
-The `EnvFile.load()` method looks for the following files. The leading dot is
-optional, except for `.env`; `<sys.platform>` is lowercased; each file is loaded
-at most once (unless the internal cache is dropped via
-`EnvFileFlags.RESET_ACCUMULATED`).
+The `EnvFile.load()` method looks for the following files. The leading dot is optional; `<sys.platform>` is lowercased; each file is loaded at most once (unless the internal cache is dropped via `EnvFileFlags.RESET_ACCUMULATED`).
 
 **For any filter:**
 
@@ -769,6 +766,6 @@ Windows-style percent-delimited expansions are provided by `Env.expand_symmetric
 
 ## Which expansion to choose?
 
-You don't have to decide in the code. It is all about what `EnvFile.load()` encounters first while analysing each line irrespective the platform: dollar or percent. And escape character will be chosen similarly between backslash and caret. However, the POSIX-style assignemnts are by far more flexible and highly recommended.
+You don't have to decide in the code. It is all about what `EnvFile.load()` encounters first while analysing each line irrespective the platform: dollar or percent. And escape character will be chosen similarly between backslash and caret. However, the POSIX-style assignments are by far more flexible and highly recommended.
 
 ## __Good Luck!__
