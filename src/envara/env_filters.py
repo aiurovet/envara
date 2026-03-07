@@ -21,7 +21,9 @@ class EnvFilters:
         filters: list[EnvFilter],
     ) -> list[str]:
         """
-        Filter and sort the input list of strings according to filters:
+        Filter and sort the input list of strings according to filters, and
+        in the order those appear. In a highly unlikely event of no difference
+        found, a mere case-sensitive string comparison engaged
 
         :param input: The input list to filter and sort
         :type input: list[str]
@@ -65,15 +67,21 @@ class EnvFilters:
         def compare_items(item1: str, item2: str):
             indices_1 = indices[item1]
             indices_2 = indices[item2]
-            i = -1
+            cur_2 = -1
 
-            for index_1 in indices_1:
-                i = i + 1
-                d = index_1 - indices_2[i]
-                if d != 0:
-                    return d
+            for cur_1 in indices_1:
+                cur_2 = cur_2 + 1
+                dif = cur_1 - indices_2[cur_2]
+                if dif != 0:
+                    return dif
 
-            return 0
+            if item1 == item2:
+                return 0
+
+            if item1 < item2:
+                return -1
+
+            return 1
 
         # Sort the filtered items and return
 

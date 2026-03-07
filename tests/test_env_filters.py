@@ -23,7 +23,7 @@ from env_filters import EnvFilters
         (
             ["a", "bc", "env.bc", "bc_env"],
             [EnvFilter(None, ["bc"])],
-            ["env.bc", "bc_env"]
+            ["bc_env", "env.bc"]
         ),
         (
             ["a", "bc", "bc_env", "env.bc"],
@@ -46,11 +46,11 @@ from env_filters import EnvFilters
         (
             ["a", "prod", ".env", "env-prod.en", ".env.linux", "env_jp-prod", ".env.posix", ".env.posix.prod", "env.en-prod", "env.prod", "dev_env", ".env.jp.dev"],
             [
+                EnvFilter(None, ["posix", "linux"]),
                 EnvFilter(None, ["prod"], ["dev", "prod"]),
-                EnvFilter(None, ["en"], ["en", "fr", "jp"]),
-                EnvFilter(None, ["posix", "linux"])
+                EnvFilter(None, ["en"], ["en", "fr", "jp"])
             ],
-            [".env", ".env.posix", ".env.linux", "env.prod", "env-prod.en", "env.en-prod", "env-prod.en", ".env.posix.prod"]
+            ['.env', 'env.prod', 'env-prod.en', 'env.en-prod', '.env.posix', '.env.posix.prod', '.env.linux']
         ),
     ],
 )
