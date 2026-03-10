@@ -15,26 +15,49 @@ Does not depend on any special Python package.
 2. In some _.py_ file, try the following:
 
    ```py
+    ###############################################################################
+
     import os
     from pathlib import Path
     import sys
     from envara.env import Env
     from envara.env_file import EnvFile
 
+    ###############################################################################
+
     def main():
         """
         Sample program showing the usage of the `envara` library
         """
 
+        # Get application arguments
+        args = [Path(sys.argv[0]).stem]
+        args.extend(sys.argv[1:])
+
         # Expand inline and print the result
         input: str = r"Home ${HOME:-$USERPROFILE}, arg \#1: $1 # Line comment"
-        print(f"\n*** Expanded string ***\n\n{Env.expand(input, sys.argv)}")
+        print(f"\n*** Expanded string ***\n\n{Env.expand(input, args)}")
+
+        # Define directory that contains all env-like files
+        inp_dir: Path = Path("config")
+
+        # List of all platforms
+        print(f"\n*** All platforms ***\n")
+        print(f'"{"\", \"".join(Env.get_all_platforms())}"')
+
+        # List of current platforms
+        print(f"\n*** Current platforms ***\n")
+        print(f'"{"\", \"".join(Env.get_cur_platforms())}"')
+
+        # List files related to the current platform stack
+        print(f"\n*** Env file stack ***\n")
+        print(f'"{"\", \"".join([x.name for x in EnvFile.get_files(inp_dir)])}"')
 
         # Make a copy of the old environment variables
         old_env = os.environ.copy()
 
         # Place some .env files into directory below
-        EnvFile.load(dir=Path("config"), args=sys.argv)
+        EnvFile.load(inp_dir, args=args)
 
         # Show new environment variables
         print(f"\n*** New environment variables ***\n")
@@ -44,8 +67,12 @@ Does not depend on any special Python package.
 
         return 0
 
+    ###############################################################################
+
     if __name__ == "__main__":
         exit(main())
+
+    ###############################################################################
    ```
 
 ## class `Env`
@@ -64,6 +91,7 @@ Class for string expansions.
 | `PLATFORM_WINDOWS` | `str` | A text indicating a Windows-compatible platform |
 | `PLATFORM_THIS` | `str` | A text indicating the running platform |
 | `SPECIAL` | `dict[str, str]` | Rules on how to convert special characters when they follow an odd number of escape characters |
+| `SYS_PLATFORM_MAP` | `dict[str, list[str]]` | Rules (regex_str => list_of_str) on how to stack platforms from common to specific |
 
 ---
 
@@ -89,7 +117,7 @@ def expand(
     expand_chars: str = None,
     cutter_chars: str = None,
     hard_quotes: str = None,
-    out_info: EnvParseInfo | None = None,
+    info: EnvParseInfo | None = None,
 ) -> str: ...
 ```
 
@@ -103,9 +131,10 @@ def expand(
 | `strip_spaces` | `bool` | `True` if can remove spaces from the start and end of `input` |
 | `escape_chars` | `str` | Character(s) treated as candidates for escaping; whichever comes first in the input will be considered |
 | `expand_chars` | `str` | Character(s) treated as candidates for expanding environment variables when found non-escaped; whichever comes first will be considered |
+| `windup_chars` | `str` | Character(s) treated as candidates for closing the environment variable placeholder (e.g. `>` for RiscOS) |
 | `cutter_chars` | `str` | Character(s) treated as candidates for the end of data in a string (i.e. beginning of a line comment) when found non-escaped and outside a quoted sub-string; whichever comes first will be considered |
 | `hard_quotes` | `str` | String containing all quote characters that require escaping to be ignored (e.g. a single quote) |
-| `out_info` | `EnvParseInfo` \| None | If you need the details of how the string was parsed, set this argument to an instance of `EnvParseInfo` |
+| `out_info` | `EnvParseInfo` \| None | If you need the details of how the string was parsed, or to enforce those, set this argument to an instance of `EnvParseInfo` |
 
 **Returns** — Expanded string.
 
@@ -151,6 +180,7 @@ def expand_simple(
     args: list[str] | None = None,
     vars: dict[str, str] | None = None,
     expand_char: str = EnvParseInfo.WINDOWS_EXPAND_CHAR,
+    windup_char: str | None = None,
     escape_char: str = EnvParseInfo.WINDOWS_ESCAPE_CHAR,
 ) -> str: ...
 ```
@@ -163,7 +193,7 @@ def expand_simple(
 
 > `list[str]`
 
-Get the list of all supported platforms (see `Env.__platform_map`).
+Get the list of all supported platforms (see `Env.SYS_PLATFORM_MAP`).
 
 ```python
 @staticmethod
@@ -324,15 +354,14 @@ OS-specific stacking of such files.
 
 > `list[Path]`
 
-Get list of eligible env files. Adds a list of platform names if
-`flags` includes `EnvFileFlags.ADD_PLATFORMS` (default).
+Get list of eligible env files. Adds a list of platform names if `flags` includes `EnvFileFlags.ADD_PLATFORMS_BEFORE` (default) or `EnvFileFlags.ADD_PLATFORMS_AFTER`.
 
 ```python
 @staticmethod
 def get_files(
     dir: Path | None = None,
     indicator: str | None = None,
-    flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS,
+    flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS_BEFORE,
     *filters: list[EnvFilter] | EnvFilter,
 ) -> list[Path]: ...
 ```
@@ -343,7 +372,7 @@ def get_files(
 |---|---|---|
 | `dir` | `Path \| None` | Directory to look in |
 | `indicator` | `str \| None` | Necessary part of every relevant filename |
-| `flags` | `EnvFileFlags` | Add platform names to filters (default: `EnvFileFlags.ADD_PLATFORMS`) |
+| `flags` | `EnvFileFlags` | Add platform names to filters (default: `EnvFileFlags.ADD_PLATFORMS_BEFORE`) |
 | `*filters` | `EnvFilter` | One or more `EnvFilter` objects specifying current values and possibilities |
 
 **Returns** — List of matching paths in the given directory.
@@ -359,7 +388,7 @@ Add key-expanded-value pairs from `.env`-compliant file(s) to `os.environ`.
 def load(
     dir: Path | None = None,
     indicator: str = EnvFilter.DEFAULT_INDICATOR,
-    file_flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS,
+    file_flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS_BEFORE,
     args: list[str] | None = None,
     expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
     *filters: list[str] | str | None,
@@ -412,7 +441,7 @@ content if `EnvFileFlags.RESET_ACCUMULATED` is set.
 @staticmethod
 def read_text(
     files: list[Path],
-    flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS,
+    flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS_BEFORE,
 ) -> str: ...
 ```
 
@@ -525,9 +554,9 @@ original string and the result of its unquoting.
 | `POSIX_CUTTER_CHAR` | `str` | `"#"` | POSIX line comment character |
 | `POSIX_EXPAND_CHAR` | `str` | `"$"` | POSIX variable expansion character |
 | `POSIX_ESCAPE_CHAR` | `str` | `"\\"` | POSIX escape character |
-| `PWSH_CUTTER_CHAR` | `str` | `"#"` | PowerShell line comment character |
-| `PWSH_EXPAND_CHAR` | `str` | `"$"` | PowerShell variable expansion character |
-| `PWSH_ESCAPE_CHAR` | `str` | `` "`" `` | PowerShell escape character |
+| `VMS_CUTTER_CHAR` | `str` | `"!"` | VMS line comment character |
+| `VMS_EXPAND_CHAR` | `str` | `"'"` | VMS variable expansion character |
+| `VMS_ESCAPE_CHAR` | `str` | `"^"` | VMS escape character |
 | `WINDOWS_CUTTER_CHAR` | `str` | `";"` | Windows/DOS line comment character |
 | `WINDOWS_EXPAND_CHAR` | `str` | `"%"` | Windows/DOS variable expansion character |
 | `WINDOWS_ESCAPE_CHAR` | `str` | `"^"` | Windows/DOS escape character |
@@ -588,8 +617,9 @@ def __init__(
 | Member | Value | Description |
 |---|---|---|
 | `NONE` | `0` | No flag set |
-| `ADD_PLATFORMS` | `1 << 0` | Add platforms to be present in the filenames |
-| `RESET_ACCUMULATED` | `1 << 1` | Drop internal accumulations from the previous runs |
+| `ADD_PLATFORMS_BEFORE` | `1 << 0` | Add platforms to be present in the filenames before the other lists |
+| `ADD_PLATFORMS_AFTER` | `1 << 1` | Add platforms to be present in the filenames after the other lists |
+| `RESET_ACCUMULATED` | `1 << 2` | Drop internal accumulations from the previous runs |
 
 ---
 

@@ -23,11 +23,16 @@ class EnvParseInfo:
     POSIX_EXPAND_CHAR: ClassVar[str] = "$"
     POSIX_ESCAPE_CHAR: ClassVar[str] = "\\"
 
-    PWSH_CUTTER_CHAR: ClassVar[str] = "#"
-    PWSH_EXPAND_CHAR: ClassVar[str] = POSIX_EXPAND_CHAR
-    PWSH_ESCAPE_CHAR: ClassVar[str] = "`"
+    RISCOS_CUTTER_CHAR: ClassVar[str] = "|"
+    RISCOS_EXPAND_CHAR: ClassVar[str] = "<"
+    RISCOS_WINDUP_CHAR: ClassVar[str] = ">"
+    RISCOS_ESCAPE_CHAR: ClassVar[str] = "\\"
 
-    WINDOWS_CUTTER_CHAR: ClassVar[str] = ";"
+    VMS_CUTTER_CHAR: ClassVar[str] = "!"
+    VMS_EXPAND_CHAR: ClassVar[str] = "'"
+    VMS_ESCAPE_CHAR: ClassVar[str] = "^"
+
+    WINDOWS_CUTTER_CHAR: ClassVar[str] = ""
     WINDOWS_EXPAND_CHAR: ClassVar[str] = "%"
     WINDOWS_ESCAPE_CHAR: ClassVar[str] = "^"
 
@@ -38,6 +43,7 @@ class EnvParseInfo:
         input: str | None = None,
         result: str | None = None,
         expand_char: str | None = None,
+        windup_char: str | None = None,
         escape_char: str | None = None,
         cutter_char: str | None = None,
         quote_type: EnvQuoteType = EnvQuoteType.NONE,
@@ -57,6 +63,11 @@ class EnvParseInfo:
             encountered: dollar, percent, angle bracket
         :type expand_char: str
 
+        :param windup_char: Character that acts as the end of an environment
+            variable token in non-POSIX OSes (normally, the same as
+            expand_char, but sometimes, might differ, like for RiscOS)
+        :type windup_char: str
+
         :param escape_char: First non-escaped and non-quoted character
             encountered: backslash, backtick, caret
         :type escape_char: str
@@ -65,10 +76,6 @@ class EnvParseInfo:
             recognised as the end of data in a string (like a line comment
             start): hash
         :type cutter_char: str
-
-        :param cutter_char: First character recognised as the end of data in a
-            string (like a line comment start): hash
-        :type cutter_chars: str
 
         :param quote_type: Type of enclosing quotes found
         :type quote_type: EnvQuoteType
@@ -80,6 +87,13 @@ class EnvParseInfo:
         self.input: str = input
         self.quote_type: EnvQuoteType = quote_type
         self.result: str = result
+        self.windup_char: str = windup_char
+
+        if not self.windup_char:
+            if self.expand_char == EnvParseInfo.RISCOS_EXPAND_CHAR:
+                self.windup_char = EnvParseInfo.RISCOS_WINDUP_CHAR
+            else:
+                self.windup_char = self.expand_char
 
     ###########################################################################
 
@@ -100,6 +114,7 @@ class EnvParseInfo:
             return to
 
         to.expand_char = self.expand_char
+        to.windup_char = self.windup_char
         to.escape_char = self.escape_char
         to.cutter_char = self.cutter_char
         to.input = self.input

@@ -8,11 +8,11 @@ def test_constants_values():
     assert EnvParseInfo.POSIX_EXPAND_CHAR == "$"
     assert EnvParseInfo.POSIX_ESCAPE_CHAR == "\\"
     # PowerShell constants
-    assert EnvParseInfo.PWSH_CUTTER_CHAR == "#"
-    assert EnvParseInfo.PWSH_EXPAND_CHAR == EnvParseInfo.POSIX_EXPAND_CHAR
-    assert EnvParseInfo.PWSH_ESCAPE_CHAR == "`"
+    assert EnvParseInfo.VMS_CUTTER_CHAR == "!"
+    assert EnvParseInfo.VMS_EXPAND_CHAR == "'"
+    assert EnvParseInfo.VMS_ESCAPE_CHAR == "^"
     # Windows constants
-    assert EnvParseInfo.WINDOWS_CUTTER_CHAR == ";"
+    assert EnvParseInfo.WINDOWS_CUTTER_CHAR == ""
     assert EnvParseInfo.WINDOWS_EXPAND_CHAR == "%"
     assert EnvParseInfo.WINDOWS_ESCAPE_CHAR == "^"
 

@@ -67,11 +67,14 @@ class EnvFilters:
         def compare_items(item1: str, item2: str):
             indices_1 = indices[item1]
             indices_2 = indices[item2]
-            cur_2 = -1
 
-            for cur_1 in indices_1:
-                cur_2 = cur_2 + 1
-                dif = cur_1 - indices_2[cur_2]
+            i1 = len(indices_2)
+            i2 = len(indices_2)
+
+            while i1 > 0:
+                i1 = i1 - 1
+                i2 = i2 - 1
+                dif = indices_1[i1] - indices_2[i2]
                 if dif != 0:
                     return dif
 

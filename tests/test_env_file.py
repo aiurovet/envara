@@ -136,7 +136,7 @@ def test_load_reads_files_and_passes_flags(mocker):
     m_read_text = mocker.patch("envara.env_file.EnvFile.read_text", return_value="K=V")
     m_load_from_str = mocker.patch("envara.env_file.EnvFile.load_from_str")
     m_dir = mocker.MagicMock(spec=Path)
-    flags = EnvFileFlags.ADD_PLATFORMS
+    flags = EnvFileFlags.ADD_PLATFORMS_BEFORE
 
     # Act
     result = EnvFile.load(m_dir, file_flags=flags)

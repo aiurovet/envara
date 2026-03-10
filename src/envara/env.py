@@ -65,29 +65,25 @@ class Env:
     """Rules on how to convert special characters when they
     follow an odd number of escape characters"""
 
-    __platform_map: ClassVar[dict[str, list[str]]] = {
-        "": ["", PLATFORM_POSIX],  # the latter is checked: IS_POSIX to be True
+    SYS_PLATFORM_MAP: ClassVar[dict[str, list[str]]] = {
+        "": [PLATFORM_POSIX, PLATFORM_WINDOWS],  # both checked via os.sep
         "^aix": ["aix"],
         "android": ["linux", "android"],
         "^atheos": ["atheos"],
         "^beos|haiku": ["beos", "haiku"],
         "bsd": ["bsd"],
         "cygwin": ["cygwin"],
-        "hp-ux": ["hp-ux"],
         "darwin|macos": ["bsd", "darwin", "macos"],
         "^ios|^ipados": ["bsd", "ios"],
-        "java": [PLATFORM_POSIX, PLATFORM_WINDOWS],  # only one will fit
+        "java": ["java"],
         "^linux": ["linux"],
         "^os2": ["os2"],
         "^msys": ["msys"],
         "^riscos": ["riscos"],
-        "sunos": ["sunos"],
-        "unix": ["unix"],
         "vms": ["vms"],
-        "^win": [PLATFORM_WINDOWS],
         ".+": [PLATFORM_THIS],
     }
-    """Internal dictionary: regex => list-of-platform-names"""
+    """Dictionary: regex => list-of-platform-names"""
 
     ###########################################################################
 
@@ -99,6 +95,7 @@ class Env:
         strip_spaces: bool = True,
         escape_chars: str = None,
         expand_chars: str = None,
+        windup_chars: str = None,
         cutter_chars: str = None,
         hard_quotes: str = None,
         out_info: EnvParseInfo | None = None,
@@ -133,6 +130,10 @@ class Env:
             whichever comes first in the input will be considered
         :type expand_chars: str
 
+        :param windup_chars: Character(s) treated as candidates for closing
+            the environment variable placeholder (e.g. `>` for RiscOS)
+        :type expand_chars: str
+
         :param cutter_chars: Character(s) that will be treated as candidates
             for the end of a string as data (i.e. as beginning of a line
             comment) when found non-escaped and not inside of a quoted
@@ -142,6 +143,10 @@ class Env:
         :param hard_quotes: String containing all quote characters that
             require to ignore escaping (e.g., a single quote)
         :type hard_quotes: str
+
+        :param info: If you need the details of how the string was parsed, or
+            to enforce those, set this argument to an instance of EnvParseInfo
+        :type info: EnvParseInfo | None
 
         :return: Expanded string
         :rtype: str
@@ -164,6 +169,7 @@ class Env:
             strip_spaces=strip_spaces,
             escape_chars=escape_chars,
             expand_chars=expand_chars,
+            windup_chars=windup_chars,
             cutter_chars=cutter_chars,
             hard_quotes=hard_quotes,
         )
@@ -197,6 +203,7 @@ class Env:
                 args=args,
                 vars=vars_dict,
                 expand_char=info.expand_char,
+                windup_char=info.windup_char,
                 escape_char=info.escape_char,
             )
 
@@ -725,6 +732,7 @@ class Env:
         args: list[str] | None = None,
         vars: dict[str, str] | None = None,
         expand_char: str = EnvParseInfo.WINDOWS_EXPAND_CHAR,
+        windup_char: str | None = None,
         escape_char: str = EnvParseInfo.WINDOWS_ESCAPE_CHAR,
     ) -> str:
         """
@@ -737,6 +745,13 @@ class Env:
 
         if vars is None:
             vars = os.environ
+
+        is_flexible = (
+            expand_char != EnvParseInfo.RISCOS_EXPAND_CHAR
+            and expand_char != EnvParseInfo.VMS_EXPAND_CHAR
+        )
+
+        windup = windup_char or expand_char
 
         s = input
         i = 0
@@ -761,7 +776,7 @@ class Env:
                             out.append(expand_char + s[i + 2 : j])
                             i = j
                             continue
-                        k = s.find(expand_char, i + 2)
+                        k = s.find(windup, i + 2)
                         if k != -1:
                             out.append(s[i + 1 : k + 1])
                             i = k + 1
@@ -782,108 +797,110 @@ class Env:
                 i += 1
                 continue
 
-            if (i + 1) < ln and s[i + 1] == expand_char:
+            if (i + 1) < ln and s[i + 1] == windup:
                 out.append(expand_char)
                 i += 2
                 continue
 
             j = i + 1
-            if j < ln and s[j] == "~":
-                k = j + 1
-                mods = []
-                while k < ln and s[k].isalpha():
-                    mods.append(s[k])
-                    k += 1
-                if k < ln and s[k].isdigit():
-                    start = k
-                    while k < ln and s[k].isdigit():
+
+            if is_flexible:
+                if j < ln and s[j] == "~":
+                    k = j + 1
+                    mods = []
+                    while k < ln and s[k].isalpha():
+                        mods.append(s[k])
                         k += 1
-                    token = s[start:k]
-                    end_with_expand_char = False
-                    if k < ln and s[k] == expand_char:
-                        end_with_expand_char = True
-                        k += 1
+                    if k < ln and s[k].isdigit():
+                        start = k
+                        while k < ln and s[k].isdigit():
+                            k += 1
+                        token = s[start:k]
+                        end_with_windup = False
+                        if k < ln and s[k] == windup:
+                            end_with_windup = True
+                            k += 1
+
+                        idx = int(token) - 1
+                        if args and 0 <= idx < len(args):
+                            tokval = args[idx]
+
+                            def part_drive(t):
+                                return os.path.splitdrive(t)[0]
+
+                            def part_path(t):
+                                p = os.path.dirname(t)
+                                if p and not p.endswith(os.sep):
+                                    p = p + os.sep
+                                return p
+
+                            def part_name(t):
+                                return os.path.splitext(os.path.basename(t))[0]
+
+                            def part_ext(t):
+                                return os.path.splitext(t)[1]
+
+                            def part_full(t):
+                                return os.path.abspath(t)
+
+                            out_frag = []
+                            for m in mods:
+                                if m == "d":
+                                    out_frag.append(part_drive(tokval))
+                                elif m == "p":
+                                    out_frag.append(part_path(tokval))
+                                elif m == "n":
+                                    out_frag.append(part_name(tokval))
+                                elif m == "x":
+                                    out_frag.append(part_ext(tokval))
+                                elif m == "f":
+                                    out_frag.append(part_full(tokval))
+                                else:
+                                    pass
+                            out.append("".join(out_frag))
+                        else:
+                            if end_with_windup:
+                                out.append(expand_char + s[j:k] + windup)
+                            else:
+                                out.append(expand_char + s[j:k])
+                        i = k
+                        continue
+
+                if j < ln and s[j].isdigit():
+                    start = j
+                    while j < ln and s[j].isdigit():
+                        j += 1
+                    end_with_windup = False
+                    if j < ln and s[j] == windup:
+                        end_with_windup = True
+                        token = s[start:j]
+                        j += 1
+                    else:
+                        token = s[start:j]
 
                     idx = int(token) - 1
                     if args and 0 <= idx < len(args):
-                        tokval = args[idx]
-
-                        def part_drive(t):
-                            return os.path.splitdrive(t)[0]
-
-                        def part_path(t):
-                            p = os.path.dirname(t)
-                            if p and not p.endswith(os.sep):
-                                p = p + os.sep
-                            return p
-
-                        def part_name(t):
-                            return os.path.splitext(os.path.basename(t))[0]
-
-                        def part_ext(t):
-                            return os.path.splitext(t)[1]
-
-                        def part_full(t):
-                            return os.path.abspath(t)
-
-                        out_frag = []
-                        for m in mods:
-                            if m == "d":
-                                out_frag.append(part_drive(tokval))
-                            elif m == "p":
-                                out_frag.append(part_path(tokval))
-                            elif m == "n":
-                                out_frag.append(part_name(tokval))
-                            elif m == "x":
-                                out_frag.append(part_ext(tokval))
-                            elif m == "f":
-                                out_frag.append(part_full(tokval))
-                            else:
-                                pass
-                        out.append("".join(out_frag))
+                        out.append(args[idx])
                     else:
-                        if end_with_expand_char:
-                            out.append(expand_char + s[j:k] + expand_char)
+                        if end_with_windup:
+                            out.append(expand_char + token + windup)
                         else:
-                            out.append(expand_char + s[j:k])
-                    i = k
+                            out.append(expand_char + token)
+                    i = j
                     continue
 
-            if j < ln and s[j].isdigit():
-                start = j
-                while j < ln and s[j].isdigit():
+                if j < ln and s[j] == "*":
                     j += 1
-                end_with_expand_char = False
-                if j < ln and s[j] == expand_char:
-                    end_with_expand_char = True
-                    token = s[start:j]
-                    j += 1
-                else:
-                    token = s[start:j]
-
-                idx = int(token) - 1
-                if args and 0 <= idx < len(args):
-                    out.append(args[idx])
-                else:
-                    if end_with_expand_char:
-                        out.append(expand_char + token + expand_char)
+                    if j < ln and s[j] == windup:
+                        j += 1
+                    if args:
+                        out.append(" ".join(args))
                     else:
-                        out.append(expand_char + token)
-                i = j
-                continue
+                        out.append(expand_char + "*")
+                    i = j
+                    continue
 
-            if j < ln and s[j] == "*":
-                j += 1
-                if j < ln and s[j] == expand_char:
-                    j += 1
-                if args:
-                    out.append(" ".join(args))
-                else:
-                    out.append(expand_char + "*")
-                i = j
-                continue
-
-            k = s.find(expand_char, j)
+            k = s.find(windup, j)
             if k == -1:
                 out.append(expand_char)
                 i += 1
@@ -892,14 +909,14 @@ class Env:
             token = s[j:k]
             if not token:
                 out.append(expand_char)
-                out.append(expand_char)
+                out.append(windup)
                 i = k + 1
                 continue
 
-            if ":~" in token:
+            if is_flexible and (":~" in token):
                 base, suff = token.split(":~", 1)
                 if not base:
-                    out.append(expand_char + token + expand_char)
+                    out.append(expand_char + token + windup)
                     i = k + 1
                     continue
                 if "," in suff:
@@ -915,13 +932,13 @@ class Env:
                         else None
                     )
                 except Exception:
-                    out.append(expand_char + token + expand_char)
+                    out.append(expand_char + token + windup)
                     i = k + 1
                     continue
 
                 val = vars.get(base)
                 if val is None:
-                    out.append(expand_char + token + expand_char)
+                    out.append(expand_char + token + windup)
                     i = k + 1
                     continue
 
@@ -944,7 +961,7 @@ class Env:
             name = token
             val = vars.get(name)
             if val is None:
-                out.append(expand_char + name + expand_char)
+                out.append(expand_char + name + windup)
             else:
                 out.append(val)
 
@@ -979,7 +996,7 @@ class Env:
 
         # Traverse the lists of platforms and append distinct
 
-        for platforms in Env.__platform_map.values():
+        for platforms in Env.SYS_PLATFORM_MAP.values():
             for platform in platforms:
                 if platform not in result:
                     result.append(platform)
@@ -1012,12 +1029,15 @@ class Env:
 
         result: list[str] = []
 
+        if flags & EnvPlatformFlags.ADD_EMPTY:
+            result.append("")
+
         # Traverse the {pattern: list-of-relevant-platforms} dictionary and
         # append those where the pattern matches the running platform
 
         re_flags = re.IGNORECASE | re.UNICODE
 
-        for pattern, platforms in Env.__platform_map.items():
+        for pattern, platforms in Env.SYS_PLATFORM_MAP.items():
 
             # If the platform doesn't match the running one, skip it
 
@@ -1032,8 +1052,7 @@ class Env:
                 # Perform extra checks
 
                 if not platform:
-                    if (flags & EnvPlatformFlags.ADD_EMPTY) == 0:
-                        continue
+                    continue
                 elif platform == Env.PLATFORM_POSIX:
                     if not Env.IS_POSIX:
                         continue
@@ -1225,6 +1244,7 @@ class Env:
         strip_spaces: bool = True,
         escape_chars: str = None,
         expand_chars: str = None,
+        windup_chars: str = None,
         cutter_chars: str = None,
         hard_quotes: str = None,
     ) -> tuple[str, EnvParseInfo]:
@@ -1254,6 +1274,12 @@ class Env:
             whichever comes first in the input will be returned in the
             dedicated info as .expand_char
         :type expand_chars: str
+
+        :param windup_chars: Character(s) that will be treated as candidates
+            for ending environment variables expansion when found non-escaped;
+            whichever appears first in the input will be returned in the
+            dedicated info as .windup_char
+        :type windup_chars: str
 
         :param cutter_chars: Character(s) that will be treated as candidates
             for the end of a string as data (i.e. as beginning of a line
@@ -1287,6 +1313,11 @@ class Env:
             expand_chars = (
                 EnvParseInfo.POSIX_EXPAND_CHAR + EnvParseInfo.WINDOWS_EXPAND_CHAR
             )
+        if windup_chars is None:
+            if EnvParseInfo.RISCOS_EXPAND_CHAR in expand_chars:
+                windup_chars = EnvParseInfo.RISCOS_WINDUP_CHAR
+            else:
+                windup_chars = expand_chars
         if escape_chars is None:
             escape_chars = (
                 EnvParseInfo.POSIX_ESCAPE_CHAR + EnvParseInfo.WINDOWS_ESCAPE_CHAR
@@ -1318,10 +1349,13 @@ class Env:
         is_escaped: bool = False
         is_quoted: bool = info.quote_type != EnvQuoteType.NONE
 
-        # Avoid Nones
+        # Avoid Nones and clashes
 
         if hard_quotes is None:
             hard_quotes = "'"
+
+        if hard_quotes in expand_chars:
+            hard_quotes = ""
 
         # No escape is relevant if the given quote is the hard one
 
@@ -1373,7 +1407,10 @@ class Env:
 
             if cur_char in expand_chars:
                 if (not info.expand_char) and (not is_escaped):
+                    idx = expand_chars.find(cur_char)
                     info.expand_char = cur_char
+                    if idx >= 0 and idx < len(windup_chars):
+                        info.windup_char = windup_chars[idx]
 
             # Break out if the stopper character was encountered outside
             # the quotes, and it was not escaped

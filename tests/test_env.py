@@ -747,6 +747,41 @@ def test_expand_simple_custom_escape_behavior():
     assert Env.expand_simple(r"^%FOO%", escape_char="^", vars={"FOO": "X"}) == "%FOO%"
 
 
+def test_expand_simple_with_windup_char():
+    # Test named variable expansion with windup_char
+    assert (
+        Env.expand_simple(
+            "<VAR>", vars={"VAR": "val"}, expand_char="<", windup_char=">"
+        )
+        == "val"
+    )
+    # Test missing variable with windup_char
+    assert (
+        Env.expand_simple("<MISSING>", expand_char="<", windup_char=">") == "<MISSING>"
+    )
+    # Test positional arg expansion with windup_char
+    assert (
+        Env.expand_simple("<1>", args=["one"], expand_char="<", windup_char=">")
+        == "<1>"
+    )
+    # Test literal expansion with windup_char (<> -> <)
+    assert Env.expand_simple("<>", expand_char="<", windup_char=">") == "<"
+    # Test star expansion with windup_char
+    assert (
+        Env.expand_simple("<*>", args=["a", "b"], expand_char="<", windup_char=">")
+        == "<*>"
+    )
+
+
+def test_expand_with_windup_char(monkeypatch):
+    # Test Env.expand with windup_chars (as string of candidates)
+    # If we pass expand_chars='<' and windup_chars='>', it should use them
+    monkeypatch.setenv("VAR", "val")
+    assert Env.expand("<VAR>", expand_chars="<", windup_chars=">") == "val"
+    # Test with multiple candidates: if we use '!' as expand and '!' as windup (VMS style)
+    assert Env.expand("!VAR!", expand_chars="<!", windup_chars=">!") == "val"
+
+
 # ---------------------------------------------------------------------------
 # Tests for Env.get_cur_platforms method
 # ---------------------------------------------------------------------------

@@ -13,10 +13,13 @@ class EnvFileFlags(IntFlag):
     NONE = 0
     """No flag set"""
 
-    ADD_PLATFORMS = 1 << 0
-    """Add platforms to be present in the filenames"""
+    ADD_PLATFORMS_BEFORE = 1 << 0
+    """Add platforms to be present in the filenames before the other lists"""
 
-    RESET_ACCUMULATED = 1 << 1
+    ADD_PLATFORMS_AFTER = 1 << 1
+    """Add platforms to be present in the filenames before the other lists"""
+
+    RESET_ACCUMULATED = 1 << 2
     """Drop internal accumulations from the previous runs"""
 
 

@@ -52,7 +52,7 @@ class EnvFile:
     def get_files(
         dir: Path | None = None,
         indicator: str | None = None,
-        flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS,
+        flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS_BEFORE,
         *filters: list[EnvFilter] | EnvFilter,
     ) -> list[Path]:
         """
@@ -86,11 +86,11 @@ class EnvFile:
         # Define extended filters as a growable list that is initially empty
 
         filters_ex: list[EnvFilter] = []
+        plat_flags = EnvPlatformFlags.NONE
 
-        # Add the platform filter if required (the primary filter)
+        # Add the platforms filter before the other ones (if required)
 
-        if flags & EnvFileFlags.ADD_PLATFORMS:
-            plat_flags: EnvPlatformFlags = EnvPlatformFlags.NONE
+        if flags & EnvFileFlags.ADD_PLATFORMS_BEFORE:
             filters_ex.append(
                 EnvFilter(
                     indicator,
@@ -107,7 +107,19 @@ class EnvFile:
             elif filter:
                 filters_ex.append(filter)
 
-        # Fallback: append a minimal set of filters
+        # Add the platforms filter after the other ones (if required)
+
+        if flags & EnvFileFlags.ADD_PLATFORMS_AFTER:
+            filters_ex.append(
+                EnvFilter(
+                    indicator,
+                    cur_values=Env.get_cur_platforms(plat_flags),
+                    all_values=Env.get_all_platforms(plat_flags),
+                )
+            )
+
+        # Fallback: append a minimal set of filters if no other filter
+        # already added
 
         if len(filters_ex) <= 0:
             filters_ex.append(EnvFilter())
@@ -132,7 +144,7 @@ class EnvFile:
     def load(
         dir: Path | None = None,
         indicator: str = EnvFilter.DEFAULT_INDICATOR,
-        file_flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS,
+        file_flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS_BEFORE,
         args: list[str] | None = None,
         expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
         *filters: list[str] | str | None,
@@ -210,7 +222,7 @@ class EnvFile:
 
     @staticmethod
     def read_text(
-        files: list[Path], flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS
+        files: list[Path], flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS_BEFORE
     ) -> str:
         """
         Load the content of all files as text and return. May

@@ -86,7 +86,7 @@ For any platform again:
 None of these files is required, and will be picked only if found and verified
 to be relevant to the platform you are running under. The platform includes
 not only OSes, but also Java, Cygwin and MSYS as well as such artefact OSes as
-AIX, RiscOS, OpenVMS, OS/2, etc.
+AIX, BeOS/Haiku, RiscOS, OpenVMS, OS/2.
 
 This allows you to define extra environment variables to make your application
 portable. For instance, you are going to call Google Chrome from your script
