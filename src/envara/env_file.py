@@ -69,7 +69,7 @@ class EnvFile:
         :type flags: EnvFileFlags, default: EnvFileFlags.ADD_PLATFORMS
 
         :param filters: One or more EnvFilter objects showing what is the
-            current value, and what are the possibilities; should be matched
+            current value(s), and all possibilities; should be matched
             against: `EnvFile.get_files(EnvFilter(cur_values='prod*',
             all_values=['dev', 'test', 'prod', 'production']), EnvFilter(
             cur_values=['jp', 'en'], all='en,fr,de,jp'))`
@@ -147,7 +147,7 @@ class EnvFile:
         file_flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS_BEFORE,
         args: list[str] | None = None,
         expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
-        *filters: list[str] | str | None,
+        *filters: list[EnvFilter] | EnvFilter,
     ):
         """
         Add key-expanded-value pairs from .env-compliant file(s) to os.environ
@@ -168,6 +168,14 @@ class EnvFile:
 
         :param expand_flags: Describes how to expand env vars and app args
         :type expand_flags: EnvExpandFlags
+
+        :param filters: One or more EnvFilter objects showing what is the
+            current value(s), and all possibilities; should be matched
+            against: `EnvFile.get_files(EnvFilter(cur_values='prod*',
+            all_values=['dev', 'test', 'prod', 'production']), EnvFilter(
+            cur_values=['jp', 'en'], all='en,fr,de,jp'))`
+        :type filters: unlimited arguments of type EnvFilter
+
         """
 
         files: list[Path] = EnvFile.get_files(dir, indicator, file_flags, filters)

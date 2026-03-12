@@ -14,6 +14,7 @@ from envara.env_file import EnvFile
 
 ###############################################################################
 
+
 def main():
     """
     Sample program showing the usage of the `envara` library
@@ -55,6 +56,7 @@ def main():
             print(f"{key} => {val}")
 
     return 0
+
 
 ###############################################################################
 

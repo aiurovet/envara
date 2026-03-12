@@ -21,9 +21,9 @@ class EnvFilters:
         filters: list[EnvFilter],
     ) -> list[str]:
         """
-        Filter and sort the input list of strings according to filters, and
-        in the order those appear. In a highly unlikely event of no difference
-        found, a mere case-sensitive string comparison engaged
+        Filter and sort the input list of strings according to filters, and in
+        the order those passed. In a highly unlikely event of no difference
+        found, a mere case-sensitive string comparison engaged.
 
         :param input: The input list to filter and sort
         :type input: list[str]

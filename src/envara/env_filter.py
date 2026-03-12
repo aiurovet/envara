@@ -64,7 +64,12 @@ class EnvFilter:
         value: str | None,
     ) -> tuple[bool, bool]:
         """
-        Search input for value surrounded by separators or at the edge:
+        Check the input contains the given value separated from the rest by a
+        dot, dash and/or underscore as well as being at the start start or at
+        the end of the input. While `has_value("abc", "ab")` returns `False`,
+        separation at both sides works: `has_value("ab.c", "ab")`,
+        `has_value("c_ab", "ab")`, as well as `has_value("c-ab_c", "ab")` all
+        return `True`. Essentially, this is a limited version of a word match
 
         :param input: String to search value for
         :type input: str | None
@@ -138,17 +143,17 @@ class EnvFilter:
         - the indicator should be found if non-empty
         - either one of the current values should be found or none of
           all values (i.e.'any'): assuming runtime environments include
-          'dev', 'test' and 'prod', then '.env', '.env.en.prod`,
-          `fr-prod.env` and `prod_jp_env` should be found, but neither
-          `.env.dev`, `.env.dev.en`, nor `en_test.env`, nor `test-env`
+          'dev', 'test' and 'prod', then '.env', '.env.en.prod',
+          'fr-prod.env' and 'prod_jp_env' should be found, but neither
+          '.env.dev', '.env.dev.en', nor 'en_test.env', nor 'test-env'
 
         :param self: The object
         :type: EnvFilter
 
-        :param input: the string to match against current and all values
+        :param input: The string to match against current and all values
         :type input: str
 
-        :return: Last matching group no or -1 if failed
+        :return: index in `all_values` if found, or -1 otherwise
         :rtype: int
         """
 

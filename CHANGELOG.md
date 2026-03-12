@@ -1,6 +1,6 @@
 ## 0.0.9
 
-Switched to the string search instead of complex regexes when looking for a given value in a string, added windup_char(s) to perform Env.expand_simple(...) on a pair of different opening and closing characters like `<VAR>` for RiscOS
+Switched to the string search instead of complex regexes when looking for a given value in a string, added windup_char(s) to perform Env.expand_simple(...) on a pair of different opening and closing characters like `<VAR>` for RiscOS, improved documentation
 
 ## 0.0.8
 

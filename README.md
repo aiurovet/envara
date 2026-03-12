@@ -373,15 +373,15 @@ def get_files(
 | `dir` | `Path \| None` | Directory to look in |
 | `indicator` | `str \| None` | Necessary part of every relevant filename |
 | `flags` | `EnvFileFlags` | Add platform names to filters (default: `EnvFileFlags.ADD_PLATFORMS_BEFORE`) |
-| `*filters` | `EnvFilter` | One or more `EnvFilter` objects specifying current values and possibilities |
+| `*filters` | `EnvFilter` | One or more `EnvFilter` objects specifying current value(s) and all possibilities |
 
-**Returns** — List of matching paths in the given directory.
+**Returns** — List of matching paths in the given directory, sorted in the order of filters.
 
 ---
 
 ### `EnvFile.load()`
 
-Add key-expanded-value pairs from `.env`-compliant file(s) to `os.environ`.
+Add key/expanded-value pairs from `.env`-compliant file(s) to `os.environ`.
 
 ```python
 @staticmethod
@@ -404,12 +404,13 @@ def load(
 | `file_flags` | `EnvFileFlags` | Describes what and how to load |
 | `args` | `list[str] \| None` | List of arguments (e.g. application args) to expand placeholders like `$1`, `${2}`, … |
 | `expand_flags` | `EnvExpandFlags` | Describes how to expand env vars and app args |
+| `*filters` | `EnvFilter` | One or more `EnvFilter` objects specifying current value(s) and all possibilities |
 
 ---
 
 ### `EnvFile.load_from_str()`
 
-Add key-expanded-value pairs from a string buffer to `os.environ`.
+Add key/expanded-value pairs from a string buffer to `os.environ`.
 
 ```python
 @staticmethod
@@ -488,57 +489,102 @@ def __init__(
 | Name | Type | Description |
 |---|---|---|
 | `indicator` | `str \| None` | A necessary part of a name (always present), default: `DEFAULT_INDICATOR` |
-| `cur_values` | `list[str] \| str \| None` | One or more strings relevant to the current run, passed either as a list or a single string |
-| `all_values` | `list[str]` | All possible values passed as a list of strings |
+| `cur_values` | `list[str] \| None` | One or more strings relevant to the current run |
+| `all_values` | `list[str] \| None` | All possible values |
 
 ---
 
-### `EnvFilter.search()`
+### `EnvFilter.has_value()`
 
 > `bool`
 
-Check the input matches the given filters:
-
-- Should match the default (indicator) pattern.
-- Should either match the current values or not match the whole set at all.
-  For example, `.en.prod` matches `.env.en`, `fr.env` and `_jp_env`,
-  but neither `.prod.es` nor `.es_prod` match.
+Check the input contains the given value separated from the rest by a dot,
+dash and/or underscore as well as being at the start start or at the end of
+the input. While `has_value("abc", "ab")` returns `False`, separation at
+both sides works: `has_value("ab.c", "ab")`, `has_value("c_ab", "ab")`, as
+well as `has_value("c-ab_c", "ab")` all return `True`. Essentially, this is
+a limited version of a word match
 
 ```python
-def is_match(
+def has_value(
     self,
-    input: list[str] | str | None,
+    input: str | None,
+    value: str | None,
 ) -> bool: ...
-```
-
-**Returns** — `True` if the input matches, `False` otherwise.
-
----
-
-### `EnvFilter.to_regex()`
-
-> `re.Pattern`
-
-Convert a glob or regex pattern string into a compiled `re.Pattern`.
-
-```python
-@staticmethod
-def to_regex(
-    indicator: str = DEFAULT_INDICATOR,
-    input: list[str] | str | None = None,
-    is_full: bool = True,
-) -> re.Pattern: ...
 ```
 
 **Parameters**
 
 | Name | Type | Description |
 |---|---|---|
-| `indicator` | `str \| None` | Required part of a name (always present), default: `DEFAULT_INDICATOR` |
-| `input` | `list[str] \| str \| None` | Comma-separated string or a list of strings with optional wildcards: `"linux,*os"` or `["en", "es", "fr"]` or `"dev,*test*,prod*"` |
-| `is_full` | `bool` | `True` = wrap into `^...$` |
+| `input` | `str \| None` | String to search value for |
+| `value` | `str \| None` | String to search in the input |
 
-**Returns** — Regular expression matching the passed criteria.
+**Returns** — `True` if the input matches, `False` otherwise.
+
+---
+
+### `EnvFilter.search()`
+
+> `int`
+
+Find matching item no for the input string. Requirements:
+
+- the indicator should be found if non-empty
+- either one of the current values should be found or none of
+  all values (i.e.'any'): assuming runtime environments include
+  `dev`, `test` and `prod`, then `.env`, `.env.en.prod`,
+  `fr-prod.env` and `prod_jp_env` should be found, but neither
+  `.env.dev`, `.env.dev.en`, nor `en_test.env`, nor `test-env`
+
+```python
+def search(
+    self,
+    input: list[str] | str | None,
+) -> bool: ...
+```
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `self` | | The object |
+| `input` | `str \| None` | The string to match against current and all values |
+| `value` | `str \| None` | String to search in the input |
+
+**Returns** — index in `cur_values` if found; otherwise, 0 if not found in
+`all_values` (i.e. applies to all), or -1 if found (i.e. should filter out)
+
+---
+
+## class `EnvFilters`
+
+Helpers for `EnvFilter`.
+
+---
+
+### `EnvFilters.process()`
+
+Filter and sort the input list of strings according to filters, and in the
+order those passed. In a highly unlikely event of no difference found, a
+mere case-sensitive string comparison engaged.
+
+```python
+def process(
+    input: list[str],
+    filters: list[EnvFilter],
+): ...
+```
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `indicator` | `str \| None` | A necessary part of a name (always present), default: `DEFAULT_INDICATOR` |
+| `cur_values` | `list[str] \| None` | One or more strings relevant to the current run |
+| `filters` | `list[EnvFilter] \| None` | List of filters to check against |
+
+**Returns** — input list filtered and sorted according to filters
 
 ---
 
@@ -554,6 +600,10 @@ original string and the result of its unquoting.
 | `POSIX_CUTTER_CHAR` | `str` | `"#"` | POSIX line comment character |
 | `POSIX_EXPAND_CHAR` | `str` | `"$"` | POSIX variable expansion character |
 | `POSIX_ESCAPE_CHAR` | `str` | `"\\"` | POSIX escape character |
+| `RISCOS_CUTTER_CHAR` | `str` | `"\|"` | VMS line comment character |
+| `RISCOS_EXPAND_CHAR` | `str` | `"<"` | VMS variable expansion character |
+| `RISCOS_WINDUP_CHAR` | `str` | `">"` | VMS variable expansion character |
+| `RISCOS_ESCAPE_CHAR` | `str` | `"\\"` | VMS escape character |
 | `VMS_CUTTER_CHAR` | `str` | `"!"` | VMS line comment character |
 | `VMS_EXPAND_CHAR` | `str` | `"'"` | VMS variable expansion character |
 | `VMS_ESCAPE_CHAR` | `str` | `"^"` | VMS escape character |
@@ -573,6 +623,7 @@ def __init__(
     input: str | None = None,
     result: str | None = None,
     expand_char: str | None = None,
+    windup_char: str | None = None,
     escape_char: str | None = None,
     cutter_char: str | None = None,
     quote_type: EnvQuoteType = EnvQuoteType.NONE,
@@ -586,9 +637,30 @@ def __init__(
 | `input` | `str` | String being unquoted |
 | `result` | `str` | Result of unquoting |
 | `expand_char` | `str` | First non-escaped and non-quoted expand character encountered: dollar, percent, angle bracket |
+| `windup_char` | `str` | Character that acts as the end of an environment variable token in non-POSIX OSes (normally, the same as expand_char, but sometimes, might differ, like for RiscOS) |
 | `escape_char` | `str` | First non-escaped and non-quoted escape character encountered: backslash, backtick, caret |
 | `cutter_char` | `str` | First non-escaped and non-quoted character recognised as the end of data in a string (like a line comment start): hash |
 | `quote_type` | `EnvQuoteType` | Type of enclosing quotes found |
+
+---
+
+### `EnvParseInfo.copy_to()`
+
+Constructor.
+
+```python
+def copy_to(
+    self,
+    to
+): ...
+```
+
+**Parameters**
+
+| Name | Type | Description |
+|---|---|---|
+| `self` | | The object (source) |
+| `to` | | Destination object |
 
 ---
 
@@ -655,26 +727,32 @@ The `EnvFile.load()` method looks for the following files. The leading dot is op
 **For any filter:**
 
 ```
-.env
+`[.-_]env[.-_]`
 ```
 
 **Platforms** (added to the list of filters by default):
 
-| Platform | Files |
+| Platform | Files (not limited to) |
 |---|---|
-| Android, Linux | `.env.posix`, `[.]posix.env`, `.env.linux`, `[.]linux.env` |
-| BSD-like | `.env.posix`, `[.]posix.env`, `.env.bsd`, `[.]bsd.env` |
-| Cygwin, MSYS | `.env.posix`, `[.]posix.env` |
-| iOS, iPadOS, macOS | `.env.posix`, `[.]posix.env`, `.env.bsd`, `[.]bsd.env`, `.env.darwin`, `[.]darwin.env` |
-| Java | `.env.posix`, `[.]posix.env` (POSIX) or `.env.windows`, `[.]windows.env` (Windows) |
-| VMS | `.env.vms`, `[.]vms.env` |
-| Windows | `.env.windows`, `[.]windows.env` |
-| Any platform | `.env.<sys.platform>`, `[.]<sys.platform>.env` |
+| Any platform | `.env`, `-env`, `_env`, `env`, `env-`, `env_`, `.env-`, `.env_`, `-env.`, `-env_`, `_env.`, `_env-` |
+| Any POSIX platform | `.env.posix`, `[.]posix.env`, `abc.posix-def_env` (has `env` and `posix` parts) |
+| Android, Linux | POSIX + `.env.linux`, `[.]linux.env`, `abc.linux-def_env` (has `env` and `linux` parts) |
+| BSD-like | POSIX + `.env.bsd`, `[.]bsd.env`, `bsd_abc.def-env.ghi` (has `env` and `bsd` parts) |
+| iOS, iPadOS, macOS | BSD + `.env.darwin`, `[.]darwin.env`, and other variations like above |
+| VMS | `.env.vms`, `[.]vms.env`, and other variations like above |
+| Windows | `.env.windows`, `[.]windows.env`, and other variations like above |
+| Java | POSIX or Windows |
+| Any platform | `.env.<sys.platform>`, `[.]<sys.platform>.env`, and other variations like above |
+
+If a platform is not listed above explicitly, it still falls into the first
+and the last category like the listed ones (e.g. RiscOS or OS/2)
 
 None of these files is required. A file will only be picked if found **and**
 verified to be relevant to the platform you are running under. The platform
 includes not only OSes but also Java, Cygwin, MSYS and such artefact OSes as
 AIX, RiscOS, OpenVMS, OS/2, etc.
+
+In general, 
 
 **Extra filters** can also be passed — things like `"dev"` (runtime environment)
 or `"es"` (current language) — as well as a list of all expected runtime
@@ -699,8 +777,9 @@ EnvFile.get_files(
 ```
 # .env  (or  .env.any  or  any.env)
 APP_NAME = $1
-APP_VERSION = "${2}_$3"
-PROJECT_PATH = ~/Projects/$APP_NAME
+APP_VERSION = "${2}.$3.$4"
+APP_FULL_NAME = "$APP_NAME-$APP_VERSION"
+PROJECT_PATH = ~/Projects/$APP_FULL_NAME
 BROWSER_ARGS = "--opt1 arg1 --opt2 arg2"
 
 # .env.linux  (or  .linux.env  or  linux.env)
