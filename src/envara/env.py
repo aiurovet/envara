@@ -218,6 +218,8 @@ class Env:
         return info.result
 
     ###########################################################################
+    # This code was mainly generated using Copilot
+    ###########################################################################
 
     @staticmethod
     def expand_posix(
@@ -724,6 +726,8 @@ class Env:
 
         return "".join(res)
 
+    ###########################################################################
+    # This code was mainly generated using Copilot
     ###########################################################################
 
     @staticmethod

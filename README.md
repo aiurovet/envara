@@ -14,66 +14,66 @@ Does not depend on any special Python package.
 
 2. In some _.py_ file, try the following:
 
-   ```py
-    ###############################################################################
+```python
+###############################################################################
 
-    import os
-    from pathlib import Path
-    import sys
-    from envara.env import Env
-    from envara.env_file import EnvFile
+import os
+from pathlib import Path
+import sys
+from envara.env import Env
+from envara.env_file import EnvFile
 
-    ###############################################################################
+###############################################################################
 
-    def main():
-        """
-        Sample program showing the usage of the `envara` library
-        """
+def main():
+    """
+    Sample program showing the usage of the `envara` library
+    """
 
-        # Get application arguments
-        args = [Path(sys.argv[0]).stem]
-        args.extend(sys.argv[1:])
+    # Get application arguments
+    args = [Path(sys.argv[0]).stem]
+    args.extend(sys.argv[1:])
 
-        # Expand inline and print the result
-        input: str = r"Home ${HOME:-$USERPROFILE}, arg \#1: $1 # Line comment"
-        print(f"\n*** Expanded string ***\n\n{Env.expand(input, args)}")
+    # Expand inline and print the result
+    input: str = r"Home ${HOME:-$USERPROFILE}, arg \#1: $1 # Line comment"
+    print(f"\n*** Expanded string ***\n\n{Env.expand(input, args)}")
 
-        # Define directory that contains all env-like files
-        inp_dir: Path = Path("config")
+    # Define directory that contains all env-like files
+    inp_dir: Path = Path("config")
 
-        # List of all platforms
-        print(f"\n*** All platforms ***\n")
-        print(f'"{"\", \"".join(Env.get_all_platforms())}"')
+    # List of all platforms
+    print(f"\n*** All platforms ***\n")
+    print(f'"{"\", \"".join(Env.get_all_platforms())}"')
 
-        # List of current platforms
-        print(f"\n*** Current platforms ***\n")
-        print(f'"{"\", \"".join(Env.get_cur_platforms())}"')
+    # List of current platforms
+    print(f"\n*** Current platforms ***\n")
+    print(f'"{"\", \"".join(Env.get_cur_platforms())}"')
 
-        # List files related to the current platform stack
-        print(f"\n*** Env file stack ***\n")
-        print(f'"{"\", \"".join([x.name for x in EnvFile.get_files(inp_dir)])}"')
+    # List files related to the current platform stack
+    print(f"\n*** Env file stack ***\n")
+    print(f'"{"\", \"".join([x.name for x in EnvFile.get_files(inp_dir)])}"')
 
-        # Make a copy of the old environment variables
-        old_env = os.environ.copy()
+    # Make a copy of the old environment variables
+    old_env = os.environ.copy()
 
-        # Place some .env files into directory below
-        EnvFile.load(inp_dir, args=args)
+    # Place some .env files into directory below
+    EnvFile.load(inp_dir, args=args)
 
-        # Show new environment variables
-        print(f"\n*** New environment variables ***\n")
-        for key, val in os.environ.items():
-            if key not in old_env:
-                print(f"{key} => {val}")
+    # Show new environment variables
+    print(f"\n*** New environment variables ***\n")
+    for key, val in os.environ.items():
+        if key not in old_env:
+            print(f"{key} => {val}")
 
-        return 0
+    return 0
 
-    ###############################################################################
+###############################################################################
 
-    if __name__ == "__main__":
-        exit(main())
+if __name__ == "__main__":
+    exit(main())
 
-    ###############################################################################
-   ```
+###############################################################################
+```
 
 ## class `Env`
 
@@ -142,6 +142,8 @@ def expand(
 
 ### `Env.expand_posix()`
 
+This code was mainly generated using Copilot
+
 > `str`
 
 Expand environment variables and sub-processes according to complex POSIX rules:
@@ -167,11 +169,13 @@ def expand_posix(
 
 ### `Env.expand_simple()`
 
+This code was mainly generated using Copilot
+
 > `str`
 
 Expand environment variables and sub-processes according to simple rules and
-symmetric expand characters: like `%ABC%` in Windows. See the description of
-arguments under the main method `expand(...)`.
+symmetric expand characters: like `%ABC%` in Windows or `<ABC>` in RiscOS.
+See the description of arguments under the main method `expand(...)`.
 
 ```python
 @staticmethod
@@ -484,7 +488,7 @@ def __init__(
 ): ...
 ```
 
-**Parameters**
+**Parameters / Properties**
 
 | Name | Type | Description |
 |---|---|---|
@@ -630,7 +634,7 @@ def __init__(
 ): ...
 ```
 
-**Parameters**
+**Parameters / Properties**
 
 | Name | Type | Description |
 |---|---|---|
@@ -776,8 +780,8 @@ EnvFile.get_files(
 
 ```
 # .env  (or  .env.any  or  any.env)
-APP_NAME = $1
-APP_VERSION = "${2}.$3.$4"
+APP_NAME = $0
+APP_VERSION = "${1}.$2.$3"
 APP_FULL_NAME = "$APP_NAME-$APP_VERSION"
 PROJECT_PATH = ~/Projects/$APP_FULL_NAME
 BROWSER_ARGS = "--opt1 arg1 --opt2 arg2"
@@ -835,11 +839,11 @@ Windows-style percent-delimited expansions are provided by `Env.expand_posix()` 
     - Anchored empty patterns are treated as no-ops in prefix/suffix anchored forms.
 
 - Escaping
-  - A backslash before _$_ or backtick prevents expansion: _\$NAME_ → literal _$NAME_, __\_cmd\_ __ → literal __ _cmd_ __.
+  - A backslash before _$_ or _\`_ prevents expansion: _\\$NAME_ → literal _$NAME_, _\\\`cmd\\\`_ → literal \`cmd\`.
   - Pairs of backslashes reduce appropriately.
 
 - Command substitution
-  - _$(...)_ and __ _..._ __ are supported.
+  - _$(...)_ and _\`...\`_ are supported.
   - Inner content is first expanded using _expand_posix()_ before execution (so nested expansions and defaults work inside command substitutions).
   - The executed command's stdout (with trailing newline removed) is inserted into the result.
   - If the command exits with a non-zero status, _ValueError_ is raised (including _stderr_ text in the message).
@@ -849,10 +853,10 @@ Windows-style percent-delimited expansions are provided by `Env.expand_posix()` 
 
 The following parameters control execution of command substitutions and improve safety:
 
-- _expand_flags: EnvExpFlags_ (default _EnvExpFlags.DEFAULT_) - controls expansion.
-  1. _ALLOW_SHELL_ - when set (default), command substitutions are executed with _shell=True_ (less safe, but more flexible).
+- _expand_flags_: `EnvExpandFlags` (default _EnvExpFlags.DEFAULT_) - controls expansion.
+  1. `ALLOW_SHELL` - when set (default), command substitutions are executed with _shell=True_ (less safe, but more flexible).
 
-  2. _ALLOW_SUBPROC_ - when set, command substitutions are executed with _shell=False_ using _shlex.split()_ (safer, but requires simple commands and proper quoting).
+  2. `ALLOW_SUBPROC` - when set, command substitutions are executed with _shell=False_ using _shlex.split()_ (safer, but requires simple commands and proper quoting).
 
 - _subprocess_timeout_ - timeout in seconds applied to _subprocess.run()_; _TimeoutExpired_ becomes _ValueError_.
 
@@ -867,11 +871,11 @@ Command substitution runs local commands; ensure the expanded input is trusted o
   - Edge cases like empty patterns and replacements equal to original text
   - Command substitution variations and safety flags
 
-- If you add any feature dealing with command execution, add tests that cover both normal and disabled execution modes: _(exp\_flags & (EnvExpFlags.ALLOW\_SHELL | EnvExpFlags.ALLOW\_SUBPROC)) == 0)_ as well as timeouts.
+- If you add any feature dealing with command execution, add tests that cover both normal and disabled execution modes: `(exp_flags & (EnvExpFlags.ALLOW_SHELL | EnvExpFlags.ALLOW_SUBPROC)) == 0)` as well as timeouts.
 
 ## Symmetric (Windows-like) expansions implemented in _envara_
 
-Windows-style percent-delimited expansions are provided by `Env.expand_symmetric()` which is called by `Env.expand()`. This method supports _%NAME%_, _%1_, _%*_, _%%_, and simple _%~_ modifiers (e.g., _%~dp1_) for extracting path components on Windows-like inputs. Additionally, it supports a substring form for named variables using the syntax _%NAME:~start[,length]%_ - negative _start_ counts from the end. The older name _expand_windows_ was removed and replaced by _expand_symmetric_ to better reflect its general-purpose nature.
+Windows-style percent-delimited expansions are provided by `Env.expand_simple()` which is called by `Env.expand()`. This method supports `%NAME%`, `%1`, `%*`, `%%`, and simple `%~` modifiers (e.g., `%~dp1`) for extracting path components on Windows-like inputs. Additionally, it supports a substring form for named variables using the syntax `%NAME:~start[,length]%` - negative `start` counts from the end. It also supports RiscOS-like variables expansion `<NAME>` as well as OpenVMS-like `'NAME'`.
 
 ## Which expansion to choose?
 
