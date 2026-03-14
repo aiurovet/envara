@@ -3,7 +3,11 @@
 ###############################################################################
 # envara (C) Alexander Iurovetski 2026
 #
-# How to use the envara package
+# An example of how to use the envara package
+#
+# Run it with 3 arguments like:
+#
+# python[3] [dir/]example.py v1 23 4
 ###############################################################################
 
 import os
@@ -20,7 +24,9 @@ def main():
     Sample program showing the usage of the `envara` library
     """
 
-    # Get application arguments
+    # Get the application arguments and convert the executable file's path
+    # into a simple name: without directory and extension, then replace the
+    # 0th argument with that in the command-line arguments
     args = [Path(sys.argv[0]).stem]
     args.extend(sys.argv[1:])
 

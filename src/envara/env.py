@@ -91,7 +91,7 @@ class Env:
     def expand(
         input: str,
         args: list[str] | None = None,
-        flags: EnvExpandFlags | None = None,
+        flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
         strip_spaces: bool = True,
         escape_chars: str = None,
         expand_chars: str = None,
@@ -155,7 +155,7 @@ class Env:
         # If flags provided, map them to unquote parameters and post-processing
 
         if flags is None:
-            flags = 0
+            flags = EnvExpandFlags.DEFAULT
 
         # Map flags to cutter_chars/hard_quotes/unescape behaviours
 
@@ -1228,17 +1228,9 @@ class Env:
 
         result: str = "".join(chr_lst)
 
-        # Get the indicator of loeading or trailing blanks Turn off stripping leading and trailing blanks if not found
+        # Strip leading and/or trailing blanks if required, and return result
 
-        res_len = len(result) if strip_blanks else 0
-
-        has_blanks: bool = (
-            (res_len > 0)
-            and (result[0] in string.whitespace)
-            and (result[res_len - 1] in string.whitespace)
-        )
-
-        return result.strip() if (has_blanks) else result
+        return result.strip() if strip_blanks else result
 
     ###########################################################################
 
@@ -1419,8 +1411,11 @@ class Env:
             # Break out if the stopper character was encountered outside
             # the quotes, and it was not escaped
 
-            if (not is_quoted) and (not is_escaped):
-                if has_cutters and (cur_char in cutter_chars):
+            if has_cutters and (cur_char in cutter_chars):
+                if is_escaped:
+                    is_escaped = False
+                    continue
+                if (not is_quoted) and (not is_escaped):
                     if not is_cut:
                         is_cut = True
                         info.cutter_char = cur_char

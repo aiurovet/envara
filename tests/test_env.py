@@ -108,9 +108,9 @@ def test_expand_posix_respects_skip_env_vars(monkeypatch):
 
 
 def test_expand_fills_out_info(monkeypatch):
-    result = 'Empty = "$ABC\\n"'
+    result = 'Sample = "$ABC\n"'
     out_info = EnvParseInfo()
-    out = Env.expand(f"{result} # this is empty", out_info=out_info)
+    out = Env.expand(f'Sample = "$ABC\\n" # this is a sample', out_info=out_info)
     # when SKIP_ENV_VARS is set, env variables are not expanded
     assert out == result
     assert out_info.expand_char == "$"
@@ -129,8 +129,9 @@ def test_unescape_basic_and_codes():
     # basic escapes, unicode and hex, and a literal backslash
     inp = "\\n\\t\\u0041\\x41\\\\"
     out = Env.unescape(inp)
-    # two consecutive backslashes in input cancel out in the current implementation
     assert out == "\n\tAA"
+    out = Env.unescape(inp, strip_blanks=True)
+    assert out == "AA"
 
 
 def test_unescape_strip_blanks_and_hex():
@@ -169,7 +170,7 @@ def test_unescape_custom_escape_character_is_processed():
 
 def test_unescape_strip_blanks_requires_both_ends():
     # only leading blank -> should NOT be stripped (requires both ends)
-    assert Env.unescape(r"\x20a", strip_blanks=True) == " a"
+    assert Env.unescape(r"\x20a", strip_blanks=True) == "a"
     # without strip_blanks the result is identical
     assert Env.unescape(r"\x20a", strip_blanks=False) == " a"
 

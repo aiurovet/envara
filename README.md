@@ -12,9 +12,13 @@ Does not depend on any special Python package.
 
 1. Install _envara_ from _PyPI_
 
-2. In some _.py_ file, try the following:
+2. Create a _.py_ file with the following content, then run it with 3 arbitrary arguments:
 
 ```python
+###############################################################################
+# Run it with 3 arguments like:
+#
+# python[3] [dir/]example.py v1 23 4
 ###############################################################################
 
 import os
@@ -30,7 +34,9 @@ def main():
     Sample program showing the usage of the `envara` library
     """
 
-    # Get application arguments
+    # Get the application arguments and convert the executable file's path
+    # into a simple name: without directory and extension, then replace the
+    # 0th argument with that in the command-line arguments
     args = [Path(sys.argv[0]).stem]
     args.extend(sys.argv[1:])
 
@@ -111,7 +117,7 @@ more advanced).
 def expand(
     input: str,
     args: list[str] | None = None,
-    flags: EnvExpandFlags | None = None,
+    flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
     strip_spaces: bool = True,
     escape_chars: str = None,
     expand_chars: str = None,
@@ -134,7 +140,7 @@ def expand(
 | `windup_chars` | `str` | Character(s) treated as candidates for closing the environment variable placeholder (e.g. `>` for RiscOS) |
 | `cutter_chars` | `str` | Character(s) treated as candidates for the end of data in a string (i.e. beginning of a line comment) when found non-escaped and outside a quoted sub-string; whichever comes first will be considered |
 | `hard_quotes` | `str` | String containing all quote characters that require escaping to be ignored (e.g. a single quote) |
-| `out_info` | `EnvParseInfo` \| None | If you need the details of how the string was parsed, or to enforce those, set this argument to an instance of `EnvParseInfo` |
+| `out_info` | `EnvParseInfo \| None` | If you need the details of how the string was parsed, or to enforce those, set this argument to an instance of `EnvParseInfo` |
 
 **Returns** — Expanded string.
 

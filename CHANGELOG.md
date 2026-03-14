@@ -1,6 +1,6 @@
 ## 0.1.0
 
-Improved documentation
+Improved documentation, a bugfix for the default value for parameters of the type `EnvExpandFlags`, a bugfix for stripping blanks
 
 ## 0.0.9
 

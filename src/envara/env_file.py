@@ -32,14 +32,6 @@ from envara.env_platform_flags import EnvPlatformFlags
 
 class EnvFile:
 
-    DEFAULT_EXPAND_FLAGS: Final[EnvExpandFlags] = (
-        EnvExpandFlags.UNESCAPE
-        | EnvExpandFlags.REMOVE_LINE_COMMENT
-        | EnvExpandFlags.REMOVE_QUOTES
-        | EnvExpandFlags.SKIP_SINGLE_QUOTED
-    )
-    """Default set of string expansion flags"""
-
     RE_KEY_VALUE: Final[re.Pattern] = re.compile(r"\s*=\s*")
     """Regex to split a string into key and value"""
 
@@ -146,7 +138,7 @@ class EnvFile:
         indicator: str = EnvFilter.DEFAULT_INDICATOR,
         file_flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS_BEFORE,
         args: list[str] | None = None,
-        expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
+        expand_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
         *filters: list[EnvFilter] | EnvFilter,
     ):
         """
@@ -189,7 +181,7 @@ class EnvFile:
     def load_from_str(
         data: str | None,
         args: list[str] | None = None,
-        expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
+        expand_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
     ):
         """
         Add key-expanded-value pairs from a string buffer to os.environ

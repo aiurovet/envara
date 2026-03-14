@@ -104,7 +104,7 @@ def test_load_with_empty_args_and_empty_file_list(mocker):
     # Assert
     m_read_text.assert_called_once()
     m_load_from_str.assert_called_once_with(
-        "", args=None, expand_flags=EnvFile.DEFAULT_EXPAND_FLAGS
+        "", args=None, expand_flags=EnvExpandFlags.DEFAULT
     )
 
 
@@ -125,7 +125,7 @@ def test_load_with_nonempty_args_and_empty_file_list(mocker):
     # Assert
     m_read_text.assert_called_once()
     m_load_from_str.assert_called_once_with(
-        content, args=args, expand_flags=EnvFile.DEFAULT_EXPAND_FLAGS
+        content, args=args, expand_flags=EnvExpandFlags.DEFAULT
     )
 
 
@@ -144,7 +144,7 @@ def test_load_reads_files_and_passes_flags(mocker):
     # Assert
     m_read_text.assert_called_once()
     m_load_from_str.assert_called_once_with(
-        "K=V", args=None, expand_flags=EnvFile.DEFAULT_EXPAND_FLAGS
+        "K=V", args=None, expand_flags=EnvExpandFlags.DEFAULT
     )
 
 
@@ -159,7 +159,7 @@ def test_load_from_str_uses_env_expand(mocker):
 
     # Assert
     m_expand.assert_called_once_with(
-        "VALUE", args=None, flags=EnvFile.DEFAULT_EXPAND_FLAGS
+        "VALUE", args=None, flags=EnvExpandFlags.DEFAULT
     )
     assert m_environ["KEY"] == "EXPANDED"
 
@@ -170,7 +170,7 @@ def test_load_from_str_passes_args_and_flags(mocker):
     m_expand = mocker.patch("envara.env.Env.expand", return_value="X")
     data = "K=$1"
     args = ["a1"]
-    flags = EnvFile.DEFAULT_EXPAND_FLAGS
+    flags = EnvExpandFlags.DEFAULT
 
     # Act
     EnvFile.load_from_str(data, args=args, expand_flags=flags)
