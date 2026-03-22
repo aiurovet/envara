@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import pytest
 from envara.env import Env
 from envara.env_expand_flags import EnvExpandFlags
@@ -100,14 +101,7 @@ def test_expand_sets_cutter_chars_on_remove_line_comment_flag():
     assert out == "A"
 
 
-def test_expand_posix_respects_skip_env_vars(monkeypatch):
-    monkeypatch.setenv("SILENT", "yes")
-    out = Env.expand("$SILENT", flags=EnvExpandFlags.SKIP_ENV_VARS)
-    # when SKIP_ENV_VARS is set, env variables are not expanded
-    assert out == "$SILENT"
-
-
-def test_expand_fills_out_info(monkeypatch):
+def test_expand_fills_out_info():
     result = 'Sample = "$ABC\n"'
     out_info = EnvParseInfo()
     out = Env.expand(f'Sample = "$ABC\\n" # this is a sample', out_info=out_info)
@@ -118,6 +112,12 @@ def test_expand_fills_out_info(monkeypatch):
     assert out_info.cutter_char == "#"
     assert out_info.quote_type == EnvQuoteType.NONE
     assert out_info.result == result
+
+
+def test_expand_path(monkeypatch):
+    monkeypatch.setenv("VAR", "abcd")
+    out = Env.expand(Path("/$VAR/ef"))
+    assert out == Path("/abcd/ef")
 
 
 # ---------------------------------------------------------------------------
@@ -557,6 +557,19 @@ def test_expand_posix_command_subst_timeout():
         )
 
 
+def test_expand_posix_respects_skip_env_vars(monkeypatch):
+    monkeypatch.setenv("SILENT", "yes")
+    out = Env.expand("$SILENT", flags=EnvExpandFlags.SKIP_ENV_VARS)
+    # when SKIP_ENV_VARS is set, env variables are not expanded
+    assert out == "$SILENT"
+
+
+def test_expand_posix_path(monkeypatch):
+    monkeypatch.setenv("VAR", "abcd")
+    out = Env.expand_posix(Path("/$VAR/ef"))
+    assert out == Path("/abcd/ef")
+
+
 # ---------------------------------------------------------------------------
 # expand_posix tests with backtick as escape character
 # ---------------------------------------------------------------------------
@@ -781,6 +794,12 @@ def test_expand_with_windup_char(monkeypatch):
     assert Env.expand("<VAR>", expand_chars="<", windup_chars=">") == "val"
     # Test with multiple candidates: if we use '!' as expand and '!' as windup (VMS style)
     assert Env.expand("!VAR!", expand_chars="<!", windup_chars=">!") == "val"
+
+
+def test_expand_simple_path(monkeypatch):
+    monkeypatch.setenv("VAR", "abcd")
+    out = Env.expand_simple(Path("C:\\%VAR%\\ef"))
+    assert out == Path("C:\\abcd\\ef")
 
 
 # ---------------------------------------------------------------------------

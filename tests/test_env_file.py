@@ -158,9 +158,7 @@ def test_load_from_str_uses_env_expand(mocker):
     EnvFile.load_from_str(data)
 
     # Assert
-    m_expand.assert_called_once_with(
-        "VALUE", args=None, flags=EnvExpandFlags.DEFAULT
-    )
+    m_expand.assert_called_once_with("VALUE", args=None, flags=EnvExpandFlags.DEFAULT)
     assert m_environ["KEY"] == "EXPANDED"
 
 

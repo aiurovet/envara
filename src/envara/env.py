@@ -11,6 +11,7 @@
 ###############################################################################
 
 import os
+from pathlib import Path
 import re
 import string
 import sys
@@ -89,7 +90,7 @@ class Env:
 
     @staticmethod
     def expand(
-        input: str,
+        input: Path | str,
         args: list[str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
         strip_spaces: bool = True,
@@ -99,7 +100,7 @@ class Env:
         cutter_chars: str = None,
         hard_quotes: str = None,
         out_info: EnvParseInfo | None = None,
-    ) -> str:
+    ) -> Path | str:
         """
         Unquote the input if required via flags, remove trailing line comment
         if required via flags, expand the result with the arguments if
@@ -108,8 +109,8 @@ class Env:
         depending on what was found first: dollar or percent, then backslash
         or caret (obviously, the POSIX style is by far more advanced)
 
-        :param input: String to expand
-        :type input: str
+        :param input: Path or string to expand
+        :type input: Path  | str
 
         :param args: List of arguments to expand $#, $1, $2, ...
         :type args: str
@@ -148,8 +149,8 @@ class Env:
             to enforce those, set this argument to an instance of EnvParseInfo
         :type info: EnvParseInfo | None
 
-        :return: Expanded string
-        :rtype: str
+        :return: Expanded string or Path object
+        :rtype: Path | str
         """
 
         # If flags provided, map them to unquote parameters and post-processing
@@ -162,10 +163,11 @@ class Env:
         if (flags & EnvExpandFlags.REMOVE_LINE_COMMENT) and (cutter_chars is None):
             cutter_chars = EnvParseInfo.POSIX_CUTTER_CHAR
 
+        is_path: bool = isinstance(input, Path)
         info: EnvParseInfo
 
         _, info = Env.unquote(
-            input,
+            str(input) if is_path else input,
             strip_spaces=strip_spaces,
             escape_chars=escape_chars,
             expand_chars=expand_chars,
@@ -215,7 +217,8 @@ class Env:
         # Copy parse info if required and return the final result
 
         info.copy_to(out_info)
-        return info.result
+
+        return Path(info.result) if is_path else info.result
 
     ###########################################################################
     # This code was mainly generated using Copilot
@@ -223,14 +226,14 @@ class Env:
 
     @staticmethod
     def expand_posix(
-        input: str,
+        input: Path | str,
         args: list[str] | None = None,
         vars: dict[str, str] | None = os.environ,
         expand_char: str = EnvParseInfo.POSIX_EXPAND_CHAR,
         escape_char: str = EnvParseInfo.POSIX_ESCAPE_CHAR,
         expand_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
         subprocess_timeout: float | None = None,
-    ) -> str:
+    ) -> Path | str:
         """
         Expand environment variables and sub-processes according to complex
         POSIX rules: like ${ABC:-${DEF:-$(uname -a)}. See the description
@@ -238,6 +241,8 @@ class Env:
         """
         if input is None:
             return ""
+
+        is_path = isinstance(input, Path)
 
         if vars is None:
             vars = os.environ
@@ -248,7 +253,7 @@ class Env:
             (expand_flags & EnvExpandFlags.ALLOW_SUBPROC) != 0
         )
 
-        s = input
+        s = str(input) if is_path else input
         res: list[str] = []
         i = 0
         inp_len = len(s)
@@ -724,7 +729,9 @@ class Env:
             res.append(expand_char)
             i += 1
 
-        return "".join(res)
+        result = "".join(res)
+
+        return Path(result) if is_path else result
 
     ###########################################################################
     # This code was mainly generated using Copilot
@@ -747,6 +754,8 @@ class Env:
         if input is None:
             return ""
 
+        is_path = isinstance(input, Path)
+
         if vars is None:
             vars = os.environ
 
@@ -757,7 +766,7 @@ class Env:
 
         windup = windup_char or expand_char
 
-        s = input
+        s = str(input) if is_path else input
         i = 0
         ln = len(s)
         out: list[str] = []
@@ -971,7 +980,9 @@ class Env:
 
             i = k + 1
 
-        return "".join(out)
+        result = "".join(out)
+
+        return Path(result) if is_path else result
 
     ###########################################################################
 

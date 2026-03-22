@@ -1,3 +1,7 @@
+## 0.2.0
+
+`Env.expand()`, `Env.expand_posix()` and `Env.expand_simple()` will return `Path` if `input` is `Path` rather than `str`
+
 ## 0.1.0
 
 Improved documentation, a bugfix for the default value for parameters of the type `EnvExpandFlags`, a bugfix for stripping blanks

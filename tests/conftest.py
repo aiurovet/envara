@@ -1,8 +1,7 @@
+from pathlib import Path
 import sys
-import os
 
-# Add directories to sys.path so that "import <module>" works in src/config.py
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src/envara"))
-)
+project_dir = Path(__file__).parent.parent
+
+sys.path.insert(0, str(project_dir / "src"))
+sys.path.insert(0, str(project_dir / "src" / "envara"))

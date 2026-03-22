@@ -103,7 +103,7 @@ Class for string expansions.
 
 ### `Env.expand()`
 
-> `str`
+> `Path | str`
 
 Unquote the input if required via flags, remove trailing line comment if
 required via flags, expand the result with the arguments if required via flags,
@@ -115,7 +115,7 @@ more advanced).
 ```python
 @staticmethod
 def expand(
-    input: str,
+    input: Path | str,
     args: list[str] | None = None,
     flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
     strip_spaces: bool = True,
@@ -124,7 +124,7 @@ def expand(
     cutter_chars: str = None,
     hard_quotes: str = None,
     info: EnvParseInfo | None = None,
-) -> str: ...
+) -> Path | str: ...
 ```
 
 **Parameters**
@@ -142,7 +142,7 @@ def expand(
 | `hard_quotes` | `str` | String containing all quote characters that require escaping to be ignored (e.g. a single quote) |
 | `out_info` | `EnvParseInfo \| None` | If you need the details of how the string was parsed, or to enforce those, set this argument to an instance of `EnvParseInfo` |
 
-**Returns** — Expanded string.
+**Returns** — Expanded string or Path object.
 
 ---
 
@@ -159,17 +159,17 @@ main method `expand(...)`.
 ```python
 @staticmethod
 def expand_posix(
-    input: str,
+    input: Path | str,
     args: list[str] | None = None,
     vars: dict[str, str] | None = os.environ,
     expand_char: str = EnvParseInfo.POSIX_EXPAND_CHAR,
     escape_char: str = EnvParseInfo.POSIX_ESCAPE_CHAR,
     expand_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
     subprocess_timeout: float | None = None,
-) -> str: ...
+) -> Path | str: ...
 ```
 
-**Returns** — Expanded string.
+**Returns** — Expanded string or Path object.
 
 ---
 
@@ -186,7 +186,7 @@ See the description of arguments under the main method `expand(...)`.
 ```python
 @staticmethod
 def expand_simple(
-    input: str,
+    input: Path | str,
     args: list[str] | None = None,
     vars: dict[str, str] | None = None,
     expand_char: str = EnvParseInfo.WINDOWS_EXPAND_CHAR,
@@ -195,7 +195,7 @@ def expand_simple(
 ) -> str: ...
 ```
 
-**Returns** — Expanded string.
+**Returns** — Expanded string or Path object.
 
 ---
 
