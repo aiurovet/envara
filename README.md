@@ -131,7 +131,7 @@ def expand(
 
 | Name | Type | Description |
 |---|---|---|
-| `input` | `str` | String to expand |
+| `input` | `str` | Path or string to expand |
 | `args` | `list[str] \| None` | List of arguments to expand `$#`, `$1`, `$2`, … |
 | `flags` | `EnvExpandFlags \| None` | Flags controlling what/how to expand input |
 | `strip_spaces` | `bool` | `True` if can remove spaces from the start and end of `input` |
@@ -142,7 +142,7 @@ def expand(
 | `hard_quotes` | `str` | String containing all quote characters that require escaping to be ignored (e.g. a single quote) |
 | `out_info` | `EnvParseInfo \| None` | If you need the details of how the string was parsed, or to enforce those, set this argument to an instance of `EnvParseInfo` |
 
-**Returns** — Expanded string or Path object.
+**Returns** — Expanded Path object or string.
 
 ---
 
@@ -169,7 +169,7 @@ def expand_posix(
 ) -> Path | str: ...
 ```
 
-**Returns** — Expanded string or Path object.
+**Returns** — Expanded Path object or string.
 
 ---
 
@@ -195,7 +195,7 @@ def expand_simple(
 ) -> str: ...
 ```
 
-**Returns** — Expanded string or Path object.
+**Returns** — Expanded Path pbject or string.
 
 ---
 
