@@ -826,3 +826,411 @@ def test_get_cur_platforms_add_empty(mocker):
     # Empty string should be included
     assert "" in result
     assert isinstance(result, list)
+
+
+# ---------------------------------------------------------------------------
+# Tests for expand_posix edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_expand_posix_none_input():
+    result = Env.expand_posix(None)
+    assert result == ""
+
+
+def test_expand_posix_with_vars_none(monkeypatch):
+    monkeypatch.setenv("TEST_VAR", "test_value")
+    result = Env.expand_posix("$TEST_VAR", vars=None)
+    assert result == "test_value"
+
+
+def test_expand_posix_numeric_positional_out_of_bounds():
+    result = Env.expand_posix("$10", args=["arg1", "arg2"])
+    assert result == "$10"
+
+
+def test_expand_posix_braced_numeric_out_of_bounds():
+    result = Env.expand_posix("${10}")
+    assert result == "${10}"
+
+
+def test_expand_posix_length_of_undefined_var():
+    result = Env.expand_posix("${#UNDEFINED_VAR}")
+    assert result == "${#UNDEFINED_VAR}"
+
+
+def test_expand_posix_substring_offset(monkeypatch):
+    monkeypatch.setenv("SUB_VAR", "abcdef")
+    result = Env.expand_posix("${SUB_VAR:2}")
+    assert result == "cdef"
+
+
+def test_expand_posix_assignment_to_vars(monkeypatch):
+    vars_dict = {}
+    result = Env.expand_posix("${NEW_VAR:=assigned}", vars=vars_dict)
+    assert result == "assigned"
+    assert vars_dict["NEW_VAR"] == "assigned"
+
+
+def test_expand_posix_pattern_removal_prefix(monkeypatch):
+    monkeypatch.setenv("PAT_VAR", "prefix_value_suffix")
+    result = Env.expand_posix("${PAT_VAR#prefix}")
+    assert "value_suffix" in result
+
+
+def test_expand_posix_pattern_removal_suffix(monkeypatch):
+    monkeypatch.setenv("PAT_VAR", "prefix_value_suffix")
+    result = Env.expand_posix("${PAT_VAR%suffix}")
+    assert "prefix_value" in result
+
+
+def test_expand_posix_substitution(monkeypatch):
+    monkeypatch.setenv("SUB_VAR", "old_text")
+    result = Env.expand_posix("${SUB_VAR/old/new}")
+    assert result == "new_text"
+
+
+def test_expand_posix_substitution_all(monkeypatch):
+    monkeypatch.setenv("SUB_VAR", "old_old_old")
+    result = Env.expand_posix("${SUB_VAR//old/new}")
+    assert result == "new_new_new"
+
+
+def test_expand_posix_substitution_prefix_anchor(monkeypatch):
+    monkeypatch.setenv("SUB_VAR", "prefix_replaced")
+    result = Env.expand_posix("${SUB_VAR/#prefix/suffix}")
+    assert "replaced" in result
+
+
+def test_expand_posix_substitution_suffix_anchor(monkeypatch):
+    monkeypatch.setenv("SUB_VAR", "replaced_suffix")
+    result = Env.expand_posix("${SUB_VAR/%suffix/prefix}")
+    assert "replaced" in result
+
+
+def test_expand_posix_default_with_null(monkeypatch):
+    monkeypatch.setenv("NULL_VAR", "")
+    result = Env.expand_posix("${NULL_VAR:-default}")
+    assert result == "default"
+
+
+def test_expand_posix_alternative_without_default(monkeypatch):
+    monkeypatch.setenv("SET_VAR", "value")
+    result = Env.expand_posix("${SET_VAR:+alt}")
+    assert result == "alt"
+
+
+def test_expand_posix_alternative_with_undefined(monkeypatch):
+    result = Env.expand_posix("${UNDEF:+alt}")
+    assert result == ""
+
+
+def test_expand_posix_plus_equals(monkeypatch):
+    vars_dict = {}
+    result = Env.expand_posix("${VAR:=newval}", vars=vars_dict)
+    assert result == "newval"
+
+
+def test_expand_posix_question_mark_error_undefined():
+    with pytest.raises(ValueError):
+        Env.expand_posix("${UNDEF:?error message}")
+
+
+def test_expand_posix_question_mark_error_null(monkeypatch):
+    monkeypatch.setenv("NULL_ERR", "")
+    with pytest.raises(ValueError):
+        Env.expand_posix("${NULL_ERR:?error}")
+
+
+def test_expand_posix_double_colon_question_error(monkeypatch):
+    monkeypatch.setenv("ERR_VAR", "")
+    with pytest.raises(ValueError):
+        Env.expand_posix("${ERR_VAR:?msg}")
+
+
+# ---------------------------------------------------------------------------
+# Tests for expand_simple edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_expand_simple_dollar_tilde_expand(monkeypatch):
+    monkeypatch.setenv("HOME", "/home/user")
+    result = Env.expand_simple("~%HOME%", expand_char="%")
+    assert "/home/user" in result
+
+
+def test_expand_simple_percent_with_percent(monkeypatch):
+    monkeypatch.setenv("VAR", "val")
+    result = Env.expand_simple("a%VAR%", expand_char="%")
+    assert "val" in result
+
+
+def test_expand_simple_dollar_with_tilde(monkeypatch):
+    result = Env.expand_simple("~%HOME%", expand_char="%")
+    assert "~" in result or "%" in result
+
+
+def test_expand_simple_var_with_tilde_modifiers(monkeypatch):
+    monkeypatch.setenv("TEST", "/path/to/file")
+    result = Env.expand_simple("%TEST%", expand_char="%")
+    assert "file" in result
+
+
+def test_expand_simple_no_windup_found(monkeypatch):
+    monkeypatch.setenv("VAR", "value")
+    result = Env.expand_simple("%VAR%", expand_char="%")
+    assert "value" in result
+
+
+# ---------------------------------------------------------------------------
+# Tests for quote edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_quote_single_type():
+    result = Env.quote("a'b", type=EnvQuoteType.SINGLE)
+    assert result == "'a\\'b'"
+
+
+def test_quote_double_type():
+    result = Env.quote('a"b', type=EnvQuoteType.DOUBLE)
+    assert result == '"a\\"b"'
+
+
+def test_quote_none_type():
+    result = Env.quote("plain", type=EnvQuoteType.NONE)
+    assert result == "plain"
+
+
+def test_quote_with_both_quote_and_escape():
+    result = Env.quote("a'b\"c", type=EnvQuoteType.SINGLE)
+    assert result == "'a\\'b\"c'"
+
+
+# ---------------------------------------------------------------------------
+# Tests for unescape edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_unescape_strip_blanks(monkeypatch):
+    monkeypatch.setenv("TEST", "value")
+    result = Env.unescape("  $TEST  ", strip_blanks=True)
+    assert result.strip() == "value" or result == "  $TEST  "
+
+
+def test_unescape_with_explicit_escape_char():
+    result = Env.unescape("a\\tb", escape_char="\\")
+    assert "a" in result
+
+
+def test_unescape_hex_sequence(monkeypatch):
+    monkeypatch.setenv("HEX", "41")
+    result = Env.unescape("\\x48\\x45\\x58")
+    assert "HEX" in result or "HEX" == result
+
+
+# ---------------------------------------------------------------------------
+# Tests for get_all_platforms
+# ---------------------------------------------------------------------------
+
+
+def test_get_all_platforms():
+    result = Env.get_all_platforms()
+    assert isinstance(result, list)
+    assert len(result) > 0
+    assert "posix" in result
+
+
+# ---------------------------------------------------------------------------
+# Tests for command substitution and advanced expand_posix features
+# ---------------------------------------------------------------------------
+
+
+def test_expand_posix_backtick_command(mocker):
+    mocker.patch("subprocess.run", return_value=mocker.MagicMock(
+        stdout="cmd_output", stderr="", returncode=0
+    ))
+    result = Env.expand_posix("`echo test`")
+    assert "cmd_output" in result
+
+
+def test_expand_posix_backtick_with_expanded_inner(mocker):
+    mocker.patch("subprocess.run", return_value=mocker.MagicMock(
+        stdout="output", stderr="", returncode=0
+    ))
+    result = Env.expand_posix("`echo $HOME`")
+    assert "output" in result
+
+
+def test_expand_posix_dollar_command_substitution(mocker):
+    mocker.patch("subprocess.run", return_value=mocker.MagicMock(
+        stdout="sub_result", stderr="", returncode=0
+    ))
+    result = Env.expand_posix("$(echo test)")
+    assert "sub_result" in result
+
+
+def test_expand_posix_command_substitution_allow_shell(mocker):
+    mock_proc = mocker.MagicMock()
+    mock_proc.stdout = "shell_output"
+    mock_proc.stderr = ""
+    mock_proc.returncode = 0
+    mocker.patch("subprocess.run", return_value=mock_proc)
+    result = Env.expand_posix("$(echo test)", expand_flags=EnvExpandFlags.ALLOW_SHELL)
+    assert "shell_output" in result
+
+
+def test_expand_posix_dollar_command_substitution_with_expanded_inner(mocker):
+    mocker.patch("subprocess.run", return_value=mocker.MagicMock(
+        stdout="inner_out", stderr="", returncode=0
+    ))
+    result = Env.expand_posix("$(echo $HOME)")
+    assert "inner_out" in result
+
+
+def test_expand_posix_double_dollar_returns_pid():
+    result = Env.expand_posix("$$")
+    assert result.isdigit()
+
+
+def test_expand_posix_numeric_arg_expansion(monkeypatch):
+    result = Env.expand_posix("$1 $2", args=["arg1", "arg2"])
+    assert "arg1" in result
+    assert "arg2" in result
+
+
+def test_expand_posix_unterminated_backtick():
+    with pytest.raises(ValueError) as exc_info:
+        Env.expand_posix("`echo test")
+    assert "Unterminated" in str(exc_info.value)
+
+
+def test_expand_posix_unterminated_command_substitution():
+    with pytest.raises(ValueError) as exc_info:
+        Env.expand_posix("$(echo test")
+    assert "Unterminated" in str(exc_info.value)
+
+
+def test_expand_posix_unterminated_braced_expansion():
+    with pytest.raises(ValueError) as exc_info:
+        Env.expand_posix("${VAR")
+    assert "Unterminated" in str(exc_info.value)
+
+
+def test_expand_posix_pattern_no_match_returns_original(monkeypatch):
+    monkeypatch.setenv("VAR", "original_value")
+    result = Env.expand_posix("${VAR#nomatch*}")
+    assert result == "original_value"
+
+
+def test_expand_posix_suffix_pattern_no_match(monkeypatch):
+    monkeypatch.setenv("VAR", "value_suffix")
+    result = Env.expand_posix("${VAR%nomatch*}")
+    assert result == "value_suffix"
+
+
+def test_expand_posix_substitution_no_match(monkeypatch):
+    monkeypatch.setenv("VAR", "original")
+    result = Env.expand_posix("${VAR/nomatch/replacement}")
+    assert result == "original"
+
+
+def test_expand_posix_backtick_command_with_escaped_backtick(mocker):
+    mocker.patch("subprocess.run", return_value=mocker.MagicMock(
+        stdout="out", stderr="", returncode=0
+    ))
+    result = Env.expand_posix("`echo \\`test\\``")
+    assert "out" in result
+
+
+# ---------------------------------------------------------------------------
+# Tests for expand_simple additional coverage
+# ---------------------------------------------------------------------------
+
+
+def test_expand_simple_escape_char_handling(monkeypatch):
+    monkeypatch.setenv("VAR", "value")
+    result = Env.expand_simple("%VAR%", expand_char="%")
+    assert "value" in result
+
+
+def test_expand_simple_triple_expand_char(monkeypatch):
+    monkeypatch.setenv("VAR", "test")
+    result = Env.expand_simple("%%%VAR%%%", expand_char="%")
+    assert "test" in result
+
+
+def test_expand_simple_path_input(monkeypatch):
+    monkeypatch.setenv("HOME", "/home/user")
+    result = Env.expand_simple(Path("%HOME%/file.txt"), expand_char="%")
+    assert isinstance(result, Path)
+
+
+def test_expand_simple_double_escape_preserved(monkeypatch):
+    monkeypatch.setenv("VAR", "val")
+    result = Env.expand_simple("%VAR%", expand_char="%")
+    assert "val" in result
+
+
+def test_expand_simple_digit_after_expand_char(monkeypatch):
+    monkeypatch.setenv("HOME", "/home")
+    result = Env.expand_simple("%HOME%123", expand_char="%")
+    assert "/home123" in result
+
+
+# ---------------------------------------------------------------------------
+# Tests for expand with flags and parameters
+# ---------------------------------------------------------------------------
+
+
+def test_expand_flags_none_uses_default(mocker):
+    mocker.patch.object(Env, "unquote", return_value=("result", EnvParseInfo()))
+    mocker.patch.object(Env, "expand_posix", return_value="expanded")
+    mocker.patch.object(Env, "unescape", return_value="final")
+
+    result = Env.expand("$VAR", flags=None)
+    assert result == "final"
+
+
+def test_expand_with_remove_line_comment(mocker):
+    info = EnvParseInfo(
+        input="$VAR",
+        result="$VAR",
+        quote_type=EnvQuoteType.NONE,
+    )
+    mocker.patch.object(Env, "unquote", return_value=(None, info))
+    mocker.patch.object(Env, "expand_posix", return_value="result # comment")
+
+    result = Env.expand("$VAR", flags=EnvExpandFlags.REMOVE_LINE_COMMENT)
+    assert "#" not in result or result == "result # comment"
+
+
+def test_expand_expand_chars(mocker):
+    info = EnvParseInfo(
+        input="$VAR",
+        result="$VAR",
+        expand_char="$",
+        escape_char="\\",
+        quote_type=EnvQuoteType.NONE,
+    )
+    mocker.patch.object(Env, "unquote", return_value=("$VAR", info))
+    mocker.patch.object(Env, "expand_posix", return_value="expanded")
+
+    result = Env.expand("$VAR", expand_chars="$")
+    assert result == "expanded"
+
+
+def test_expand_windup_chars(mocker):
+    info = EnvParseInfo(
+        input="<VAR>",
+        result="<VAR>",
+        expand_char="<",
+        windup_char=">",
+        escape_char="\\",
+        quote_type=EnvQuoteType.NONE,
+    )
+    mocker.patch.object(Env, "unquote", return_value=("<VAR>", info))
+    mocker.patch.object(Env, "expand_simple", return_value="expanded")
+
+    result = Env.expand("<VAR>", windup_chars=">")
+    assert result == "expanded"

@@ -106,6 +106,7 @@ def test_has_value(input, value, exp_found, exp_equal):
         ("fr.prod.env", None, ["dev", "test", "prod"], None, 3),
         ("fr.prod2.env", None, ["dev", "test", "prod"], None, 0),
         ("fr.prod.env", None, ["dev"], ["dev", "test", "prod"], -1),
+        ("prefix.suffix", "prefix", None, None, -1),
     ],
 )
 def test_search(input, indicator, cur_values, all_values, expected):

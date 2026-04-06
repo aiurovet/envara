@@ -617,7 +617,7 @@ original string and the result of its unquoting.
 | `VMS_CUTTER_CHAR` | `str` | `"!"` | VMS line comment character |
 | `VMS_EXPAND_CHAR` | `str` | `"'"` | VMS variable expansion character |
 | `VMS_ESCAPE_CHAR` | `str` | `"^"` | VMS escape character |
-| `WINDOWS_CUTTER_CHAR` | `str` | `";"` | Windows/DOS line comment character |
+| `WINDOWS_CUTTER_CHAR` | `str` | `""` | Windows/DOS line comment character (absent) |
 | `WINDOWS_EXPAND_CHAR` | `str` | `"%"` | Windows/DOS variable expansion character |
 | `WINDOWS_ESCAPE_CHAR` | `str` | `"^"` | Windows/DOS escape character |
 
@@ -671,6 +671,66 @@ def copy_to(
 |---|---|---|
 | `self` | | The object (source) |
 | `to` | | Destination object |
+
+---
+
+### `EnvParseInfo.get_default_cutter_char()`
+
+> `str`
+
+Get the platform-specific default cutter character.
+
+```python
+@staticmethod
+def get_default_cutter_char() -> str: ...
+```
+
+**Returns** — Default cutter character: `#` on POSIX, `` on Windows, `!` on VMS, `|` on RiscOS.
+
+---
+
+### `EnvParseInfo.get_default_escape_char()`
+
+> `str`
+
+Get the platform-specific default escape character.
+
+```python
+@staticmethod
+def get_default_escape_char() -> str: ...
+```
+
+**Returns** — Default escape character: `\` on POSIX/RiscOS, `^` on Windows/VMS.
+
+---
+
+### `EnvParseInfo.get_default_expand_char()`
+
+> `str`
+
+Get the platform-specific default expand character.
+
+```python
+@staticmethod
+def get_default_expand_char() -> str: ...
+```
+
+**Returns** — Default expand character: `$` on POSIX, `%` on Windows, `'` on VMS, `<` on RiscOS.
+
+---
+
+### `EnvParseInfo.get_default_windup_char()`
+
+> `str`
+
+Get the platform-specific default windup character that is used to close the environment variable expansion.
+
+```python
+@staticmethod
+def get_default_windup_char() -> str: ...
+```
+
+**Returns** — Default windup character: `>` on RiscOS, otherwise the default expand character.
 
 ---
 

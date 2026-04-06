@@ -1,3 +1,7 @@
+## 0.3.0
+
+Added static methods `get_default_*_char()` to `EnvParseInfo` and initialized omitted arguments in `Env.quote()` and `Env.unescape()` using those
+
 ## 0.2.0
 
 `Env.expand()`, `Env.expand_posix()` and `Env.expand_simple()` will return `Path` if `input` is `Path` rather than `str`

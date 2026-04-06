@@ -176,6 +176,9 @@ class EnvFilter:
 
         # Find the first matching value
 
+        if not self.cur_values:
+            return -1
+
         for x in self.cur_values:
             cur_index = cur_index + 1
             if EnvFilter.has_value(input, x)[0]:

@@ -201,6 +201,9 @@ class EnvFile:
 
         environ = os.environ
 
+        if data is None:
+            return
+
         for line in data.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
             # Break into key and value and skip if can't
 
