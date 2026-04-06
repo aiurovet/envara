@@ -5,8 +5,8 @@
 ###############################################################################
 
 from typing import ClassVar
+import envara
 from envara.env_quote_type import EnvQuoteType
-
 
 ###############################################################################
 
@@ -90,10 +90,7 @@ class EnvParseInfo:
         self.windup_char: str = windup_char
 
         if not self.windup_char:
-            if self.expand_char == EnvParseInfo.RISCOS_EXPAND_CHAR:
-                self.windup_char = EnvParseInfo.RISCOS_WINDUP_CHAR
-            else:
-                self.windup_char = self.expand_char
+            self.windup_char = EnvParseInfo.get_default_windup_char()
 
     ###########################################################################
 
@@ -122,6 +119,56 @@ class EnvParseInfo:
         to.result = self.result
 
         return to
+
+    ###########################################################################
+
+    @staticmethod
+    def get_default_cutter_char() -> str:
+        if envara.Env.IS_POSIX:
+            return EnvParseInfo.POSIX_CUTTER_CHAR
+        if envara.Env.IS_WINDOWS:
+            return EnvParseInfo.WINDOWS_CUTTER_CHAR
+        if envara.Env.IS_VMS:
+            return EnvParseInfo.VMS_CUTTER_CHAR
+        if envara.Env.IS_RISCOS:
+            return EnvParseInfo.RISCOS_CUTTER_CHAR
+        return EnvParseInfo.POSIX_CUTTER_CHAR
+
+    ###########################################################################
+
+    @staticmethod
+    def get_default_escape_char() -> str:
+        if envara.Env.IS_POSIX:
+            return EnvParseInfo.POSIX_ESCAPE_CHAR
+        if envara.Env.IS_WINDOWS:
+            return EnvParseInfo.WINDOWS_ESCAPE_CHAR
+        if envara.Env.IS_VMS:
+            return EnvParseInfo.VMS_ESCAPE_CHAR
+        if envara.Env.IS_RISCOS:
+            return EnvParseInfo.RISCOS_ESCAPE_CHAR
+        return EnvParseInfo.POSIX_ESCAPE_CHAR
+
+    ###########################################################################
+
+    @staticmethod
+    def get_default_expand_char() -> str:
+        if envara.Env.IS_POSIX:
+            return EnvParseInfo.POSIX_EXPAND_CHAR
+        if envara.Env.IS_WINDOWS:
+            return EnvParseInfo.WINDOWS_EXPAND_CHAR
+        if envara.Env.IS_VMS:
+            return EnvParseInfo.VMS_EXPAND_CHAR
+        if envara.Env.IS_RISCOS:
+            return EnvParseInfo.RISCOS_EXPAND_CHAR
+        return EnvParseInfo.POSIX_EXPAND_CHAR
+
+    ###########################################################################
+
+    @staticmethod
+    def get_default_windup_char() -> str:
+        if envara.Env.IS_RISCOS:
+            return EnvParseInfo.RISCOS_WINDUP_CHAR
+        return EnvParseInfo.get_default_expand_char()
 
 
 ###############################################################################

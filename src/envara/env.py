@@ -1114,7 +1114,7 @@ class Env:
         result = "" if (input is None) else input
 
         if not escape_char:
-            escape_char = EnvParseInfo.POSIX_ESCAPE_CHAR
+            escape_char = EnvParseInfo.get_default_escape_char()
 
         # Define the quote being used
 
@@ -1174,7 +1174,7 @@ class Env:
         # if input does not contain the default escape char, then finish
 
         if not escape_char:
-            escape_char = EnvParseInfo.POSIX_ESCAPE_CHAR
+            escape_char = EnvParseInfo.get_default_escape_char()
             if escape_char not in input:
                 return input
 
@@ -1321,7 +1321,9 @@ class Env:
                 EnvParseInfo.POSIX_EXPAND_CHAR + EnvParseInfo.WINDOWS_EXPAND_CHAR
             )
         if windup_chars is None:
-            if EnvParseInfo.RISCOS_EXPAND_CHAR in expand_chars:
+            if Env.IS_RISCOS or (
+                EnvParseInfo.RISCOS_EXPAND_CHAR in expand_chars
+            ):
                 windup_chars = EnvParseInfo.RISCOS_WINDUP_CHAR
             else:
                 windup_chars = expand_chars

@@ -611,8 +611,8 @@ original string and the result of its unquoting.
 | `POSIX_EXPAND_CHAR` | `str` | `"$"` | POSIX variable expansion character |
 | `POSIX_ESCAPE_CHAR` | `str` | `"\\"` | POSIX escape character |
 | `RISCOS_CUTTER_CHAR` | `str` | `"\|"` | VMS line comment character |
-| `RISCOS_EXPAND_CHAR` | `str` | `"<"` | VMS variable expansion character |
-| `RISCOS_WINDUP_CHAR` | `str` | `">"` | VMS variable expansion character |
+| `RISCOS_EXPAND_CHAR` | `str` | `"<"` | RiscOS variable expansion character |
+| `RISCOS_WINDUP_CHAR` | `str` | `">"` | RiscOS variable windup character |
 | `RISCOS_ESCAPE_CHAR` | `str` | `"\\"` | VMS escape character |
 | `VMS_CUTTER_CHAR` | `str` | `"!"` | VMS line comment character |
 | `VMS_EXPAND_CHAR` | `str` | `"'"` | VMS variable expansion character |
