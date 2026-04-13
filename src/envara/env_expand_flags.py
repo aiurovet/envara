@@ -28,14 +28,18 @@ class EnvExpandFlags(IntFlag):
     SKIP_ENV_VARS = 1 << 4
     """Do not expand environment variables"""
 
-    SKIP_SINGLE_QUOTED = 1 << 5
-    """If a string is embraced in apostrophes, don't expand it"""
+    SKIP_LITERAL = 1 << 5
+    """If a string is embraced in hard quotes, don't expand it"""
 
-    UNESCAPE = 1 << 6
+    STRIP_SPACES = 1 << 6
+    """If a string has whitespace(s) around, remove those"""
+
+    UNESCAPE = 1 << 7
     """Expand escaped characters, this includes characters represented by
     their hexadecimal or unicode sequence (depends on NATIVE_ESCAPE flag)"""
 
-    DEFAULT = ALLOW_SHELL | REMOVE_QUOTES | SKIP_SINGLE_QUOTED | UNESCAPE
+    DEFAULT = ALLOW_SHELL | REMOVE_QUOTES | SKIP_LITERAL |\
+              STRIP_SPACES | UNESCAPE
     """Default set of flags"""
 
 

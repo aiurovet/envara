@@ -262,7 +262,7 @@ method if needed.
 @staticmethod
 def quote(
     input: str,
-    type: EnvQuoteType = EnvQuoteType.DOUBLE,
+    type: EnvQuoteType = EnvQuoteType.NORMAL,
     escape_char: str = None,
 ) -> str: ...
 ```
@@ -785,8 +785,9 @@ def get_default_windup_char() -> str: ...
 | Member | Value | Description |
 |---|---|---|
 | `NONE` | `0` | String with no leading quote |
-| `SINGLE` | `1` | Single-quoted string |
-| `DOUBLE` | `2` | Double-quoted string |
+| `HARD` | `1` | Hard-quoted string (in POSIX, single-quoted) |
+| `NORMAL` | `2` | Normally quoted string (mainly, double-quoted) |
+| `DEFAULT` | `NORMAL` | Default value |
 
 ---
 

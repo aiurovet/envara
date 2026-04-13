@@ -1,3 +1,7 @@
+## 0.4.0
+
+Added static method `split_command()` to `Env` that allows to split command into array of an executable and its arguments (OS-agnostic)
+
 ## 0.3.0
 
 Added static methods `get_default_*_char()` to `EnvParseInfo` and initialized omitted arguments in `Env.quote()` and `Env.unescape()` using those

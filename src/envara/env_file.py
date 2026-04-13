@@ -16,8 +16,9 @@ import os
 from pathlib import Path
 import pathlib
 import re
-from typing import Final
+from typing import ClassVar, Final
 
+from env_chars import EnvChars
 from envara.env_file_flags import EnvFileFlags
 from envara.env_filter import EnvFilter
 from envara.env import Env
@@ -31,6 +32,9 @@ from envara.env_platform_flags import EnvPlatformFlags
 
 
 class EnvFile:
+
+    DEFAULT_EXPAND_FLAGS: ClassVar[EnvExpandFlags] = (EnvExpandFlags.DEFAULT | EnvExpandFlags.REMOVE_LINE_COMMENT)
+    """Default flags to expand environment variables at every line in the file"""
 
     RE_KEY_VALUE: Final[re.Pattern] = re.compile(r"\s*=\s*")
     """Regex to split a string into key and value"""
@@ -138,7 +142,7 @@ class EnvFile:
         indicator: str = EnvFilter.DEFAULT_INDICATOR,
         file_flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS_BEFORE,
         args: list[str] | None = None,
-        expand_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
+        expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
         *filters: list[EnvFilter] | EnvFilter,
     ):
         """
@@ -181,7 +185,7 @@ class EnvFile:
     def load_from_str(
         data: str | None,
         args: list[str] | None = None,
-        expand_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
+        expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
     ):
         """
         Add key-expanded-value pairs from a string buffer to os.environ
@@ -196,6 +200,10 @@ class EnvFile:
         :param expand_flags: Describes how to expand env vars and app args
         :type expand_flags: EnvExpandFlags
         """
+
+        # Decide on expansion mode
+
+        info = EnvChars.select(is_posix=line.startswith("#!"))
 
         # Split data into lines and loop through every line
 
@@ -217,7 +225,9 @@ class EnvFile:
             # Expand the value and add to the dict of enviroment variables
 
             if val:
-                environ[key] = Env.expand(val, args=args, flags=expand_flags)
+                environ[key] = Env.expand(
+                    val, args=args, flags=expand_flags, info=info
+                )
             elif key and key in environ:
                 del environ[key]
 

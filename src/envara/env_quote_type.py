@@ -14,11 +14,14 @@ class EnvQuoteType(IntEnum):
     NONE = 0
     """String with no leading quote"""
 
-    SINGLE = 1
-    """Single-quoted string"""
+    HARD = 1
+    """Hard-quoted string (in POSIX, single-quoted)"""
 
-    DOUBLE = 2
-    """Double-quoted string"""
+    NORMAL = 2
+    """Normally quoted string (in POSIX, double-quoted)"""
+
+    DEFAULT = NORMAL
+    """Default value"""
 
 
 ###############################################################################

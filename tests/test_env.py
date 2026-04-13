@@ -4,7 +4,7 @@ import pytest
 from envara.env import Env
 from envara.env_expand_flags import EnvExpandFlags
 from envara.env_platform_flags import EnvPlatformFlags
-from envara.env_parse_info import EnvParseInfo
+from env_chars import EnvChars
 from envara.env_quote_type import EnvQuoteType
 
 
@@ -15,19 +15,19 @@ from envara.env_quote_type import EnvQuoteType
 
 def test_expand_skips_single_quoted_when_flag_set(mocker):
     # Arrange: make unquote report a SINGLE-quoted string
-    info = EnvParseInfo(
+    info = EnvChars(
         input="'x'",
         result="quoted-result",
-        expand_char=EnvParseInfo.POSIX_EXPAND_CHAR,
-        escape_char="\\",
-        quote_type=EnvQuoteType.SINGLE,
+        expand=EnvChars.POSIX_EXPAND,
+        escape="\\",
+        quote_type=EnvQuoteType.HARD,
     )
     mocker.patch.object(Env, "unquote", return_value=(None, info))
     m_posix = mocker.patch.object(Env, "expand_posix")
     m_simple = mocker.patch.object(Env, "expand_simple")
 
     # Act
-    out = Env.expand("'x'", flags=EnvExpandFlags.SKIP_SINGLE_QUOTED)
+    out = Env.expand("'x'", flags=EnvExpandFlags.SKIP_LITERAL)
 
     # Assert - expansion functions must not be called and original result returned
     assert out == "quoted-result"
@@ -37,11 +37,11 @@ def test_expand_skips_single_quoted_when_flag_set(mocker):
 
 def test_expand_uses_posix_and_unescape(mocker):
     # Arrange: unquote reports POSIX expansion character
-    info = EnvParseInfo(
+    info = EnvChars(
         input="$A",
         result="raw-val",
-        expand_char=EnvParseInfo.POSIX_EXPAND_CHAR,
-        escape_char="\\",
+        expand=EnvChars.POSIX_EXPAND,
+        escape="\\",
         quote_type=None,
     )
     mocker.patch.object(Env, "unquote", return_value=(None, info))
@@ -57,20 +57,20 @@ def test_expand_uses_posix_and_unescape(mocker):
     # first positional arg passed to expand_posix is the unquoted result
     assert called_args[0] == "raw-val"
     assert called_kwargs["args"] == ["arg1"]
-    assert called_kwargs["expand_char"] == info.expand_char
-    assert called_kwargs["escape_char"] == info.escape_char
+    assert called_kwargs["expand_char"] == info.expand
+    assert called_kwargs["escape_char"] == info.escape
     # unescape must be invoked with expand_posix's result and the escape char
-    m_unescape.assert_called_once_with("posix-expanded", escape_char=info.escape_char)
+    m_unescape.assert_called_once_with("posix-expanded", escape_char=info.escape)
     assert out == "final-unescaped"
 
 
 def test_expand_uses_simple_and_respects_skip_env_vars(mocker):
     # Arrange: unquote reports Windows-style expansion char
-    info = EnvParseInfo(
+    info = EnvChars(
         input="%X%",
         result="raw-simple",
-        expand_char=EnvParseInfo.WINDOWS_EXPAND_CHAR,
-        escape_char="^",
+        expand=EnvChars.WINDOWS_EXPAND,
+        escape="^",
         quote_type=None,
     )
     mocker.patch.object(Env, "unquote", return_value=(None, info))
@@ -103,13 +103,13 @@ def test_expand_sets_cutter_chars_on_remove_line_comment_flag():
 
 def test_expand_fills_out_info():
     result = 'Sample = "$ABC\n"'
-    out_info = EnvParseInfo()
+    out_info = EnvChars()
     out = Env.expand(f'Sample = "$ABC\\n" # this is a sample', out_info=out_info)
     # when SKIP_ENV_VARS is set, env variables are not expanded
     assert out == result
-    assert out_info.expand_char == "$"
-    assert out_info.escape_char == "\\"
-    assert out_info.cutter_char == "#"
+    assert out_info.expand == "$"
+    assert out_info.escape == "\\"
+    assert out_info.cutter == "#"
     assert out_info.quote_type == EnvQuoteType.NONE
     assert out_info.result == result
 
@@ -187,14 +187,14 @@ def test_unescape_invalid_x_hex_calls_fail_and_raises(mocker):
 def test_unquote_removes_double_quotes_and_sets_info():
     res, info = Env.unquote('"a$B"')
     assert res == "a$B"
-    assert info.quote_type == EnvQuoteType.DOUBLE
-    assert info.expand_char == EnvParseInfo.POSIX_EXPAND_CHAR
+    assert info.quote_type == EnvQuoteType.DEFAULT
+    assert info.expand == EnvChars.POSIX_EXPAND
 
 
 def test_unquote_uses_cutter_chars_and_detects_expchr():
     res, info = Env.unquote("$X#y", cutter_chars="#")
     assert res == "$X"
-    assert info.expand_char == EnvParseInfo.POSIX_EXPAND_CHAR
+    assert info.expand == EnvChars.POSIX_EXPAND
     assert info.quote_type == EnvQuoteType.NONE
 
 
@@ -224,17 +224,17 @@ def test_unquote_hard_quotes_ignore_escape():
     # backslash inside single quotes should be treated literally (hard quote)
     res, info = Env.unquote(r"'a\nb'")
     assert res == r"a\nb"
-    assert info.quote_type == EnvQuoteType.SINGLE
-    assert info.escape_char is None
+    assert info.quote_type == EnvQuoteType.HARD
+    assert info.escape is None
 
 
 def test_unquote_hard_quotes_param_disables_escaping():
-    # when hard_quotes includes '"', escaping inside double quotes is ignored
+    # when hard_quotes includes '"', escaping inside normal quotes is ignored
     res, info = Env.unquote('"a\\"b"', hard_quotes='"')
-    # encountering the inner double-quote closes the quoted string because
+    # encountering the inner normal quote closes the quoted string because
     # escaping is disabled by hard_quotes -> the result contains the backslash
     assert res == "a\\"
-    assert info.quote_type == EnvQuoteType.DOUBLE
+    assert info.quote_type == EnvQuoteType.DEFAULT
 
 
 def test_unquote_preserves_spaces_when_strip_false():
@@ -246,7 +246,7 @@ def test_unquote_preserves_spaces_when_strip_false():
 
 def test_unquote_detects_first_of_multiple_expansion_chars():
     res, info = Env.unquote("a%b$z", expand_chars="%$")
-    assert info.expand_char == "%"
+    assert info.expand == "%"
 
 
 def test_unquote_quoted_cutter_ignored():
@@ -254,12 +254,12 @@ def test_unquote_quoted_cutter_ignored():
     assert res == "a#b"
 
 
-def test_unquote_escaped_quote_inside_double_quotes():
+def test_unquote_escaped_quote_inside_normal_quotes():
     res, info = Env.unquote('"a\\"b"')
     # unquote does not remove escaping backslashes (that's done by Env.unescape)
     assert res == r"a\"b"
-    assert info.quote_type == EnvQuoteType.DOUBLE
-    assert info.escape_char == "\\"
+    assert info.quote_type == EnvQuoteType.DEFAULT
+    assert info.escape == "\\"
 
 
 # ---------------------------------------------------------------------------
@@ -267,17 +267,17 @@ def test_unquote_escaped_quote_inside_double_quotes():
 # ---------------------------------------------------------------------------
 
 
-def test_quote_escapes_internal_double_and_escape_char():
-    # input contains a double quote and a backslash (default escape)
+def test_quote_escapes_internal_normal_and_escape_char():
+    # input contains a normal quote and a backslash (default escape)
     inp = 'a"b\\c'
-    out = Env.quote(inp, type=EnvQuoteType.DOUBLE)
-    # backslash doubled, internal quote escaped, whole string wrapped in double quotes
+    out = Env.quote(inp, type=EnvQuoteType.DEFAULT)
+    # backslash doubled, internal quote escaped, whole string wrapped in normal quotes
     assert out == '"a\\"b\\\\c"'
 
 
 def test_quote_doubles_escape_chars_and_single_quote():
     inp = "it's\\done"
-    out = Env.quote(inp, type=EnvQuoteType.SINGLE)
+    out = Env.quote(inp, type=EnvQuoteType.HARD)
     # backslash doubled and single-quote escaped, wrapped in single quotes
     assert out == "'it\\'s\\\\done'"
 
@@ -293,27 +293,27 @@ def test_quote_none_input_returns_empty_quotes():
 def test_quote_with_custom_escape_arg():
     # custom escape character should be used instead of default; when no
     # quote char is present the implementation does not double escapes
-    out = Env.quote("a^b^c", type=EnvQuoteType.DOUBLE, escape_char="^")
+    out = Env.quote("a^b^c", type=EnvQuoteType.DEFAULT, escape_char="^")
     assert out == '"a^b^c"'
 
 
 def test_quote_uses_mocked_default_escape(mocker):
     # patch the default escape char and ensure Env.quote uses it (no doubling
     # unless a quote char is present in the input)
-    mocker.patch.object(EnvParseInfo, "POSIX_ESCAPE_CHAR", "^")
+    mocker.patch.object(EnvChars, "POSIX_ESCAPE_CHAR", "^")
     assert Env.quote("a^b") == '"a^b"'
 
 
 def test_unquote_respects_mocked_posix_expand_char(mocker):
     # patch the default POSIX expansion char and ensure unquote picks it up
-    mocker.patch.object(EnvParseInfo, "POSIX_EXPAND_CHAR", "@")
+    mocker.patch.object(EnvChars, "POSIX_EXPAND_CHAR", "@")
     _, info = Env.unquote("a@b")
-    assert info.expand_char == "@"
+    assert info.expand == "@"
 
 
 def test_unquote_disallows_posix_expand_char_with_windows_escape_char(mocker):
     _, info = Env.unquote('"$a^b"')
-    assert info.escape_char == "\\"
+    assert info.escape == "\\"
 
 
 # ---------------------------------------------------------------------------
@@ -988,12 +988,12 @@ def test_expand_simple_no_windup_found(monkeypatch):
 
 
 def test_quote_single_type():
-    result = Env.quote("a'b", type=EnvQuoteType.SINGLE)
+    result = Env.quote("a'b", type=EnvQuoteType.HARD)
     assert result == "'a\\'b'"
 
 
 def test_quote_double_type():
-    result = Env.quote('a"b', type=EnvQuoteType.DOUBLE)
+    result = Env.quote('a"b', type=EnvQuoteType.DEFAULT)
     assert result == '"a\\"b"'
 
 
@@ -1003,7 +1003,7 @@ def test_quote_none_type():
 
 
 def test_quote_with_both_quote_and_escape():
-    result = Env.quote("a'b\"c", type=EnvQuoteType.SINGLE)
+    result = Env.quote("a'b\"c", type=EnvQuoteType.HARD)
     assert result == "'a\\'b\"c'"
 
 
@@ -1184,7 +1184,7 @@ def test_expand_simple_digit_after_expand_char(monkeypatch):
 
 
 def test_expand_flags_none_uses_default(mocker):
-    mocker.patch.object(Env, "unquote", return_value=("result", EnvParseInfo()))
+    mocker.patch.object(Env, "unquote", return_value=("result", EnvChars()))
     mocker.patch.object(Env, "expand_posix", return_value="expanded")
     mocker.patch.object(Env, "unescape", return_value="final")
 
@@ -1193,7 +1193,7 @@ def test_expand_flags_none_uses_default(mocker):
 
 
 def test_expand_with_remove_line_comment(mocker):
-    info = EnvParseInfo(
+    info = EnvChars(
         input="$VAR",
         result="$VAR",
         quote_type=EnvQuoteType.NONE,
@@ -1206,11 +1206,11 @@ def test_expand_with_remove_line_comment(mocker):
 
 
 def test_expand_expand_chars(mocker):
-    info = EnvParseInfo(
+    info = EnvChars(
         input="$VAR",
         result="$VAR",
-        expand_char="$",
-        escape_char="\\",
+        expand="$",
+        escape="\\",
         quote_type=EnvQuoteType.NONE,
     )
     mocker.patch.object(Env, "unquote", return_value=("$VAR", info))
@@ -1221,12 +1221,12 @@ def test_expand_expand_chars(mocker):
 
 
 def test_expand_windup_chars(mocker):
-    info = EnvParseInfo(
+    info = EnvChars(
         input="<VAR>",
         result="<VAR>",
-        expand_char="<",
-        windup_char=">",
-        escape_char="\\",
+        expand="<",
+        windup=">",
+        escape="\\",
         quote_type=EnvQuoteType.NONE,
     )
     mocker.patch.object(Env, "unquote", return_value=("<VAR>", info))
