@@ -19,6 +19,7 @@ import re
 from typing import ClassVar, Final
 
 from env_chars import EnvChars
+from env_chars_data import EnvCharsData
 from envara.env_file_flags import EnvFileFlags
 from envara.env_filter import EnvFilter
 from envara.env import Env
@@ -33,7 +34,9 @@ from envara.env_platform_flags import EnvPlatformFlags
 
 class EnvFile:
 
-    DEFAULT_EXPAND_FLAGS: ClassVar[EnvExpandFlags] = (EnvExpandFlags.DEFAULT | EnvExpandFlags.REMOVE_LINE_COMMENT)
+    DEFAULT_EXPAND_FLAGS: ClassVar[EnvExpandFlags] = (
+        EnvExpandFlags.DEFAULT | EnvExpandFlags.REMOVE_LINE_COMMENT
+    )
     """Default flags to expand environment variables at every line in the file"""
 
     RE_KEY_VALUE: Final[re.Pattern] = re.compile(r"\s*=\s*")
@@ -201,19 +204,27 @@ class EnvFile:
         :type expand_flags: EnvExpandFlags
         """
 
-        # Decide on expansion mode
-
-        info = EnvChars.select(is_posix=line.startswith("#!"))
-
         # Split data into lines and loop through every line
 
         environ = os.environ
 
         if data is None:
             return
+        
+        chars: EnvCharsData = None
 
         for line in data.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
-            # Break into key and value and skip if can't
+            # Skip amy empty line
+
+            if not line:
+                continue
+
+            # Select environment chars based on the first non-empty line
+
+            if not chars:
+                chars = EnvChars.select(based_on=line)
+
+            # Break into key and value and skip if can't do that
 
             parts = EnvFile.RE_KEY_VALUE.split(line, maxsplit=1)
 
@@ -225,9 +236,7 @@ class EnvFile:
             # Expand the value and add to the dict of enviroment variables
 
             if val:
-                environ[key] = Env.expand(
-                    val, args=args, flags=expand_flags, info=info
-                )
+                environ[key] = Env.expand(val, args=args, flags=expand_flags, chars=chars)
             elif key and key in environ:
                 del environ[key]
 

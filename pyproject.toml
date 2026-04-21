@@ -30,6 +30,28 @@ Documentation = "https://github.com/aiurovet/envara/blob/main/README.md"
 Changelog = "https://github.com/aiurovet/envara/blob/main/CHANGELOG.md"
 Issues = "https://github.com/aiurovet/envara/issues"
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=src/envara --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src/envara"]
+branch = true
+omit = [
+    "tests/*",
+    "*/__pycache__/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 exclude = ["tests"]

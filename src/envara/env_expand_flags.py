@@ -28,8 +28,8 @@ class EnvExpandFlags(IntFlag):
     SKIP_ENV_VARS = 1 << 4
     """Do not expand environment variables"""
 
-    SKIP_LITERAL = 1 << 5
-    """If a string is embraced in hard quotes, don't expand it"""
+    SKIP_HARD_QUOTED = 1 << 5
+    """If a string is embraced in hard quotes, don't expand it (literal string)"""
 
     STRIP_SPACES = 1 << 6
     """If a string has whitespace(s) around, remove those"""
@@ -38,9 +38,11 @@ class EnvExpandFlags(IntFlag):
     """Expand escaped characters, this includes characters represented by
     their hexadecimal or unicode sequence (depends on NATIVE_ESCAPE flag)"""
 
-    DEFAULT = ALLOW_SHELL | REMOVE_QUOTES | SKIP_LITERAL |\
-              STRIP_SPACES | UNESCAPE
+    DEFAULT = ALLOW_SHELL | REMOVE_QUOTES | SKIP_HARD_QUOTED | STRIP_SPACES | UNESCAPE
     """Default set of flags"""
+
+    DEFAULT_SPLIT = DEFAULT | REMOVE_LINE_COMMENT
+    """Default set of flags for Env.split()"""
 
 
 ###############################################################################
