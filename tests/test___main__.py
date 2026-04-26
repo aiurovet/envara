@@ -6,12 +6,12 @@ def get_main_output():
     project_dir = Path(__file__).parent.parent
     src_dir = project_dir / "src"
     main_file = src_dir / "envara" / "__main__.py"
-    
+
     local_vars = {}
     with open(main_file) as f:
         code = compile(f.read(), "__main__.py", "exec")
         exec(code, local_vars)
-    
+
     return local_vars.get("main")
 
 

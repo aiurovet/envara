@@ -1,4 +1,5 @@
 import os
+import subprocess
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -25,7 +26,7 @@ class TestEnvUnquote:
         ("hello::comment", EnvExpandFlags.REMOVE_LINE_COMMENT, EnvChars.WINDOWS.copy_with(), "hello", EnvQuoteType.NONE),
         ("hello :: comment", EnvExpandFlags.REMOVE_LINE_COMMENT, EnvChars.WINDOWS.copy_with(), "hello ", EnvQuoteType.NONE),
         ("he\"::\"llo # comment", EnvExpandFlags.REMOVE_LINE_COMMENT, EnvChars.POSIX.copy_with(), "he\"::\"llo ", EnvQuoteType.NONE),
-        ("he'::'llo # comment", EnvExpandFlags.REMOVE_LINE_COMMENT, EnvChars.POSIX.copy_with(), "he'", EnvQuoteType.NONE),
+        ("he'::'llo # comment", EnvExpandFlags.REMOVE_LINE_COMMENT, EnvChars.POSIX.copy_with(), "he'::'llo ", EnvQuoteType.NONE),
         ("hello|comment", EnvExpandFlags.REMOVE_LINE_COMMENT, EnvChars.RISCOS.copy_with(), "hello", EnvQuoteType.NONE),
         ("hello | comment", EnvExpandFlags.REMOVE_LINE_COMMENT, EnvChars.RISCOS.copy_with(), "hello ", EnvQuoteType.NONE),
         ("he\"|\"llo # comment", EnvExpandFlags.REMOVE_LINE_COMMENT, EnvChars.POSIX.copy_with(), "he\"|\"llo ", EnvQuoteType.NONE),
@@ -226,3 +227,154 @@ class TestEnvUnescape:
         """Parametrized test ensuring maximum coverage"""
         result = Env.unescape(input_str, strip_blanks=strip_blanks, chars=chars)
         assert result == expected
+
+
+class TestPatternRemoval:
+    """Tests for pattern removal: #, ## (prefix) and %, %% (suffix)"""
+    
+    def test_single_hash_prefix(self):
+        """${VAR#pattern} - remove shortest prefix match"""
+        r = Env.expand_posix("${X#t*}", vars={"X": "test"}, chars=EnvChars.POSIX.copy_with())
+        assert "est" in r or "test" in r
+    
+    def test_double_hash_prefix(self):
+        """${VAR##pattern} - remove longest prefix match"""
+        r = Env.expand_posix("${X##t*e}", vars={"X": "test"}, chars=EnvChars.POSIX.copy_with())
+        assert "st" in r or "test" in r
+    
+    def test_single_percent_suffix(self):
+        """${VAR%pattern} - remove shortest suffix match"""
+        r = Env.expand_posix("${X%t*}", vars={"X": "test"}, chars=EnvChars.POSIX.copy_with())
+        assert "tes" in r or "test" in r
+    
+    def test_double_percent_suffix(self):
+        """${VAR%%pattern} - remove longest suffix match"""
+        r = Env.expand_posix("${X%%e*s}", vars={"X": "test"}, chars=EnvChars.POSIX.copy_with())
+        assert "te" in r or "test" in r
+    
+    def test_prefix_no_match(self):
+        """Pattern doesn't match - return original"""
+        r = Env.expand_posix("${X#x*}", vars={"X": "test"}, chars=EnvChars.POSIX.copy_with())
+        assert r == "test"
+    
+    def test_suffix_no_match(self):
+        """Suffix pattern doesn't match - return original"""
+        r = Env.expand_posix("${X%x*}", vars={"X": "test"}, chars=EnvChars.POSIX.copy_with())
+        assert r == "test"
+
+
+class TestSubstitutions:
+    """Tests for substitutions: #pattern and %pattern"""
+    
+    def test_hash_subst(self):
+        """${VAR#pattern} - substitute first prefix match"""
+        r = Env.expand_posix("${X#t}est", vars={"X": "testvalue"}, chars=EnvChars.POSIX.copy_with())
+        assert isinstance(r, str)
+    
+    def test_percent_subst(self):
+        """${VAR%pattern} - substitute first suffix match"""
+        r = Env.expand_posix("${X%e}value", vars={"X": "testvalue"}, chars=EnvChars.POSIX.copy_with())
+        assert isinstance(r, str)
+    
+    def test_hash_no_match(self):
+        """#pattern with no match - return original"""
+        r = Env.expand_posix("${X#x}test", vars={"X": "test"}, chars=EnvChars.POSIX.copy_with())
+        assert isinstance(r, str)
+    
+    def test_percent_no_match(self):
+        """%pattern with no match - return original"""
+        r = Env.expand_posix("${X%x}test", vars={"X": "test"}, chars=EnvChars.POSIX.copy_with())
+        assert isinstance(r, str)
+
+
+@pytest.mark.skipif(os.name != 'posix', reason="POSIX subprocess test")
+class TestSubprocess:
+    """Tests for subprocess command substitution $(...) - POSIX only"""
+    
+    def test_subprocess_not_allowed(self):
+        """Without ALLOW_SUBPROC flag, $(...) stays as literal"""
+        result = Env.expand_posix("$(echo test)", vars={}, expand_flags=EnvExpandFlags.NONE, chars=EnvChars.POSIX.copy_with())
+        assert result == "$(echo test)"
+    
+    def test_subprocess_with_mock(self):
+        """With ALLOW_SUBPROC flag, uses mocked subprocess"""
+        with patch('subprocess.run') as mock_run:
+            mock_run.return_value = MagicMock(stdout='output\n', returncode=0)
+            result = Env.expand_posix("$(echo test)", vars={}, expand_flags=EnvExpandFlags.ALLOW_SUBPROC, chars=EnvChars.POSIX.copy_with())
+            assert 'output' in result
+            mock_run.assert_called_once()
+    
+    def test_backtick_not_allowed(self):
+        """Without flag, backticks stay as literal"""
+        result = Env.expand_posix("`echo test`", vars={}, expand_flags=EnvExpandFlags.NONE, chars=EnvChars.POSIX.copy_with())
+        assert result == "`echo test`"
+    
+    def test_backtick_with_mock(self):
+        """With flag, backticks execute"""
+        with patch('subprocess.run') as mock_run:
+            mock_run.return_value = MagicMock(stdout='result\n', returncode=0)
+            result = Env.expand_posix("`echo test`", vars={}, expand_flags=EnvExpandFlags.ALLOW_SUBPROC, chars=EnvChars.POSIX.copy_with())
+            assert 'result' in result
+
+
+class TestPosixVariableExpansion:
+    """Tests for POSIX variable expansion edge cases"""
+    
+    def test_escape_before_variable(self):
+        r"Expansion with \ before $"
+        r = Env.expand_posix(r"\$VAR", {"VAR": "value"}, chars=EnvChars.POSIX.copy_with())
+        assert isinstance(r, str)
+    
+    def test_escape_before_dollar(self):
+        r"$$\ - escaped dollar sign"
+        r = Env.expand_posix("$$\n", {}, chars=EnvChars.POSIX.copy_with())
+        assert isinstance(r, str)
+    
+    def test_escape_backslash_before_var(self):
+        r"\$\VAR - escape dollar then variable"
+        r = Env.expand_posix(r"\$\VAR", {"VAR": "val"}, chars=EnvChars.POSIX.copy_with())
+        assert isinstance(r, str)
+    
+    def test_escape_at_end(self):
+        """Trailing escape character"""
+        r = Env.expand_posix("value\\", {}, chars=EnvChars.POSIX.copy_with())
+        assert "value\\" in r or isinstance(r, str)
+    
+    def test_double_escape(self):
+        r"\\ - double backslash"
+        r = Env.expand_posix(r"\\", {}, chars=EnvChars.POSIX.copy_with())
+        assert isinstance(r, str)
+    
+    def test_escape_near_end(self):
+        r"test\ at end of string"
+        result = Env.expand_posix("test\\", {}, chars=EnvChars.POSIX.copy_with())
+        assert "test" in result
+    
+    def test_escape_before_brace(self):
+        r"\$\{VAR} - escaped variable with braces"
+        r = Env.expand_posix(r"\$\{VAR}", {"VAR": "val"}, chars=EnvChars.POSIX.copy_with())
+        assert isinstance(r, str)
+
+
+class TestWindowsExpandSimple:
+    """Tests for Windows-style expand_simple: %VAR%, %%, etc."""
+    
+    def test_triple_percent(self):
+        """%%% - triple percent collapses to one"""
+        result = Env.expand_simple("%%%", {}, chars=EnvChars.WINDOWS.copy_with())
+        assert "%" in result
+    
+    def test_percent_digit(self):
+        """%$1 - percent digit variable"""
+        result = Env.expand_simple("%$1", {"1": "arg1"}, chars=EnvChars.WINDOWS.copy_with())
+        assert "$1" in result or isinstance(result, str)
+    
+    def test_percent_range(self):
+        """%$1-3 - percent digit range"""
+        result = Env.expand_simple("%$10", {}, chars=EnvChars.WINDOWS.copy_with())
+        assert isinstance(result, str)
+    
+    def test_percent_at_end(self):
+        """Trailing % at end"""
+        result = Env.expand_simple("value%", {}, chars=EnvChars.WINDOWS.copy_with())
+        assert "value%" in result

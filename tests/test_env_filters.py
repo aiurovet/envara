@@ -102,11 +102,15 @@ class TestEnvFiltersIntegration:
 
     def test_process_with_filter_values(self):
         files = ["dev.env", "prod.env", "other.env"]
-        result = EnvFilters.process(files, [EnvFilter(indicator="env", cur_values=["dev", "prod"])])
+        result = EnvFilters.process(
+            files, [EnvFilter(indicator="env", cur_values=["dev", "prod"])]
+        )
         assert "dev.env" in result
         assert "prod.env" in result
         assert "other.env" in result or len(result) == 3
 
     def test_process_empty_result(self):
-        result = EnvFilters.process(["file.txt", "data.json"], [EnvFilter(indicator="env")])
+        result = EnvFilters.process(
+            ["file.txt", "data.json"], [EnvFilter(indicator="env")]
+        )
         assert len(result) == 0

@@ -5,7 +5,8 @@
 ###############################################################################
 
 from typing import ClassVar
-#import envara
+
+# import envara
 from env_chars_data import EnvCharsData
 import os
 
@@ -50,11 +51,15 @@ class EnvChars:
     )
     """Windows-specific set of environment-related characters"""
 
-    DEFAULT: ClassVar[EnvCharsData] = \
-        RISCOS.copy_with() if IS_RISCOS\
-        else VMS.copy_with() if IS_VMS\
-        else WINDOWS.copy_with() if IS_WINDOWS\
-        else POSIX.copy_with()
+    DEFAULT: ClassVar[EnvCharsData] = (
+        RISCOS.copy_with()
+        if IS_RISCOS
+        else (
+            VMS.copy_with()
+            if IS_VMS
+            else WINDOWS.copy_with() if IS_WINDOWS else POSIX.copy_with()
+        )
+    )
     """Default OS-specific set of environment-related characters"""
 
     CURRENT: ClassVar[EnvCharsData] = DEFAULT.copy_with()
@@ -72,7 +77,7 @@ class EnvChars:
             EnvChars.DEFAULT = EnvChars.WINDOWS.copy_with()
         else:
             EnvChars.DEFAULT = EnvChars.POSIX.copy_with()
-    
+
         return EnvChars.DEFAULT
 
     ###########################################################################

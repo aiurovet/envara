@@ -67,7 +67,9 @@ class TestEnvFileFlagsCombine:
 
 class TestEnvFileFlagsMutuallyExclusive:
     def test_platform_flags_are_exclusive(self):
-        assert not (EnvFileFlags.ADD_PLATFORMS_BEFORE & EnvFileFlags.ADD_PLATFORMS_AFTER)
+        assert not (
+            EnvFileFlags.ADD_PLATFORMS_BEFORE & EnvFileFlags.ADD_PLATFORMS_AFTER
+        )
 
     def test_platform_flags_can_combine(self):
         combined = EnvFileFlags.ADD_PLATFORMS_BEFORE | EnvFileFlags.ADD_PLATFORMS_AFTER

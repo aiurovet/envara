@@ -1,6 +1,8 @@
 from pathlib import Path
 import sys
 import os
+from unittest.mock import patch, MagicMock
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "envara"))
@@ -28,3 +30,22 @@ env_expand_flags_mod = env_expand_flags
 envara_mod = envara
 
 os.chdir(str(Path(__file__).parent.parent))
+
+
+@pytest.fixture(autouse=True)
+def mock_platform():
+    with patch("os.sep", "/"):
+        with patch("envara.env.Env.IS_POSIX", True):
+            with patch("envara.env.Env.IS_WINDOWS", False):
+                yield
+
+
+@pytest.fixture
+def mock_windows_paths():
+    """Mock os.path functions for Windows path slicing tests"""
+    with patch("os.path.splitdrive", return_value=("C:", "\\path\\file.txt")):
+        with patch("os.path.dirname", return_value="\\path"):
+            with patch("os.path.basename", return_value="file.txt"):
+                with patch("os.path.splitext", return_value=("file", ".txt")):
+                    with patch("os.path.abspath", return_value="C:\\path\\file.txt"):
+                        yield

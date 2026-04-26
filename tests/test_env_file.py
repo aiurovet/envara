@@ -61,7 +61,9 @@ class TestEnvFileGetFiles:
         mock_iterdir = mocker.patch.object(Path, "iterdir")
         mock_iterdir.return_value = []
 
-        result = EnvFile.get_files(Path("/etc"), "app", EnvFileFlags.ADD_PLATFORMS_BEFORE)
+        result = EnvFile.get_files(
+            Path("/etc"), "app", EnvFileFlags.ADD_PLATFORMS_BEFORE
+        )
 
         assert isinstance(result, list)
 
@@ -99,7 +101,11 @@ class TestEnvFileLoadedList:
         assert EnvFile._loaded == []
 
     def test_loaded_list_append(self):
-        original = EnvFile._loaded.copy() if hasattr(EnvFile, '_loaded') and EnvFile._loaded else []
+        original = (
+            EnvFile._loaded.copy()
+            if hasattr(EnvFile, "_loaded") and EnvFile._loaded
+            else []
+        )
         EnvFile._loaded = original + ["test"]
         assert "test" in EnvFile._loaded
         EnvFile._loaded = original
@@ -152,10 +158,14 @@ class TestEnvFileGetFilesPlatforms:
         mock_iterdir = mocker.patch.object(Path, "iterdir")
         mock_iterdir.return_value = []
         mocker.patch.object(Env, "get_cur_platforms", return_value=["linux"])
-        mocker.patch.object(Env, "get_all_platforms", return_value=["linux", "windows", "darwin"])
+        mocker.patch.object(
+            Env, "get_all_platforms", return_value=["linux", "windows", "darwin"]
+        )
         mocker.patch.object(EnvFilters, "process", return_value=[])
 
-        result = EnvFile.get_files(Path("/test"), "env", EnvFileFlags.ADD_PLATFORMS_BEFORE)
+        result = EnvFile.get_files(
+            Path("/test"), "env", EnvFileFlags.ADD_PLATFORMS_BEFORE
+        )
 
         assert isinstance(result, list)
 
@@ -167,7 +177,9 @@ class TestEnvFileGetFilesPlatforms:
         mocker.patch.object(Env, "get_all_platforms", return_value=["linux", "windows"])
         mocker.patch.object(EnvFilters, "process", return_value=[])
 
-        result = EnvFile.get_files(Path("/test"), "env", EnvFileFlags.ADD_PLATFORMS_AFTER)
+        result = EnvFile.get_files(
+            Path("/test"), "env", EnvFileFlags.ADD_PLATFORMS_AFTER
+        )
 
         assert isinstance(result, list)
 
@@ -179,7 +191,11 @@ class TestEnvFileGetFilesPlatforms:
         mocker.patch.object(Env, "get_all_platforms", return_value=["linux", "windows"])
         mocker.patch.object(EnvFilters, "process", return_value=[])
 
-        result = EnvFile.get_files(Path("/test"), "env", EnvFileFlags.ADD_PLATFORMS_BEFORE | EnvFileFlags.ADD_PLATFORMS_AFTER)
+        result = EnvFile.get_files(
+            Path("/test"),
+            "env",
+            EnvFileFlags.ADD_PLATFORMS_BEFORE | EnvFileFlags.ADD_PLATFORMS_AFTER,
+        )
 
         assert isinstance(result, list)
         EnvFile._loaded = []
@@ -388,6 +404,7 @@ class TestEnvFileReadText:
         class FakePath:
             def __str__(self):
                 return mock_path_str
+
             def read_text(self):
                 return "should not read"
 

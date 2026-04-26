@@ -577,6 +577,14 @@ class Env:
                 i += 2
                 continue
 
+            if (i + 1) < inp_len and s[i + 1] == "#":
+                if args:
+                    res.append(str(len(args)))
+                else:
+                    res.append("0")
+                i += 2
+                continue
+
             if (i + 1) < inp_len and s[i + 1] == "(":
                 j = i + 2
                 depth = 1
@@ -1165,7 +1173,7 @@ class Env:
             found in the input
             """
             grps = m.groups()
-            token: str = grps[0] # this group is for single-quoted strings
+            token: str = grps[0]  # this group is for single-quoted strings
 
             if token and Env.IS_POSIX:
                 # If a hard-quoted token of encountered, and runing under
@@ -1173,13 +1181,12 @@ class Env:
                 # before hiding: the escape was literal
 
                 result.append(
-                    token\
-                        .replace("\x06", apos_escaped)
-                        .replace("\x05", cutter_escaped)
-                        .replace("\x04", quote_escaped)
-                        .replace("\x03", space_escaped)
-                        .replace("\x02", tab_escaped)
-                        .replace("\x01", escape_escaped)
+                    token.replace("\x06", apos_escaped)
+                    .replace("\x05", cutter_escaped)
+                    .replace("\x04", quote_escaped)
+                    .replace("\x03", space_escaped)
+                    .replace("\x02", tab_escaped)
+                    .replace("\x01", escape_escaped)
                 )
             else:
                 # If a normally quoted or plain token encountered, apply the
@@ -1188,7 +1195,7 @@ class Env:
 
                 token = grps[1]
                 is_quoted: bool = True if token else False
-    
+
                 # If a string was not quoted, look for a cutter and remove it
                 # as well as anything beyond that. If everything is beyond the
                 # cutter, skip this piece of data (argument)
@@ -1210,19 +1217,16 @@ class Env:
                 # Restore the rest hidden escaped characters as the plain ones
 
                 token = (
-                    token\
-                        .replace("\x05", cutter)
-                        .replace("\x04", '"')
-                        .replace("\x03", " ")
-                        .replace("\x02", "\t")
-                        .replace("\x01", escape)
+                    token.replace("\x05", cutter)
+                    .replace("\x04", '"')
+                    .replace("\x03", " ")
+                    .replace("\x02", "\t")
+                    .replace("\x01", escape)
                 )
 
                 # Expand possible environment variables et al
 
-                result.append(
-                    Env.expand(token, args=args, flags=flags, chars=chars)
-                )
+                result.append(Env.expand(token, args=args, flags=flags, chars=chars))
 
             # Doesn't matter what to return, as that value won't be used
 
@@ -1385,7 +1389,7 @@ class Env:
         quote: str = chars.hard_quote
 
         if quote and result.startswith(quote):
-            result = result[len(quote):]
+            result = result[len(quote) :]
             end_pos: int = result.find(quote)
             if end_pos < 0:
                 raise ValueError(f"Unterminated hard-quoted string: {input}")
@@ -1405,18 +1409,22 @@ class Env:
         # No escaped character gets unescaped in this method.
 
         if quote and result.startswith(quote):
-            result = result[len(quote):]\
-                .replace(escaped_escape, "\x01")\
+            result = (
+                result[len(quote) :]
+                .replace(escaped_escape, "\x01")
                 .replace(escaped_quote, "\x02")
+            )
 
             end_pos: int = result.find(quote)
 
             if end_pos < 0:
                 raise ValueError(f"Unterminated quoted string: {input}")
 
-            result = result[0:end_pos]\
-                .replace("\x02", escaped_quote)\
+            result = (
+                result[0:end_pos]
+                .replace("\x02", escaped_quote)
                 .replace("\x01", escaped_escape)
+            )
 
             return (result, EnvQuoteType.NORMAL)
 
@@ -1428,9 +1436,7 @@ class Env:
 
         # Hide escaped escapes and escaped cutters
 
-        result = result\
-            .replace(escaped_escape, "\x01")\
-            .replace(escaped_cutter, "\x02")
+        result = result.replace(escaped_escape, "\x01").replace(escaped_cutter, "\x02")
 
         # If a cutter is found, cut the result, and furthermore, if spaces
         # can be stripped, do that for the trailing ones if any are present
@@ -1444,169 +1450,9 @@ class Env:
 
         # Restore what was hidden and return result
 
-        result = result\
-            .replace("\x02", escaped_cutter)\
-            .replace("\x01", escaped_escape)
+        result = result.replace("\x02", escaped_cutter).replace("\x01", escaped_escape)
 
         return (result, EnvQuoteType.NONE)
-
-    ###########################################################################
-
-    @staticmethod
-    def unquote_old(
-        input: str,
-        flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvChars = EnvChars.CURRENT,
-    ) -> tuple[str, EnvQuoteType]:
-        """
-        Remove enclosing quotes from a string ignoring everything beyond the
-        closing quote ignoring escaped quotes. Raise ValueError if a dangling
-        escape or no closing quote found.
-
-        In most cases, you'd rather use Env.expand() that calls this method,
-        then expands environment variables, arguments, and unescapes special
-        characters.
-
-        :param input: String to remove enclosing quotes from
-        :type input: str
-
-        :param flags: Flags controlling what/how to unquote input. Essentially,
-            only two bits are considered: STRIP_SPACES and REMOVE_LINE_COMMENT
-        :type flags: EnvExpandFlags
-
-        :param chars: Enviroment-specific characters to parse various tokens
-            like escaped characters, environment variables, etc.
-        :type chars: EnvChars
-
-        :return: Unquoted input and the type of surrounding quotes (see EnvQuoteType)
-        :rtype: tuple[str, EnvQuoteType]
-        """
-
-        # If the input is None or empty, return the empty string
-
-        if not input:
-            return (input, EnvQuoteType.NONE)
-
-        # Initialize position beyond the last character and results
-
-        strip_spaces: bool = True if flags & EnvExpandFlags.STRIP_SPACES else False
-        cur_pos: int = 0
-        end_pos: int = 0
-        quote_type: EnvQuoteType = EnvQuoteType.NONE
-        result: str = input.lstrip() if (strip_spaces) else input
-
-        if not result:
-            return (result, EnvQuoteType.NONE)
-
-        # Initialise flags for escaping and quoting
-
-        if (flags & EnvExpandFlags.REMOVE_LINE_COMMENT) and chars.cutter:
-            has_cutter = True
-        else:
-            has_cutter = False
-
-        is_cut: bool = False
-        is_escaped: bool = False
-        is_quoted: bool = False
-        is_hard_quoted: bool = False
-
-        # Loop through each input character and analyze
-
-        for cur_char in result:
-            # Advance the current and end position and skip opening quote if present
-
-            cur_pos = end_pos
-            end_pos = end_pos + 1
-
-            if (end_pos == 1) and is_quoted:
-                continue
-
-            # If an escape encountered, flip the flag, set escape char and loop
-
-            if cur_char in chars.escape:
-                if (chars.escape_len <= 1) or result.startswith(
-                    chars.escape, cur_pos
-                ):
-                    is_escaped = not is_escaped
-                    continue
-
-            # When a hard quote is encountered, and was quoted, this quote is
-            # the closing one, so return the result. Otherwise, set the flags
-            # and continue
-
-            if cur_char in chars.hard_quote:
-                if is_hard_quoted:
-                    is_hard_quoted = False
-                    is_quoted = False
-                    break
-                else:
-                    quote_type = EnvQuoteType.HARD
-                    is_hard_quoted = True
-                    is_quoted = True
-                    continue
-
-            # When a normal quote is encountered, if escaped, loop, else,
-            # this quote is the closing one, so return the result.
-
-            if cur_char in chars.normal_quote:
-                if is_escaped:
-                    is_escaped = False
-                    continue
-                if is_hard_quoted:
-                    continue
-                if is_quoted:
-                    break
-                else:
-                    quote_type = EnvQuoteType.NORMAL
-                    is_quoted = True
-                    continue
-
-            # Break out if the cutter was encountered outside
-            # the quotes, and it was not escaped
-
-            if has_cutter and (cur_char in chars.cutter):
-                if is_escaped:
-                    is_escaped = False
-                    continue
-                if (not is_quoted) and (not is_escaped) and not is_cut:
-                    if result.startswith(chars.cutter, cur_pos):
-                        is_cut = True
-                        end_pos = end_pos - 1
-                        break
-
-            # For any other character, discard is_escaped
-
-            is_escaped = False
-
-        # Check the malformed input
-
-        if is_escaped:
-            raise ValueError(f"A dangling escape found in: {input}")
-
-        if is_quoted:
-            raise ValueError(f"Unterminated quoted string: {input}")
-
-        # Calculate the unquoted substring
-
-        if quote_type == EnvQuoteType.NONE:
-            cur_pos = 0
-        else:
-            cur_pos = 1
-            end_pos = end_pos - 1
-
-        # Extract the unquoted substring
-
-        result = result[cur_pos:end_pos]
-
-        # Strip trailing spaces if needed, but only if the original input
-        # was not quoted
-
-        if strip_spaces and (quote_type == EnvQuoteType.NONE):
-            result = result.rstrip()
-
-        # Return the result
-
-        return (result, quote_type)
 
     ###########################################################################
 

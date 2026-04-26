@@ -210,7 +210,7 @@ class EnvFile:
 
         if data is None:
             return
-        
+
         chars: EnvCharsData = None
 
         for line in data.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
@@ -236,7 +236,9 @@ class EnvFile:
             # Expand the value and add to the dict of enviroment variables
 
             if val:
-                environ[key] = Env.expand(val, args=args, flags=expand_flags, chars=chars)
+                environ[key] = Env.expand(
+                    val, args=args, flags=expand_flags, chars=chars
+                )
             elif key and key in environ:
                 del environ[key]
 
