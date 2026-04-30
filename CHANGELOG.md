@@ -1,6 +1,7 @@
 ## 0.4.0
 
 Added static method `split_command()` to `Env` that allows to split command into array of an executable and its arguments (OS-agnostic)
+Breaking change: using `EnvCharsData`-type parameter instead of multiple separate ones.
 
 ## 0.3.0
 

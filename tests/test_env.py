@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 from envara.env import Env, EnvChars, EnvExpandFlags, EnvPlatformFlags, EnvQuoteType
+from env_chars_data import EnvCharsData
 
 
 class TestEnvUnquote:
@@ -4116,4 +4117,482 @@ class TestEnvQuote:
     ):
         """Test pattern removal features: #, ## (prefix) and %, %% (suffix)."""
         result = Env.quote(input_str, is_forced, chars)
+        assert result == expected
+
+
+###############################################################################
+# Tests for Env.split()
+###############################################################################
+
+
+class TestEnvSplit:
+    """Tests for Env.split() - split command string into tokens with expansion."""
+
+    # Basic splitting tests (all platforms)
+    @pytest.mark.parametrize(
+        "input_str,expected",
+        [
+            ("ls -la", ["ls", "-la"]),
+            ("echo hello world", ["echo", "hello", "world"]),
+            ("", []),
+            ("   ", []),
+            ("single", ["single"]),
+        ],
+    )
+    def test_split_basic(self, input_str: str, expected: list[str]):
+        """Test basic splitting without expansion."""
+        with patch.dict(os.environ, {}, clear=True):
+            result = Env.split(input_str, flags=EnvExpandFlags.NONE)
+            assert result == expected
+
+    # Platform-specific splitting with quotes
+    @pytest.mark.parametrize(
+        "chars,input_str,expected",
+        [
+            # POSIX: single quotes = hard quotes (literal), double quotes = normal
+            (EnvChars.POSIX, "'hello world'", ["hello world"]),
+            (EnvChars.POSIX, '"hello world"', ["hello world"]),
+            (EnvChars.POSIX, "echo 'hello world'", ["echo", "hello world"]),
+            (EnvChars.POSIX, 'echo "hello world"', ["echo", "hello world"]),
+            # Windows: no hard quotes, double quotes are normal
+            (EnvChars.WINDOWS, '"hello world"', ["hello world"]),
+            (EnvChars.WINDOWS, "echo \"hello world\"", ["echo", "hello world"]),
+            # RISCOS: no hard quotes, double quotes are normal
+            (EnvChars.RISCOS, '"hello world"', ["hello world"]),
+            # VMS: no hard quotes, double quotes are normal
+            (EnvChars.VMS, '"hello world"', ["hello world"]),
+        ],
+    )
+    def test_split_quotes_by_platform(
+        self, chars: EnvCharsData, input_str: str, expected: list[str]
+    ):
+        """Test quote handling across different platforms."""
+        with patch.dict(os.environ, {}, clear=True):
+            result = Env.split(input_str, flags=EnvExpandFlags.NONE, chars=chars)
+            assert result == expected
+
+    # POSIX hard quotes (single quotes) - literal strings
+    @pytest.mark.parametrize(
+        "input_str,expected",
+        [
+            ("'hello $HOME'", ["hello $HOME"]),
+            ("'echo $VAR'", ["echo $VAR"]),
+            ("'$1 $2'", ["$1 $2"]),
+            ("'hello\\tworld'", ["hello\\tworld"]),
+        ],
+    )
+    def test_split_posix_hard_quoted(self, input_str: str, expected: list[str]):
+        """Test POSIX hard-quoted (single-quoted) strings are literal."""
+        result = Env.split(input_str, flags=EnvExpandFlags.NONE, chars=EnvChars.POSIX)
+        assert result == expected
+
+    # Escape character handling
+    # Note: In split, escape chars are processed to hide special characters
+    # The hidden characters are restored after processing
+    @pytest.mark.parametrize(
+        "chars,input_str,expected",
+        [
+            # POSIX: backslash escape - space escaped = part of token
+            (EnvChars.POSIX, "hello\\ world", ["hello world"]),
+            # Double backslash = literal backslash
+            (EnvChars.POSIX, "hello\\\\world", ["hello\\world"]),
+            # Windows: caret escape - space escaped = part of token
+            (EnvChars.WINDOWS, "hello^ world", ["hello world"]),
+            # Double caret = literal caret  
+            (EnvChars.WINDOWS, "hello^^world", ["hello^world"]),
+            # RISCOS: backslash escape
+            (EnvChars.RISCOS, "hello\\ world", ["hello world"]),
+        ],
+    )
+    def test_split_escape_chars(
+        self, chars: EnvCharsData, input_str: str, expected: list[str]
+    ):
+        """Test escape character handling across platforms."""
+        result = Env.split(input_str, flags=EnvExpandFlags.NONE, chars=chars)
+        print(f"\nDEBUG: input_str={repr(input_str)}, result={result}, expected={expected}")
+        assert result == expected
+
+    # Cutter/comment handling
+    # Note: The cutter found anywhere in an unquoted token truncates the token
+    # A token starting with cutter is completely removed
+    @pytest.mark.parametrize(
+        "chars,cutter,input_str,expected",
+        [
+            # POSIX: # is cutter - token starting with # is removed
+            (EnvChars.POSIX, "#", "echo hello #", ["echo", "hello"]),
+            (EnvChars.POSIX, "#", "echo #comment", ["echo"]),
+            # # in middle of token truncates the token
+            (EnvChars.POSIX, "#", "echo hello#world", ["echo", "hello"]),
+            # Windows: :: is cutter
+            (EnvChars.WINDOWS, "::", "echo hello ::", ["echo", "hello"]),
+            (EnvChars.WINDOWS, "::", "echo ::comment", ["echo"]),
+            # RISCOS: | is cutter
+            (EnvChars.RISCOS, "|", "echo hello |", ["echo", "hello"]),
+            (EnvChars.RISCOS, "|", "echo |comment", ["echo"]),
+            # VMS: ! is cutter
+            (EnvChars.VMS, "!", "echo hello !", ["echo", "hello"]),
+            (EnvChars.VMS, "!", "echo !comment", ["echo"]),
+        ],
+    )
+    def test_split_cutter(
+        self, chars: EnvCharsData, cutter: str, input_str: str, expected: list[str]
+    ):
+        """Test cutter (comment) handling across platforms."""
+        result = Env.split(input_str, flags=EnvExpandFlags.DEFAULT_SPLIT, chars=chars)
+        assert result == expected
+
+    # Cutter at position 0 should skip the token
+    @pytest.mark.parametrize(
+        "chars,input_str,expected",
+        [
+            (EnvChars.POSIX, "echo #comment", ["echo"]),
+            (EnvChars.POSIX, "echo #", ["echo"]),
+            (EnvChars.WINDOWS, "echo ::comment", ["echo"]),
+            (EnvChars.RISCOS, "echo |comment", ["echo"]),
+            (EnvChars.VMS, "echo !comment", ["echo"]),
+        ],
+    )
+    def test_split_cutter_at_start(
+        self, chars: EnvCharsData, input_str: str, expected: list[str]
+    ):
+        """Test that cutter at start of token skips the token."""
+        result = Env.split(input_str, flags=EnvExpandFlags.DEFAULT_SPLIT, chars=chars)
+        assert result == expected
+
+    # Environment variable expansion with mocks
+    @pytest.mark.parametrize(
+        "chars,input_str,env_vars,expected",
+        [
+            # POSIX: $VAR or ${VAR}
+            (EnvChars.POSIX, "$HOME", {"HOME": "/home/test"}, ["/home/test"]),
+            (
+                EnvChars.POSIX,
+                "${USER}",
+                {"USER": "testuser"},
+                ["testuser"],
+            ),
+            (
+                EnvChars.POSIX,
+                "echo $HOME/$USER",
+                {"HOME": "/home", "USER": "test"},
+                ["echo", "/home/test"],
+            ),
+            # Windows: %VAR%
+            (
+                EnvChars.WINDOWS,
+                "%HOME%",
+                {"HOME": "C:\\Users\\test"},
+                ["C:\\Users\\test"],
+            ),
+            (
+                EnvChars.WINDOWS,
+                "echo %HOME%",
+                {"HOME": "C:\\Users\\test"},
+                ["echo", "C:\\Users\\test"],
+            ),
+            # RISCOS: <VAR>
+            (EnvChars.RISCOS, "<HOME>", {"HOME": "$.test"}, ["$.test"]),
+            # VMS: 'VAR' - Note: On POSIX systems, single quotes are hard quotes
+            # so this test may not work as expected on non-VMS systems
+            # The VMS expansion uses ' as expand char, but IS_POSIX is True on Linux
+        ],
+    )
+    def test_split_env_expansion(
+        self,
+        chars: EnvCharsData,
+        input_str: str,
+        env_vars: dict,
+        expected: list[str],
+    ):
+        """Test environment variable expansion with mocked env."""
+        with patch.dict(os.environ, env_vars, clear=True):
+            result = Env.split(input_str, chars=chars)
+            assert result == expected
+
+    # Argument expansion ($1, $2, etc.)
+    # Note: $# does NOT work in split because # is treated as cutter
+    # and the token is truncated before expand() is called
+    @pytest.mark.parametrize(
+        "input_str,args,expected",
+        [
+            ("$1", ["arg1", "arg2"], ["arg1"]),
+            ("$2", ["arg1", "arg2"], ["arg2"]),
+            ("$1 $2 $3", ["a", "b", "c"], ["a", "b", "c"]),
+            ("echo $1", ["hello"], ["echo", "hello"]),
+        ],
+    )
+    def test_split_arg_expansion(
+        self, input_str: str, args: list[str], expected: list[str]
+    ):
+        """Test argument expansion ($1, $2, etc.)."""
+        result = Env.split(
+            input_str, args=args, chars=EnvChars.POSIX, flags=EnvExpandFlags.NONE
+        )
+        assert result == expected
+
+    # Combined: env vars and arg expansion
+    @pytest.mark.parametrize(
+        "input_str,args,env_vars,expected",
+        [
+            (
+                "echo $1 $HOME",
+                ["hello"],
+                {"HOME": "/home/test"},
+                ["echo", "hello", "/home/test"],
+            ),
+            (
+                "$1 ${HOME}/$2",
+                ["cd", "dir"],
+                {"HOME": "/home"},
+                ["cd", "/home/dir"],
+            ),
+        ],
+    )
+    def test_split_combined_expansion(
+        self,
+        input_str: str,
+        args: list[str],
+        env_vars: dict,
+        expected: list[str],
+    ):
+        """Test combined environment variable and argument expansion."""
+        with patch.dict(os.environ, env_vars, clear=True):
+            result = Env.split(input_str, args=args, chars=EnvChars.POSIX)
+            assert result == expected
+
+    # Flags: SKIP_ENV_VARS disables env var expansion
+    # Note: NONE flag does NOT disable expansion (it's value 0)
+    @pytest.mark.parametrize(
+        "input_str,flags,expected",
+        [
+            ("$HOME", EnvExpandFlags.SKIP_ENV_VARS, ["$HOME"]),
+            ("${USER}", EnvExpandFlags.SKIP_ENV_VARS, ["${USER}"]),
+            ("$1", EnvExpandFlags.SKIP_ENV_VARS, ["$1"]),
+            ('"hello"', EnvExpandFlags.NONE, ["hello"]),  # Quotes still processed
+        ],
+    )
+    def test_split_flags_skip_env_vars(
+        self, input_str: str, flags: EnvExpandFlags, expected: list[str]
+    ):
+        """Test that SKIP_ENV_VARS flag disables env var and arg expansion."""
+        with patch.dict(os.environ, {"HOME": "/home/test", "USER": "test"}, clear=True):
+            result = Env.split(input_str, args=["arg1"], flags=flags)
+            assert result == expected
+
+    # Flags: SKIP_HARD_QUOTED
+    @pytest.mark.parametrize(
+        "input_str,flags,expected",
+        [
+            ("'hello $HOME'", EnvExpandFlags.NONE, ["hello $HOME"]),
+            ("'hello $HOME'", EnvExpandFlags.SKIP_HARD_QUOTED, ["hello $HOME"]),
+        ],
+    )
+    def test_split_skip_hard_quoted(
+        self, input_str: str, flags: EnvExpandFlags, expected: list[str]
+    ):
+        """Test SKIP_HARD_QUOTED flag behavior."""
+        with patch.dict(os.environ, {"HOME": "/home/test"}, clear=True):
+            result = Env.split(input_str, flags=flags, chars=EnvChars.POSIX)
+            assert result == expected
+
+    # Continued lines (escape + newline or carriage return)
+    # Note: The split method replaces escape+newline with a space
+    # so "hello\<newline>world" becomes "hello world" (two tokens after split)
+    @pytest.mark.parametrize(
+        "chars,input_str,expected",
+        [
+            # POSIX: backslash + newline = space (becomes token separator)
+            (EnvChars.POSIX, "echo hello\\\nworld", ["echo", "hello", "world"]),
+            # POSIX: backslash + carriage return + newline = space
+            (EnvChars.POSIX, "echo hello\\\r\nworld", ["echo", "hello", "world"]),
+            # Windows: caret + newline = space
+            (EnvChars.WINDOWS, "echo hello^\nworld", ["echo", "hello", "world"]),
+            # Windows: caret + carriage return + newline = space
+            (EnvChars.WINDOWS, "echo hello^\r\nworld", ["echo", "hello", "world"]),
+        ],
+    )
+    def test_split_continued_lines(
+        self, chars: EnvCharsData, input_str: str, expected: list[str]
+    ):
+        """Test continued line handling (escape + newline)."""
+        result = Env.split(input_str, flags=EnvExpandFlags.NONE, chars=chars)
+        assert result == expected
+
+    # Escaped special characters within tokens
+    # Note: Escaped quotes are restored, but then expand() unquotes them
+    @pytest.mark.parametrize(
+        "chars,input_str,expected",
+        [
+            # Escaped double-quote: \", after processing becomes "..." which gets unquoted
+            (EnvChars.POSIX, 'echo \\"hello\\"', ["echo", "hello"]),
+            # Escaped escape = literal escape char
+            (EnvChars.POSIX, "echo \\\\home", ["echo", "\\home"]),
+            # Windows: escaped quote
+            (EnvChars.WINDOWS, 'echo ^"hello^"', ["echo", "hello"]),
+            # Windows: escaped escape
+            (EnvChars.WINDOWS, "echo ^^home", ["echo", "^home"]),
+        ],
+    )
+    def test_split_escaped_special_chars(
+        self, chars: EnvCharsData, input_str: str, expected: list[str]
+    ):
+        """Test escaped special characters are handled correctly."""
+        result = Env.split(input_str, flags=EnvExpandFlags.NONE, chars=chars)
+        assert result == expected
+
+    # Multiple spaces between tokens
+    @pytest.mark.parametrize(
+        "input_str,expected",
+        [
+            ("ls   -la", ["ls", "-la"]),
+            ("echo    hello    world", ["echo", "hello", "world"]),
+            ("  echo  hello  ", ["echo", "hello"]),
+        ],
+    )
+    def test_split_multiple_spaces(self, input_str: str, expected: list[str]):
+        """Test handling of multiple spaces between tokens."""
+        result = Env.split(input_str, flags=EnvExpandFlags.NONE)
+        assert result == expected
+
+    # Tab characters as whitespace
+    @pytest.mark.parametrize(
+        "input_str,expected",
+        [
+            ("ls\t-la", ["ls", "-la"]),
+            ("echo\thello\tworld", ["echo", "hello", "world"]),
+        ],
+    )
+    def test_split_tabs(self, input_str: str, expected: list[str]):
+        """Test tab characters as whitespace separators."""
+        result = Env.split(input_str, flags=EnvExpandFlags.NONE)
+        assert result == expected
+
+    # Mixed quotes and unquoted tokens
+    @pytest.mark.parametrize(
+        "input_str,expected",
+        [
+            ("echo 'hello' world", ["echo", "hello", "world"]),
+            ('echo "hello" world', ["echo", "hello", "world"]),
+            # No whitespace = single token (regex doesn't split)
+            ("echo'hello'world", ["echo'hello'world"]),
+        ],
+    )
+    def test_split_mixed_quotes(self, input_str: str, expected: list[str]):
+        """Test mix of quoted and unquoted tokens."""
+        result = Env.split(input_str, flags=EnvExpandFlags.NONE, chars=EnvChars.POSIX)
+        assert result == expected
+
+    # Edge case: input starting with cutter
+    # Note: Only the token starting with cutter is removed
+    # Subsequent tokens are still processed
+    @pytest.mark.parametrize(
+        "chars,input_str,expected",
+        [
+            (EnvChars.POSIX, "# comment only", []),
+            (EnvChars.WINDOWS, ":: comment only", []),
+            (EnvChars.RISCOS, "| comment only", []),
+            (EnvChars.VMS, "! comment only", []),
+        ],
+    )
+    def test_split_only_cutter(
+        self, chars: EnvCharsData, input_str: str, expected: list[str]
+    ):
+        """Test input with cutter and comment."""
+        result = Env.split(input_str, flags=EnvExpandFlags.DEFAULT_SPLIT, chars=chars)
+        assert result == expected
+
+    # UNESCAPE flag
+    @pytest.mark.parametrize(
+        "input_str,expected",
+        [
+            ("echo\\t", ["echo\t"]),
+            ("echo\\n", ["echo\n"]),
+            ("path\\ with\\ space", ["path with space"]),
+        ],
+    )
+    def test_split_unescape_flag(self, input_str: str, expected: list[str]):
+        """Test UNESCAPE flag behavior."""
+        result = Env.split(
+            input_str, flags=EnvExpandFlags.UNESCAPE, chars=EnvChars.POSIX
+        )
+        assert result == expected
+
+    # STRIP_SPACES flag
+    @pytest.mark.parametrize(
+        "input_str,expected",
+        [
+            ("  echo hello  ", ["echo", "hello"]),
+        ],
+    )
+    def test_split_strip_spaces_flag(self, input_str: str, expected: list[str]):
+        """Test STRIP_SPACES flag behavior."""
+        result = Env.split(
+            input_str, flags=EnvExpandFlags.STRIP_SPACES, chars=EnvChars.POSIX
+        )
+        assert result == expected
+
+    # Mock Env.expand to verify it's called correctly
+    def test_split_calls_expand(self):
+        """Test that Env.expand is called for non-hard-quoted tokens."""
+        with patch("envara.env.Env.expand", return_value="expanded") as mock_expand:
+            result = Env.split("echo $HOME", chars=EnvChars.POSIX)
+            assert result == ["expanded", "expanded"]
+            assert mock_expand.call_count == 2
+
+    def test_split_no_expand_for_hard_quoted_posix(self):
+        """Test that Env.expand is NOT called for hard-quoted strings on POSIX."""
+        with patch("envara.env.Env.expand", return_value="expanded") as mock_expand:
+            result = Env.split("'hello $HOME'", chars=EnvChars.POSIX)
+            assert result == ["hello $HOME"]
+            mock_expand.assert_not_called()
+
+    # Test with custom chars using copy_with
+    @pytest.mark.parametrize(
+        "input_str,chars,expected",
+        [
+            # Default cutter
+            (
+                "echo # comment",
+                EnvChars.POSIX,
+                ["echo"],
+            ),
+            # Change cutter to // - only token starting with // is removed
+            (
+                "echo // comment",
+                EnvChars.POSIX.copy_with(cutter="//"),
+                ["echo"],
+            ),
+            # Change cutter to empty - all cuts ignored
+            (
+                "echo # comment",
+                EnvChars.POSIX.copy_with(cutter=""),
+                ["echo", "#", "comment"],
+            ),
+            # So we test with a different cutter
+            (
+                "echo # comment",
+                EnvChars.POSIX.copy_with(cutter="##"),
+                ["echo", "#", "comment"],
+            ),
+        ],
+    )
+    def test_split_custom_chars(
+        self, input_str: str, chars: EnvCharsData, expected: list[str]
+    ):
+        """Test splitting with customized EnvCharsData."""
+        result = Env.split(input_str, flags=EnvExpandFlags.DEFAULT_SPLIT, chars=chars)
+        assert result == expected
+
+    # Test that pipes and other special chars are treated as arguments
+    @pytest.mark.parametrize(
+        "input_str,expected",
+        [
+            ("echo hello | grep world", ["echo", "hello", "|", "grep", "world"]),
+            ("ls -la > output.txt", ["ls", "-la", ">", "output.txt"]),
+            ("cat file && echo done", ["cat", "file", "&&", "echo", "done"]),
+        ],
+    )
+    def test_split_special_chars_as_args(self, input_str: str, expected: list[str]):
+        """Test that pipes, redirects etc. are treated as arguments."""
+        result = Env.split(input_str, flags=EnvExpandFlags.NONE)
         assert result == expected

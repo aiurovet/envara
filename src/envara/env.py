@@ -1182,12 +1182,20 @@ class Env:
         # Prepare result list and a pattern callback
 
         result: list[str] = []
+        is_cut: list[bool] = [False]
 
         def sub_proc(m: re.Match):
             """
             A callback to process the command-line tokens (arguments)
             found in the input
             """
+            # Check the token should be cut and skip the rest if so
+
+            if is_cut[0]:
+                return
+
+            # Analyze matching groups
+
             grps = m.groups()
             token: str = grps[0]  # this group is for single-quoted strings
 
@@ -1212,17 +1220,16 @@ class Env:
                 token = grps[1]
                 is_quoted: bool = True if token else False
 
-                # If a string was not quoted, look for a cutter and remove it
-                # as well as anything beyond that. If everything is beyond the
-                # cutter, skip this piece of data (argument)
+                # If a string was not quoted, look for a cutter in the beginning
+                # of a token and remove that token as well as anything beyond that
 
                 if not is_quoted:
                     token = grps[2]
-                    cutter_pos: int = token.find(cutter)
-                    if cutter_pos == 0:
-                        return
-                    if cutter_pos > 0:
-                        token = token[0:cutter_pos]
+                    if cutter:
+                        cutter_pos: int = token.find(cutter)
+                        if cutter_pos == 0:
+                            is_cut[0] = True
+                            return
 
                 # Restore escaped apostrophe as the plain one if it is
                 # relevant to the current platform
