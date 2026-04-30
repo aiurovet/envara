@@ -4095,6 +4095,7 @@ class TestEnvQuote:
             ("''", False, EnvChars.RISCOS, "''"),
             ("''", False, EnvChars.VMS, "''"),
             ("''", False, EnvChars.WINDOWS, "''"),
+            ("a", True, EnvChars.POSIX, '"a"'),
             ("'a", False, EnvChars.POSIX, '"\'a"'),
             ("a'", False, EnvChars.POSIX, '"a\'"'),
             ("a'b", False, EnvChars.POSIX, '"a\'b"'),
