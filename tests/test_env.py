@@ -784,7 +784,9 @@ class TestGetCurPlatforms:
         "platform_this,is_posix,is_windows,platform_map,flags,expected",
         [
             (
-                "linux", True, False,
+                "linux",
+                True,
+                False,
                 {
                     "": ["posix", "windows"],
                     "^linux": ["linux"],
@@ -794,7 +796,9 @@ class TestGetCurPlatforms:
                 ["posix", "linux"],
             ),
             (
-                "linux", True, False,
+                "linux",
+                True,
+                False,
                 {
                     "": ["posix", "windows"],
                     "^linux": ["linux"],
@@ -804,7 +808,9 @@ class TestGetCurPlatforms:
                 ["", "posix", "linux"],
             ),
             (
-                "darwin", True, False,
+                "darwin",
+                True,
+                False,
                 {
                     "": ["posix", "windows"],
                     "^darwin|macos": ["bsd", "darwin", "macos"],
@@ -814,7 +820,9 @@ class TestGetCurPlatforms:
                 ["posix", "bsd", "darwin", "macos"],
             ),
             (
-                "win32", False, True,
+                "win32",
+                False,
+                True,
                 {
                     "": ["posix", "windows"],
                     "^win32": ["windows"],
@@ -824,7 +832,9 @@ class TestGetCurPlatforms:
                 ["windows", "win32"],
             ),
             (
-                "freebsd12", True, False,
+                "freebsd12",
+                True,
+                False,
                 {
                     "": ["posix", "windows"],
                     "^freebsd.*": ["bsd"],
@@ -834,7 +844,9 @@ class TestGetCurPlatforms:
                 ["posix", "bsd", "freebsd12"],
             ),
             (
-                "aix", True, False,
+                "aix",
+                True,
+                False,
                 {
                     "": ["posix", "windows"],
                     "^aix": ["aix"],
@@ -844,7 +856,9 @@ class TestGetCurPlatforms:
                 ["posix", "aix"],
             ),
             (
-                "cygwin", True, False,
+                "cygwin",
+                True,
+                False,
                 {
                     "": ["posix", "windows"],
                     "^cygwin": ["cygwin"],
@@ -1194,7 +1208,9 @@ class TestExpandPosixAllFeatures:
             ("${NULL:+unused}", {"NULL": ""}, ""),
         ],
     )
-    def test_expand_posix_params(self, input_str: str, vars: dict[str, str], expected: str):
+    def test_expand_posix_params(
+        self, input_str: str, vars: dict[str, str], expected: str
+    ):
         """Parametrized test for parameter expansion features."""
         args = ["one", "two"] if "1" in input_str else None
         with patch.dict(os.environ, vars or {}, clear=vars is not None):
@@ -1250,9 +1266,7 @@ class TestExpandPosixAllFeatures:
             ("\\$VAR", {"VAR": "value"}),
         ],
     )
-    def test_expand_posix_escape(
-        self, input_str: str, vars: dict[str, str]
-    ):
+    def test_expand_posix_escape(self, input_str: str, vars: dict[str, str]):
         """Test escape character handling."""
         result = Env.expand_posix(input_str, vars=vars, chars=EnvChars.POSIX)
         assert isinstance(result, str)
@@ -1264,7 +1278,9 @@ class TestExpandPosixErrorHandling:
     def test_expand_posix_colon_question_var_null(self):
         """${VAR:?message} - raises ValueError when VAR is null (empty)"""
         with pytest.raises(ValueError, match="custom message"):
-            Env.expand_posix("${VAR:?custom message}", vars={"VAR": ""}, chars=EnvChars.POSIX)
+            Env.expand_posix(
+                "${VAR:?custom message}", vars={"VAR": ""}, chars=EnvChars.POSIX
+            )
 
     def test_expand_posix_colon_question_var_not_set(self):
         """${VAR:?message} - raises ValueError when VAR is not set"""
@@ -1288,12 +1304,16 @@ class TestExpandPosixErrorHandling:
 
     def test_expand_posix_question_var_set(self):
         """${VAR?message} - returns value when VAR is set"""
-        result = Env.expand_posix("${VAR?message}", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR?message}", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "value"
 
     def test_expand_posix_colon_question_var_set(self):
         """${VAR:?message} - returns value when VAR is set and not null"""
-        result = Env.expand_posix("${VAR:?message}", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:?message}", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "value"
 
 
@@ -1302,32 +1322,44 @@ class TestExpandPosixSubstitutionAnchors:
 
     def test_substitution_pattern_anchor_hash(self):
         """${VAR/#foo/bar} - anchor # from pattern replaces prefix match"""
-        result = Env.expand_posix("${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "repltch"
 
     def test_substitution_pattern_anchor_percent(self):
         """${VAR/%foo/bar} - anchor % from pattern replaces suffix match"""
-        result = Env.expand_posix("${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "matrepl"
 
     def test_substitution_anchor_hash_no_match(self):
         """${VAR/#foo/bar} - no match returns original"""
-        result = Env.expand_posix("${X/#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
     def test_substitution_anchor_percent_no_match(self):
         """${VAR/%foo/bar} - no match returns original"""
-        result = Env.expand_posix("${X/%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
     def test_substitution_all_with_anchor_hash(self):
         """${VAR//#foo/bar} - replace all with # anchor"""
-        result = Env.expand_posix("${X//m/repl}", vars={"X": "matchmatch"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//m/repl}", vars={"X": "matchmatch"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_substitution_all_with_anchor_percent(self):
         """${VAR//%foo/bar} - replace all with % anchor"""
-        result = Env.expand_posix("${X//h/repl}", vars={"X": "matchmatch"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//h/repl}", vars={"X": "matchmatch"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
 
@@ -1360,7 +1392,9 @@ class TestExpandPosixNestedAndEdgeCases:
 
     def test_expand_posix_nested_braces(self):
         """Nested expansion inside braces"""
-        result = Env.expand_posix("${VAR:-${DEFAULT}}", vars={"DEFAULT": "fallback"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:-${DEFAULT}}", vars={"DEFAULT": "fallback"}, chars=EnvChars.POSIX
+        )
         assert result == "fallback"
 
     def test_expand_posix_empty_var_name_braces(self):
@@ -1375,13 +1409,18 @@ class TestExpandPosixNestedAndEdgeCases:
 
     def test_expand_posix_var_with_underscore(self):
         """${MY_VAR} - variable with underscore"""
-        result = Env.expand_posix("${MY_VAR}", vars={"MY_VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${MY_VAR}", vars={"MY_VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "value"
 
     def test_expand_posix_multiple_vars_with_text(self):
         """Text between and around variables"""
-        result = Env.expand_posix("start$VAR-middle$OTHER-end", 
-                                 vars={"VAR": "A", "OTHER": "B"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "start$VAR-middle$OTHER-end",
+            vars={"VAR": "A", "OTHER": "B"},
+            chars=EnvChars.POSIX,
+        )
         assert result == "startA-middleB-end"
 
     def test_expand_posix_dollar_at_end(self):
@@ -1400,17 +1439,24 @@ class TestExpandPosixBacktickSubstitution:
 
     def test_backtick_not_allowed_returns_literal(self):
         """Without ALLOW_SUBPROC, backticks stay as literal"""
-        result = Env.expand_posix("`echo test`", vars={}, 
-                                  expand_flags=EnvExpandFlags.NONE, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "`echo test`",
+            vars={},
+            expand_flags=EnvExpandFlags.NONE,
+            chars=EnvChars.POSIX,
+        )
         assert result == "`echo test`"
 
     def test_backtick_with_mock_subprocess(self):
         """With ALLOW_SUBPROC flag, uses mocked subprocess"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="output\n", returncode=0)
-            result = Env.expand_posix("`echo test`", vars={},
-                                      expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
-                                      chars=EnvChars.POSIX)
+            result = Env.expand_posix(
+                "`echo test`",
+                vars={},
+                expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
+                chars=EnvChars.POSIX,
+            )
             assert "output" in result
             mock_run.assert_called_once()
 
@@ -1425,17 +1471,24 @@ class TestExpandPosixCommandSubstitution:
 
     def test_command_sub_not_allowed_returns_literal(self):
         """Without ALLOW_SUBPROC, $(...) stays as literal"""
-        result = Env.expand_posix("$(echo test)", vars={},
-                                  expand_flags=EnvExpandFlags.NONE, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "$(echo test)",
+            vars={},
+            expand_flags=EnvExpandFlags.NONE,
+            chars=EnvChars.POSIX,
+        )
         assert result == "$(echo test)"
 
     def test_command_sub_with_mock(self):
         """With ALLOW_SUBPROC flag, uses mocked subprocess"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="result\n", returncode=0)
-            result = Env.expand_posix("$(echo test)", vars={},
-                                      expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
-                                      chars=EnvChars.POSIX)
+            result = Env.expand_posix(
+                "$(echo test)",
+                vars={},
+                expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
+                chars=EnvChars.POSIX,
+            )
             assert "result" in result
             mock_run.assert_called_once()
 
@@ -1448,9 +1501,12 @@ class TestExpandPosixCommandSubstitution:
         """$(...) with nested parentheses"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="nested\n", returncode=0)
-            result = Env.expand_posix("$(echo $(date))", vars={},
-                                      expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
-                                      chars=EnvChars.POSIX)
+            result = Env.expand_posix(
+                "$(echo $(date))",
+                vars={},
+                expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
+                chars=EnvChars.POSIX,
+            )
             assert "nested" in result
 
 
@@ -1474,52 +1530,72 @@ class TestExpandPosixSubstitutionLoops:
 
     def test_substitution_hash_anchor_all_loop_changes(self):
         """anchor == '#' with is_all=True - loop with changes"""
-        result = Env.expand_posix("${X//#ma/repl}", vars={"X": "mamatch"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//#ma/repl}", vars={"X": "mamatch"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_substitution_percent_anchor_all_loop_changes(self):
         """anchor == '%' with is_all=True - loop with changes"""
-        result = Env.expand_posix("${X//%ch/repl}", vars={"X": "matchch"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//%ch/repl}", vars={"X": "matchch"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_substitution_hash_anchor_all_loop_no_change(self):
         """anchor == '#' with is_all=True - loop with no change"""
-        result = Env.expand_posix("${X//#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
     def test_substitution_percent_anchor_all_loop_no_change(self):
         """anchor == '%' with is_all=True - loop with no change"""
-        result = Env.expand_posix("${X//%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
     def test_substitution_hash_anchor_single_match(self):
         """anchor == '#' with is_all=False - match returns repl_eval + text[i:]"""
-        result = Env.expand_posix("${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "repltch"
 
     def test_substitution_hash_anchor_single_no_match(self):
         """anchor == '#' with is_all=False - no match returns val"""
-        result = Env.expand_posix("${X/#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
     def test_substitution_percent_anchor_single_match(self):
         """anchor == '%' with is_all=False - match returns text[:len(text)-i] + repl_eval"""
-        result = Env.expand_posix("${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "matrepl"
 
     def test_substitution_percent_anchor_single_no_match(self):
         """anchor == '%' with is_all=False - no match returns val"""
-        result = Env.expand_posix("${X/%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
     def test_substitution_no_anchor_is_all_true(self):
         """No anchor with is_all=True - replaces all occurrences"""
-        result = Env.expand_posix("${X//m/repl}", vars={"X": "matchmatch"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//m/repl}", vars={"X": "matchmatch"}, chars=EnvChars.POSIX
+        )
         assert result == "replatchreplatch" or "repl" in result
 
     def test_substitution_no_anchor_is_all_false(self):
         """No anchor with is_all=False - replaces first occurrence"""
-        result = Env.expand_posix("${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "replatch"
 
 
@@ -1528,12 +1604,16 @@ class TestExpandPosixColonPlusOperator:
 
     def test_colon_plus_var_set_not_null(self):
         """${VAR:+word} - when VAR is set and not null, returns word (line 440-448)"""
-        result = Env.expand_posix("${VAR:+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "replacement"
 
     def test_colon_plus_var_null(self):
         """${VAR:+word} - when VAR is set but null, returns "" (line 440-448)"""
-        result = Env.expand_posix("${VAR:+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX
+        )
         assert result == ""
 
     def test_colon_plus_var_not_set(self):
@@ -1547,12 +1627,16 @@ class TestExpandPosixPlusOperator:
 
     def test_plus_var_set(self):
         """${VAR+word} - when VAR is set (even if null), returns word (line 451-458)"""
-        result = Env.expand_posix("${VAR+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "replacement"
 
     def test_plus_var_null(self):
         """${VAR+word} - when VAR is set but null, returns word (line 451-458)"""
-        result = Env.expand_posix("${VAR+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX
+        )
         assert result == "replacement"
 
     def test_plus_var_not_set(self):
@@ -1566,29 +1650,39 @@ class TestExpandPosixRestParsingLines:
 
     def test_rest_starts_with_hash_anchor(self):
         """rest starts with # - anchor='#' (lines 319-321)"""
-        result = Env.expand_posix("${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_rest_starts_with_percent_anchor(self):
         """rest starts with % - anchor='%' (lines 319-321)"""
-        result = Env.expand_posix("${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_rest_starts_with_double_slash(self):
         """rest starts with // - is_all=True (lines 327-331)"""
-        result = Env.expand_posix("${X//m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_rest_starts_with_slash(self):
         """rest starts with / - is_all=False (lines 332-335)"""
-        result = Env.expand_posix("${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_rest_contains_slash_only(self):
         """rest contains / but not at start - covered at line 336-337"""
         # This is tricky - line 336-337: elif "/" in r: pat, repl = r.split("/", 1)
         # This happens when rest doesn't start with // or /, but contains /
-        result = Env.expand_posix("${Xm/repl}", vars={"Xm": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${Xm/repl}", vars={"Xm": "match"}, chars=EnvChars.POSIX
+        )
         assert isinstance(result, str)
 
 
@@ -1597,12 +1691,16 @@ class TestExpandPosixPatStartsWithAnchor:
 
     def test_pat_starts_with_hash(self):
         """pat starts with # - anchor set (lines 339-341)"""
-        result = Env.expand_posix("${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_pat_starts_with_percent(self):
         """pat starts with % - anchor set (lines 339-341)"""
-        result = Env.expand_posix("${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
 
@@ -1611,8 +1709,9 @@ class TestExpandPosixReplEval:
 
     def test_repl_eval_expands(self):
         """repl is expanded via expand_posix (lines 353-359)"""
-        result = Env.expand_posix("${X/old/${REPL}}", vars={"X": "old", "REPL": "new"}, 
-                                  chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/old/${REPL}}", vars={"X": "old", "REPL": "new"}, chars=EnvChars.POSIX
+        )
         assert "new" in result or result == "new"
 
 
@@ -1621,12 +1720,16 @@ class TestExpandPosixAnchorHashAllTrue:
 
     def test_anchor_hash_all_changes(self):
         """anchor == '#' with is_all=True - loop makes changes"""
-        result = Env.expand_posix("${X//#ma/repl}", vars={"X": "mamatch"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//#ma/repl}", vars={"X": "mamatch"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_anchor_hash_all_no_change(self):
         """anchor == '#' with is_all=True - loop no changes"""
-        result = Env.expand_posix("${X//#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
 
@@ -1635,12 +1738,16 @@ class TestExpandPosixAnchorPercentAllTrue:
 
     def test_anchor_percent_all_changes(self):
         """anchor == '%' with is_all=True - loop makes changes"""
-        result = Env.expand_posix("${X//%ch/repl}", vars={"X": "matchch"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//%ch/repl}", vars={"X": "matchch"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_anchor_percent_all_no_change(self):
         """anchor == '%' with is_all=True - loop no changes"""
-        result = Env.expand_posix("${X//%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
 
@@ -1649,7 +1756,9 @@ class TestExpandPosixColonPlusReturnsEmpty:
 
     def test_colon_plus_null_returns_empty(self):
         """${VAR:+word} when VAR is null - returns '' (line 437)"""
-        result = Env.expand_posix("${VAR:+word}", vars={"VAR": ""}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:+word}", vars={"VAR": ""}, chars=EnvChars.POSIX
+        )
         assert result == ""
 
     def test_colon_plus_not_set_returns_empty(self):
@@ -1682,7 +1791,9 @@ class TestExpandPosixEscapeProcessing:
 
     def test_double_escape_before_var(self):
         """Double escape before $VAR (lines 503-504)"""
-        result = Env.expand_posix(r"\\$VAR", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            r"\\$VAR", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "\\value" or "\\" in result
 
     def test_escape_at_end_of_string(self):
@@ -1699,9 +1810,12 @@ class TestExpandPosixEscapeProcessing:
         """Escape before backtick, subprocess allowed (lines 521-522)"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="output\n", returncode=0)
-            result = Env.expand_posix(r"\`echo test`", vars={},
-                                      expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
-                                      chars=EnvChars.POSIX)
+            result = Env.expand_posix(
+                r"\`echo test`",
+                vars={},
+                expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
+                chars=EnvChars.POSIX,
+            )
             # Escape consumes the backtick, so it's literal
             assert "`" in result
 
@@ -1722,9 +1836,12 @@ class TestExpandPosixBacktickWithEscapeInside:
         """Backtick with escaped backtick inside (lines 520-522)"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="output\n", returncode=0)
-            result = Env.expand_posix("`echo \\`test`", vars={},
-                                      expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
-                                      chars=EnvChars.POSIX)
+            result = Env.expand_posix(
+                "`echo \\`test`",
+                vars={},
+                expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
+                chars=EnvChars.POSIX,
+            )
             assert "output" in result
 
 
@@ -1763,9 +1880,12 @@ class TestExpandPosixDollarOpenParen:
         """$(...) command substitution (lines 588-641)"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="result\n", returncode=0)
-            result = Env.expand_posix("$(echo test)", vars={},
-                                      expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
-                                      chars=EnvChars.POSIX)
+            result = Env.expand_posix(
+                "$(echo test)",
+                vars={},
+                expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
+                chars=EnvChars.POSIX,
+            )
             assert "result" in result
 
     def test_dollar_open_paren_no_close(self):
@@ -1775,9 +1895,12 @@ class TestExpandPosixDollarOpenParen:
 
     def test_dollar_open_paren_no_subproc(self):
         """$(...) without ALLOW_SUBPROC returns literal (lines 609-612)"""
-        result = Env.expand_posix("$(echo test)", vars={},
-                                  expand_flags=EnvExpandFlags.NONE,
-                                  chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "$(echo test)",
+            vars={},
+            expand_flags=EnvExpandFlags.NONE,
+            chars=EnvChars.POSIX,
+        )
         assert result == "$(echo test)"
 
 
@@ -1856,7 +1979,9 @@ class TestExpandPosixInputPath:
 
     def test_input_path_expands(self):
         """input is Path, expands vars (lines 692-694)"""
-        result = Env.expand_posix(Path("$VAR"), vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            Path("$VAR"), vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == Path("value")
 
 
@@ -1877,9 +2002,12 @@ class TestExpandPosixAllowShell:
         """ALLOW_SHELL implies ALLOW_SUBPROC (lines 199-203)"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="shell\n", returncode=0)
-            result = Env.expand_posix("$(echo test)", vars={},
-                                      expand_flags=EnvExpandFlags.ALLOW_SHELL,
-                                      chars=EnvChars.POSIX)
+            result = Env.expand_posix(
+                "$(echo test)",
+                vars={},
+                expand_flags=EnvExpandFlags.ALLOW_SHELL,
+                chars=EnvChars.POSIX,
+            )
             assert "shell" in result
 
 
@@ -1891,10 +2019,14 @@ class TestExpandPosixIsBktickCmd:
         chars = EnvChars.POSIX.copy_with(escape="\\")
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="cmd\n", returncode=0)
-            result = Env.expand_posix("`echo test`", vars={},
-                                      expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
-                                      chars=chars)
+            result = Env.expand_posix(
+                "`echo test`",
+                vars={},
+                expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
+                chars=chars,
+            )
             assert "cmd" in result
+
     """Tests for substring when var not set (line 251)"""
 
     def test_substring_var_not_set(self):
@@ -1909,16 +2041,19 @@ class TestExpandPosixColonEqualsAssign:
     def test_colon_equals_assigns(self):
         """${VAR:=value} assigns to vars dict (lines 274-278)"""
         vars_dict = {}
-        result = Env.expand_posix("${VAR:=newval}", vars=vars_dict, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:=newval}", vars=vars_dict, chars=EnvChars.POSIX
+        )
         assert result == "newval"
         assert vars_dict.get("VAR") == "newval"
 
     def test_colon_equals_assign_fails(self):
         """${VAR:=value} when assignment fails (lines 276-278)"""
+
         class ReadOnlyDict(dict):
             def __setitem__(self, key, val):
                 raise Exception("read-only")
-        
+
         ro_dict = ReadOnlyDict({"VAR": "old"})
         result = Env.expand_posix("${VAR:=new}", vars=ro_dict, chars=EnvChars.POSIX)
         assert result == "old" or result == "new"
@@ -1929,12 +2064,16 @@ class TestExpandPosixRestStartsWithHash:
 
     def test_rest_starts_with_hash(self):
         """rest starts with # - anchor='#' (lines 320-321)"""
-        result = Env.expand_posix("${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_rest_starts_with_percent(self):
         """rest starts with % - anchor='%' (lines 320-321)"""
-        result = Env.expand_posix("${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
 
@@ -1943,7 +2082,9 @@ class TestExpandPosixRestStartsWithSlashSlash:
 
     def test_rest_starts_with_slash_slash(self):
         """rest starts with // - is_all=True (lines 327-331)"""
-        result = Env.expand_posix("${X//m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
 
@@ -1952,7 +2093,9 @@ class TestExpandPosixRestStartsWithSlash:
 
     def test_rest_starts_with_slash(self):
         """rest starts with / - is_all=False (lines 332-335)"""
-        result = Env.expand_posix("${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
 
@@ -1965,7 +2108,9 @@ class TestExpandPosixRestContainsSlash:
         # This would be like ${VARm/atch/repl} - but that's invalid syntax
         # Actually line 336-337 handles: elif "/" in r:
         # This is when rest has no // prefix, no / prefix, but contains /
-        result = Env.expand_posix("${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
 
@@ -1974,7 +2119,9 @@ class TestExpandPosixPatStartsWithHash:
 
     def test_pat_starts_with_hash(self):
         """pat starts with # - anchor set (lines 339-341)"""
-        result = Env.expand_posix("${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
 
@@ -1983,7 +2130,9 @@ class TestExpandPosixPatStartsWithPercent:
 
     def test_pat_starts_with_percent(self):
         """pat starts with % - anchor set (lines 339-341)"""
-        result = Env.expand_posix("${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
 
@@ -2001,8 +2150,9 @@ class TestExpandPosixReplEval:
 
     def test_repl_eval_expands_vars(self):
         """repl is expanded with expand_posix (lines 353-359)"""
-        result = Env.expand_posix("${X/old/${REPL}}", vars={"X": "old", "REPL": "new"}, 
-                                  chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/old/${REPL}}", vars={"X": "old", "REPL": "new"}, chars=EnvChars.POSIX
+        )
         assert "new" in result
 
 
@@ -2011,12 +2161,16 @@ class TestExpandPosixHashAnchorAllTrue:
 
     def test_hash_anchor_all_loops(self):
         """anchor == '#' with is_all=True - multiple replacements"""
-        result = Env.expand_posix("${X//#m/repl}", vars={"X": "mmatch"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//#m/repl}", vars={"X": "mmatch"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_hash_anchor_all_no_change(self):
         """anchor == '#' with is_all=True - no change"""
-        result = Env.expand_posix("${X//#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
 
@@ -2025,12 +2179,16 @@ class TestExpandPosixHashAnchorAllFalse:
 
     def test_hash_anchor_single_match(self):
         """anchor == '#' with is_all=False - first match"""
-        result = Env.expand_posix("${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "repltch"
 
     def test_hash_anchor_single_no_match(self):
         """anchor == '#' with is_all=False - no match"""
-        result = Env.expand_posix("${X/#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
 
@@ -2039,12 +2197,16 @@ class TestExpandPosixPercentAnchorAllTrue:
 
     def test_percent_anchor_all_loops(self):
         """anchor == '%' with is_all=True - multiple replacements"""
-        result = Env.expand_posix("${X//%ch/repl}", vars={"X": "matchch"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//%ch/repl}", vars={"X": "matchch"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_percent_anchor_all_no_change(self):
         """anchor == '%' with is_all=True - no change"""
-        result = Env.expand_posix("${X//%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
 
@@ -2053,12 +2215,16 @@ class TestExpandPosixPercentAnchorAllFalse:
 
     def test_percent_anchor_single_match(self):
         """anchor == '%' with is_all=False - first match"""
-        result = Env.expand_posix("${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "matrepl"
 
     def test_percent_anchor_single_no_match(self):
         """anchor == '%' with is_all=False - no match"""
-        result = Env.expand_posix("${X/%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
 
@@ -2067,7 +2233,9 @@ class TestExpandPosixNoAnchorAllTrue:
 
     def test_no_anchor_all_replaces_all(self):
         """No anchor with is_all=True - replace all"""
-        result = Env.expand_posix("${X//m/repl}", vars={"X": "matchmatch"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//m/repl}", vars={"X": "matchmatch"}, chars=EnvChars.POSIX
+        )
         assert result == "replatchreplatch" or "repl" in result
 
 
@@ -2076,7 +2244,9 @@ class TestExpandPosixNoAnchorAllFalse:
 
     def test_no_anchor_single_replaces_first(self):
         """No anchor with is_all=False - replace first"""
-        result = Env.expand_posix("${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "replatch"
 
 
@@ -2085,12 +2255,16 @@ class TestExpandPosixColonPlus:
 
     def test_colon_plus_set_not_null(self):
         """${VAR:+word} when set and not null (lines 440-448)"""
-        result = Env.expand_posix("${VAR:+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "replacement"
 
     def test_colon_plus_null(self):
         """${VAR:+word} when set but null (lines 440-448)"""
-        result = Env.expand_posix("${VAR:+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX
+        )
         assert result == ""
 
     def test_colon_plus_not_set(self):
@@ -2104,12 +2278,16 @@ class TestExpandPosixPlus:
 
     def test_plus_set(self):
         """${VAR+word} when set (even if null) (lines 451-458)"""
-        result = Env.expand_posix("${VAR+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "replacement"
 
     def test_plus_null(self):
         """${VAR+word} when set but null (lines 451-458)"""
-        result = Env.expand_posix("${VAR+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX
+        )
         assert result == "replacement"
 
     def test_plus_not_set(self):
@@ -2124,7 +2302,9 @@ class TestExpandPosixColonQuestion:
     def test_colon_question_var_null(self):
         """${VAR:?msg} when VAR is null (lines 460-472)"""
         with pytest.raises(ValueError, match="custom msg"):
-            Env.expand_posix("${VAR:?custom msg}", vars={"VAR": ""}, chars=EnvChars.POSIX)
+            Env.expand_posix(
+                "${VAR:?custom msg}", vars={"VAR": ""}, chars=EnvChars.POSIX
+            )
 
     def test_colon_question_var_not_set(self):
         """${VAR:?msg} when VAR not set (lines 460-472)"""
@@ -2138,7 +2318,9 @@ class TestExpandPosixColonQuestion:
 
     def test_colon_question_set(self):
         """${VAR:?msg} when VAR is set and not null (lines 460-472)"""
-        result = Env.expand_posix("${VAR:?msg}", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:?msg}", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "value"
 
 
@@ -2157,7 +2339,9 @@ class TestExpandPosixQuestion:
 
     def test_question_set(self):
         """${VAR?msg} when VAR is set (lines 473-486)"""
-        result = Env.expand_posix("${VAR?msg}", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR?msg}", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "value"
 
 
@@ -2173,6 +2357,7 @@ class TestExpandPosixReturnWhenSetNoRest:
         """When var not set and no rest, return literal (lines 488-490)"""
         result = Env.expand_posix("${UNKNOWN}", vars={}, chars=EnvChars.POSIX)
         assert result == "${UNKNOWN}"
+
     """Tests for when pat or repl is None (line 343-344)"""
 
     def test_substitution_no_slash_in_rest(self):
@@ -2182,7 +2367,9 @@ class TestExpandPosixReturnWhenSetNoRest:
 
     def test_substitution_rest_no_slash(self):
         """rest starts with neither // nor / nor contains /"""
-        result = Env.expand_posix("${VAR:-default}", vars={"VAR": ""}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:-default}", vars={"VAR": ""}, chars=EnvChars.POSIX
+        )
         assert result == "default"
 
 
@@ -2233,12 +2420,16 @@ class TestExpandPosixIsPath:
 
     def test_input_path_returns_path(self):
         """When input is Path, returns Path (line 692-694)"""
-        result = Env.expand_posix(Path("/test"), vars={"test": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            Path("/test"), vars={"test": "value"}, chars=EnvChars.POSIX
+        )
         assert isinstance(result, Path)
 
     def test_input_path_expands_vars(self):
         """When input is Path, expands vars (line 692-694)"""
-        result = Env.expand_posix(Path("$VAR"), vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            Path("$VAR"), vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == Path("value")
 
 
@@ -2264,7 +2455,7 @@ class TestExpandPosixAllowShell:
             "$(echo test)",
             vars={},
             expand_flags=EnvExpandFlags.ALLOW_SHELL,
-            chars=EnvChars.POSIX
+            chars=EnvChars.POSIX,
         )
         # With ALLOW_SHELL, subprocess should be allowed
         assert "test" in result or "$(echo test)" in result
@@ -2280,7 +2471,7 @@ class TestExpandPosixBacktickIsBktickCmd:
             "`echo test`",
             vars={},
             expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
-            chars=chars
+            chars=chars,
         )
         assert "test" in result
 
@@ -2300,7 +2491,9 @@ class TestExpandPosixEscapeProcessing:
 
     def test_double_escape(self):
         """Double escape (lines 503-504)"""
-        result = Env.expand_posix(r"\\$VAR", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            r"\\$VAR", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "\\value" or "\\" in result
 
     def test_escape_at_end(self):
@@ -2314,12 +2507,16 @@ class TestExpandPosixLoopsNoChange:
 
     def test_hash_anchor_all_no_change(self):
         """anchor == '#' with is_all=True, no change (lines 375-377)"""
-        result = Env.expand_posix("${X//#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
     def test_percent_anchor_all_no_change(self):
         """anchor == '%' with is_all=True, no change (lines 394-401)"""
-        result = Env.expand_posix("${X//%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
 
@@ -2345,6 +2542,7 @@ class TestExpandPosixPatternRemovalEdgeCases:
         """% when var not set returns literal (lines 298-301)"""
         result = Env.expand_posix("${X%pattern}", vars={}, chars=EnvChars.POSIX)
         assert result == "${X%pattern}"
+
     """Tests for ${#VAR} when VAR is not set (line 251)"""
 
     def test_hash_var_not_set(self):
@@ -2358,10 +2556,11 @@ class TestExpandPosixColonEqualsAssignException:
 
     def test_colon_equals_cannot_assign(self):
         """${VAR:=value} when vars doesn't support assignment (lines 274-278)"""
+
         class ReadOnlyDict(dict):
             def __setitem__(self, key, value):
                 raise Exception("Read-only")
-        
+
         ro_dict = ReadOnlyDict({"VAR": "existing"})
         result = Env.expand_posix("${VAR:=newval}", vars=ro_dict, chars=EnvChars.POSIX)
         # Should return existing value since assignment fails
@@ -2373,7 +2572,9 @@ class TestExpandPosixSubstitutionNotSet:
 
     def test_substitution_var_not_set(self):
         """${VAR/pat/repl} when VAR not set returns literal (line 347)"""
-        result = Env.expand_posix("${UNKNOWN/match/repl}", vars={}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${UNKNOWN/match/repl}", vars={}, chars=EnvChars.POSIX
+        )
         assert "${UNKNOWN/match/repl}" in result or result == "${UNKNOWN/match/repl}"
 
 
@@ -2385,15 +2586,15 @@ class TestExpandPosixBacktickSubprocessShell:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="from shell\n", returncode=0)
             result = Env.expand_posix(
-                "`echo test`", 
+                "`echo test`",
                 vars={},
                 expand_flags=EnvExpandFlags.ALLOW_SHELL,
-                chars=EnvChars.POSIX
+                chars=EnvChars.POSIX,
             )
             assert "from shell" in result
             # Check that shell=True was used
             call_kwargs = mock_run.call_args
-            assert call_kwargs[1].get('shell') == True
+            assert call_kwargs[1].get("shell") == True
 
 
 class TestExpandPosixBacktickTimeout:
@@ -2401,14 +2602,17 @@ class TestExpandPosixBacktickTimeout:
 
     def test_backtick_timeout(self):
         """Backtick command times out (line 559-560)"""
-        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="test", timeout=1)):
+        with patch(
+            "subprocess.run",
+            side_effect=subprocess.TimeoutExpired(cmd="test", timeout=1),
+        ):
             with pytest.raises(ValueError, match="timed out"):
                 Env.expand_posix(
                     "`sleep 10`",
                     vars={},
                     expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
                     subprocess_timeout=0.1,
-                    chars=EnvChars.POSIX
+                    chars=EnvChars.POSIX,
                 )
 
 
@@ -2419,16 +2623,14 @@ class TestExpandPosixBacktickError:
         """Backtick command fails (line 561-564)"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
-                stdout="", 
-                stderr="command not found", 
-                returncode=1
+                stdout="", stderr="command not found", returncode=1
             )
             with pytest.raises(ValueError, match="failed"):
                 Env.expand_posix(
                     "`badcommand`",
                     vars={},
                     expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
-                    chars=EnvChars.POSIX
+                    chars=EnvChars.POSIX,
                 )
 
 
@@ -2443,11 +2645,11 @@ class TestExpandPosixCommandSubShell:
                 "$(echo test)",
                 vars={},
                 expand_flags=EnvExpandFlags.ALLOW_SHELL,
-                chars=EnvChars.POSIX
+                chars=EnvChars.POSIX,
             )
             assert "from shell" in result
             call_kwargs = mock_run.call_args
-            assert call_kwargs[1].get('shell') == True
+            assert call_kwargs[1].get("shell") == True
 
 
 class TestExpandPosixCommandSubTimeout:
@@ -2455,14 +2657,17 @@ class TestExpandPosixCommandSubTimeout:
 
     def test_command_sub_timeout(self):
         """$(...) command times out (lines 632-633)"""
-        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="test", timeout=1)):
+        with patch(
+            "subprocess.run",
+            side_effect=subprocess.TimeoutExpired(cmd="test", timeout=1),
+        ):
             with pytest.raises(ValueError, match="timed out"):
                 Env.expand_posix(
                     "$(sleep 10)",
                     vars={},
                     expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
                     subprocess_timeout=0.1,
-                    chars=EnvChars.POSIX
+                    chars=EnvChars.POSIX,
                 )
 
 
@@ -2473,16 +2678,14 @@ class TestExpandPosixCommandSubError:
         """$(...) command fails (lines 634-637)"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
-                stdout="", 
-                stderr="command not found", 
-                returncode=1
+                stdout="", stderr="command not found", returncode=1
             )
             with pytest.raises(ValueError, match="failed"):
                 Env.expand_posix(
                     "$(badcommand)",
                     vars={},
                     expand_flags=EnvExpandFlags.ALLOW_SUBPROC,
-                    chars=EnvChars.POSIX
+                    chars=EnvChars.POSIX,
                 )
 
 
@@ -2535,7 +2738,9 @@ class TestExpandPosixAlphaVar:
 
     def test_dollar_alpha_var_underscore(self):
         """$MY_VAR - variable with underscore (lines 676-687)"""
-        result = Env.expand_posix("$MY_VAR", vars={"MY_VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "$MY_VAR", vars={"MY_VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "value"
 
 
@@ -2551,6 +2756,7 @@ class TestExpandPosixLoneDollar:
         """$@ - invalid after dollar (lines 689-690)"""
         result = Env.expand_posix("$@", vars={}, chars=EnvChars.POSIX)
         assert result == "$@"
+
     """Tests for ${#VAR} when VAR is not set (line 251)"""
 
     def test_hash_var_not_set(self):
@@ -2565,17 +2771,20 @@ class TestExpandPosixColonEqualsException:
     def test_colon_equals_vars_none(self):
         """${VAR:=value} with vars=None falls back to os.environ (line 196-197)"""
         with patch.dict(os.environ, {"TEST_VAR": "from_env"}, clear=False):
-            result = Env.expand_posix("${TEST_VAR:=newval}", vars=None, chars=EnvChars.POSIX)
+            result = Env.expand_posix(
+                "${TEST_VAR:=newval}", vars=None, chars=EnvChars.POSIX
+            )
             assert result == "from_env"
 
     def test_colon_equals_cannot_assign(self):
         """${VAR:=value} when vars doesn't support assignment (lines 274-278)"""
         vars_readonly = {"VAR": "existing"}
+
         # Use a dict-like object that raises on assignment
         class ReadOnlyDict(dict):
             def __setitem__(self, key, value):
                 raise Exception("Read-only")
-        
+
         ro_dict = ReadOnlyDict(vars_readonly)
         result = Env.expand_posix("${VAR:=newval}", vars=ro_dict, chars=EnvChars.POSIX)
         assert result == "existing" or result == "newval"
@@ -2586,22 +2795,30 @@ class TestExpandPosixRestParsing:
 
     def test_rest_starts_with_hash_anchor(self):
         """rest starts with # - anchor set to # (lines 319-321)"""
-        result = Env.expand_posix("${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_rest_starts_with_percent_anchor(self):
         """rest starts with % - anchor set to % (lines 319-321)"""
-        result = Env.expand_posix("${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_pat_starts_with_hash_anchor(self):
         """pat starts with # - anchor set to # (lines 339-341)"""
-        result = Env.expand_posix("${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_pat_starts_with_percent_anchor(self):
         """pat starts with % - anchor set to % (lines 339-341)"""
-        result = Env.expand_posix("${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
 
@@ -2632,46 +2849,63 @@ class TestExpandPosixMainLoop:
         """$@ - unrecognized after dollar, just append $ (lines 689-690)"""
         result = Env.expand_posix("$@", vars={}, chars=EnvChars.POSIX)
         assert result == "$@"
+
     """Tests for substitution loops with anchors # and % (is_all=True)"""
 
     def test_substitution_hash_anchor_all_loop_changes(self):
         """anchor == '#' with is_all=True - loop with changes"""
-        result = Env.expand_posix("${X//#ma/repl}", vars={"X": "mamatch"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//#ma/repl}", vars={"X": "mamatch"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_substitution_percent_anchor_all_loop_changes(self):
         """anchor == '%' with is_all=True - loop with changes"""
-        result = Env.expand_posix("${X//%ch/repl}", vars={"X": "matchch"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//%ch/repl}", vars={"X": "matchch"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_substitution_hash_anchor_single_no_match(self):
         """anchor == '#' with is_all=False - no match returns val"""
-        result = Env.expand_posix("${X/#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
     def test_substitution_percent_anchor_single_no_match(self):
         """anchor == '%' with is_all=False - no match returns val"""
-        result = Env.expand_posix("${X/%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "match"
 
     def test_substitution_hash_anchor_single_match(self):
         """anchor == '#' with is_all=False - match returns repl_eval + text[i:]"""
-        result = Env.expand_posix("${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "repltch"
 
     def test_substitution_percent_anchor_single_match(self):
         """anchor == '%' with is_all=False - match returns text[:len(text)-i] + repl_eval"""
-        result = Env.expand_posix("${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "matrepl"
 
     def test_substitution_no_anchor_is_all_true(self):
         """No anchor with is_all=True - replaces all occurrences"""
-        result = Env.expand_posix("${X//m/repl}", vars={"X": "matchmatch"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//m/repl}", vars={"X": "matchmatch"}, chars=EnvChars.POSIX
+        )
         assert result == "replatchreplatch" or "repl" in result
 
     def test_substitution_no_anchor_is_all_false(self):
         """No anchor with is_all=False - replaces first occurrence"""
-        result = Env.expand_posix("${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "replatch"
 
 
@@ -2680,12 +2914,16 @@ class TestExpandPosixColonPlusOperator:
 
     def test_colon_plus_var_set_not_null(self):
         """${VAR:+word} - when VAR is set and not null, returns word"""
-        result = Env.expand_posix("${VAR:+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "replacement"
 
     def test_colon_plus_var_null(self):
         """${VAR:+word} - when VAR is set but null, returns empty"""
-        result = Env.expand_posix("${VAR:+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX
+        )
         assert result == ""
 
     def test_colon_plus_var_not_set(self):
@@ -2695,7 +2933,9 @@ class TestExpandPosixColonPlusOperator:
 
     def test_colon_plus_empty_word(self):
         """${VAR:+} - when VAR is set and not null, returns empty"""
-        result = Env.expand_posix("${VAR:+}", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:+}", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == ""
 
 
@@ -2704,12 +2944,16 @@ class TestExpandPosixPlusOperator:
 
     def test_plus_operator_var_set(self):
         """${VAR+word} - when VAR is set (even if null), returns word"""
-        result = Env.expand_posix("${VAR+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "replacement"
 
     def test_plus_operator_var_null(self):
         """${VAR+word} - when VAR is set but null, returns word"""
-        result = Env.expand_posix("${VAR+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX
+        )
         assert result == "replacement"
 
     def test_plus_operator_var_not_set(self):
@@ -2723,53 +2967,74 @@ class TestExpandPosixRestPatterns:
 
     def test_rest_starts_with_slash_slash(self):
         """rest starts with // - is_all=True"""
-        result = Env.expand_posix("${X//m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_rest_starts_with_slash(self):
         """rest starts with / - is_all=False"""
-        result = Env.expand_posix("${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result or result == "repltch"
 
     def test_rest_contains_slash(self):
         """rest contains / but doesn't start with /"""
-        result = Env.expand_posix("${Xm/repl}", vars={"Xm": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${Xm/repl}", vars={"Xm": "match"}, chars=EnvChars.POSIX
+        )
         assert isinstance(result, str)
 
     def test_pat_starts_with_hash(self):
         """pat starts with # - anchor is set to #"""
-        result = Env.expand_posix("${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_pat_starts_with_percent(self):
         """pat starts with % - anchor is set to %"""
-        result = Env.expand_posix("${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
+
     """Tests for substitution loops with anchors # and % (is_all=True)"""
 
     def test_substitution_hash_anchor_all_loop(self):
         """anchor == '#' with is_all=True - replace all prefix matches"""
-        result = Env.expand_posix("${X//#ma/repl}", vars={"X": "mamatch"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//#ma/repl}", vars={"X": "mamatch"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_substitution_percent_anchor_all_loop(self):
         """anchor == '%' with is_all=True - replace all suffix matches"""
-        result = Env.expand_posix("${X//%ch/repl}", vars={"X": "matchch"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//%ch/repl}", vars={"X": "matchch"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_substitution_hash_anchor_single(self):
         """anchor == '#' with is_all=False - replace first prefix match"""
-        result = Env.expand_posix("${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "repltch"
 
     def test_substitution_percent_anchor_single(self):
         """anchor == '%' with is_all=False - replace first suffix match"""
-        result = Env.expand_posix("${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "matrepl"
 
     def test_substitution_no_anchor(self):
         """No anchor - standard substitution"""
-        result = Env.expand_posix("${X/ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "repltch"
 
 
@@ -2778,7 +3043,9 @@ class TestExpandPosixPlusOperator:
 
     def test_plus_operator_var_set(self):
         """${VAR+word} - when VAR is set, returns word"""
-        result = Env.expand_posix("${VAR+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "replacement"
 
     def test_plus_operator_var_not_set(self):
@@ -2788,7 +3055,9 @@ class TestExpandPosixPlusOperator:
 
     def test_plus_operator_var_null(self):
         """${VAR+word} - when VAR is set but null, returns word (not empty!)"""
-        result = Env.expand_posix("${VAR+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX
+        )
         assert result == "replacement"
 
 
@@ -2804,17 +3073,21 @@ class TestExpandPosixEvalBracedReturn:
         """When var is not set and no rest, returns literal (line 490)"""
         result = Env.expand_posix("${UNKNOWN}", vars={}, chars=EnvChars.POSIX)
         assert result == "${UNKNOWN}"
+
     """Tests for edge cases in substitution logic"""
 
     def test_substitution_repl_with_dollar(self):
         """Substitution replacement containing $VAR"""
-        result = Env.expand_posix("${X/old/${NEW}}", vars={"X": "old", "NEW": "new"},
-                                  chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/old/${NEW}}", vars={"X": "old", "NEW": "new"}, chars=EnvChars.POSIX
+        )
         assert "new" in result
 
     def test_substitution_pat_with_special_chars(self):
         """Substitution pattern with special regex chars"""
-        result = Env.expand_posix("${X/a.b/repl}", vars={"X": "a.b"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/a.b/repl}", vars={"X": "a.b"}, chars=EnvChars.POSIX
+        )
         assert result == "repl"
 
     def test_substitution_empty_replacement(self):
@@ -2824,27 +3097,37 @@ class TestExpandPosixEvalBracedReturn:
 
     def test_substitution_no_slash_in_rest(self):
         """When rest has no slash, pat and repl remain None"""
-        result = Env.expand_posix("${Xnomatch}", vars={"Xnomatch": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${Xnomatch}", vars={"Xnomatch": "value"}, chars=EnvChars.POSIX
+        )
         assert isinstance(result, str)
 
     def test_substitution_anchor_hash_prefix_match(self):
         """${VAR/#pattern/repl} - replaces prefix pattern with repl"""
-        result = Env.expand_posix("${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "repltch"
 
     def test_substitution_anchor_percent_suffix_match(self):
         """${VAR/%pattern/repl} - replaces suffix pattern with repl"""
-        result = Env.expand_posix("${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert result == "matrepl"
 
     def test_substitution_anchor_hash_in_pat_prefix(self):
         """${VAR//#pattern/repl} - anchor # in pat, prefix match, all occurrences"""
-        result = Env.expand_posix("${X//m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
     def test_substitution_anchor_percent_in_pat_suffix(self):
         """${VAR//%pattern/repl} - anchor % in pat, suffix match, all occurrences"""
-        result = Env.expand_posix("${X//h/repl}", vars={"X": "match"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${X//h/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
+        )
         assert "repl" in result
 
 
@@ -2863,12 +3146,16 @@ class TestExpandPosixEvalBracedEdgeCases:
 
     def test_eval_braced_substring_negative_offset(self):
         """${VAR:-3:2} - substring with negative offset"""
-        result = Env.expand_posix("${VAR:-3:2}", vars={"VAR": "hello"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:-3:2}", vars={"VAR": "hello"}, chars=EnvChars.POSIX
+        )
         assert result == "ll"
 
     def test_eval_braced_colon_equals_set_var(self):
         """${VAR:=value} - when VAR is already set, returns value"""
-        result = Env.expand_posix("${VAR:=newval}", vars={"VAR": "existing"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:=newval}", vars={"VAR": "existing"}, chars=EnvChars.POSIX
+        )
         assert result == "existing"
 
     def test_eval_braced_pattern_removal_not_set(self):
@@ -2883,12 +3170,16 @@ class TestExpandPosixEvalBracedEdgeCases:
 
     def test_eval_braced_plus_operator_set(self):
         """${VAR:+word} - when VAR is set and not null"""
-        result = Env.expand_posix("${VAR:+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "replacement"
 
     def test_eval_braced_plus_operator_null(self):
         """${VAR:+word} - when VAR is set but null, returns empty"""
-        result = Env.expand_posix("${VAR:+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX
+        )
         assert result == ""
 
     def test_eval_braced_return_when_set_no_rest(self):
@@ -2899,23 +3190,31 @@ class TestExpandPosixEvalBracedEdgeCases:
     def test_eval_braced_colon_equals_assigns_var(self):
         """${VAR:=value} - assigns value to var when unset"""
         vars_dict = {}
-        result = Env.expand_posix("${VAR:=newval}", vars=vars_dict, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:=newval}", vars=vars_dict, chars=EnvChars.POSIX
+        )
         assert result == "newval"
         assert vars_dict.get("VAR") == "newval"
 
     def test_eval_braced_hash_var_set(self):
         """${#VAR} - length of set variable"""
-        result = Env.expand_posix("${#VAR}", vars={"VAR": "hello"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${#VAR}", vars={"VAR": "hello"}, chars=EnvChars.POSIX
+        )
         assert result == "5"
 
     def test_eval_braced_substring_negative_offset_clamped(self):
         """${VAR:-20:2} - negative offset clamped to 0"""
-        result = Env.expand_posix("${VAR:-20:2}", vars={"VAR": "hello"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:-20:2}", vars={"VAR": "hello"}, chars=EnvChars.POSIX
+        )
         assert result == "he"
 
     def test_eval_braced_substring_no_length(self):
         """${VAR:2} - substring from offset to end"""
-        result = Env.expand_posix("${VAR:2}", vars={"VAR": "hello"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "${VAR:2}", vars={"VAR": "hello"}, chars=EnvChars.POSIX
+        )
         assert result == "llo"
 
     def test_eval_braced_pattern_removal_double_hash_longest(self):
@@ -2944,14 +3243,19 @@ class TestExpandPosixMainLoopEdgeCases:
 
     def test_main_loop_backtick_no_subproc_returns_literal(self):
         """Backtick without ALLOW_SUBPROC returns literal"""
-        result = Env.expand_posix("`echo test`", vars={},
-                                  expand_flags=EnvExpandFlags.NONE,
-                                  chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            "`echo test`",
+            vars={},
+            expand_flags=EnvExpandFlags.NONE,
+            chars=EnvChars.POSIX,
+        )
         assert result == "`echo test`"
 
     def test_main_loop_double_escape_before_var(self):
         """Double escape before $VAR"""
-        result = Env.expand_posix(r"\\$VAR", vars={"VAR": "value"}, chars=EnvChars.POSIX)
+        result = Env.expand_posix(
+            r"\\$VAR", vars={"VAR": "value"}, chars=EnvChars.POSIX
+        )
         assert result == "\\value" or "\\$VAR" in result
 
     def test_main_loop_escape_at_end_of_string(self):
@@ -3072,12 +3376,16 @@ class TestExpandSimpleRemainingCoverage:
 
     def test_tilde_range_no_comma(self):
         """%VAR:~3% no comma (lines 888-931)"""
-        result = Env.expand_simple("%VAR:~3%", vars={"VAR": "hello"}, chars=EnvChars.WINDOWS)
+        result = Env.expand_simple(
+            "%VAR:~3%", vars={"VAR": "hello"}, chars=EnvChars.WINDOWS
+        )
         assert result == "lo"
 
     def test_tilde_range_negative_start(self):
         """%VAR:~-3% (lines 888-931)"""
-        result = Env.expand_simple("%VAR:~-3%", vars={"VAR": "hello"}, chars=EnvChars.WINDOWS)
+        result = Env.expand_simple(
+            "%VAR:~-3%", vars={"VAR": "hello"}, chars=EnvChars.WINDOWS
+        )
         assert result == "llo"
 
     def test_tilde_empty_base(self):
@@ -3087,7 +3395,9 @@ class TestExpandSimpleRemainingCoverage:
 
     def test_tilde_bad_start(self):
         """%VAR:~abc,3% bad start (lines 888-931)"""
-        result = Env.expand_simple("%VAR:~abc,3%", vars={"VAR": "hello"}, chars=EnvChars.WINDOWS)
+        result = Env.expand_simple(
+            "%VAR:~abc,3%", vars={"VAR": "hello"}, chars=EnvChars.WINDOWS
+        )
         assert "%VAR:~abc,3%" in result
 
     def test_var_not_set_with_windup(self):
@@ -3097,12 +3407,16 @@ class TestExpandSimpleRemainingCoverage:
 
     def test_input_path_returns_path(self):
         """Input is Path (lines 942-944)"""
-        result = Env.expand_simple(Path("%VAR%"), vars={"VAR": "value"}, chars=EnvChars.WINDOWS)
+        result = Env.expand_simple(
+            Path("%VAR%"), vars={"VAR": "value"}, chars=EnvChars.WINDOWS
+        )
         assert isinstance(result, Path)
 
     def test_riscos_not_flexible(self):
         """RISC OS not flexible (lines 724-726)"""
-        result = Env.expand_simple("<VAR>", vars={"VAR": "value"}, chars=EnvChars.RISCOS)
+        result = Env.expand_simple(
+            "<VAR>", vars={"VAR": "value"}, chars=EnvChars.RISCOS
+        )
         assert result == "value"
 
     def test_vms_not_flexible(self):
@@ -3189,7 +3503,6 @@ class TestExpandSimpleCompleteCoverage:
         assert result == ""
 
 
-
 class TestExpandSimpleFinalCoverage:
     """Final tests to cover remaining lines in expand_simple"""
 
@@ -3254,7 +3567,6 @@ class TestExpandSimpleLinesCoverage:
     """Targeted tests for specific uncovered lines in expand_simple"""
 
 
-
 class TestExpandSimpleEscapeCoverage:
     """Tests for escape character handling in expand_simple"""
 
@@ -3309,7 +3621,6 @@ class TestExpandSimpleEscapeCoverage:
         assert result == "a b"
 
 
-
 class TestExpandSimpleTargetedCoverage:
     """Targeted tests for specific uncovered lines in expand_simple"""
 
@@ -3333,8 +3644,6 @@ class TestEnvUnquoteRemainingLines:
         # Test \u000A - unicode escape
         result, qt = Env.unquote("hello\\u000A", EnvExpandFlags.NONE, EnvChars.POSIX)
         assert "hello" in result or "\n" in result
-
-
 
 
 class TestUnescapeLines1308_1312:
@@ -3389,15 +3698,15 @@ class TestUnescapeLines1323_1330:
             Env.unescape("\\x4G")
 
 
-
-
 class TestUnquoteCutterLines1419_1444:
     """Cover lines 1419-1444: cutter handling in unquote using actual EnvChars values"""
 
     def test_posix_cutter_hash(self):
         """Lines 1419-1432: POSIX cutter is #"""
         # POSIX cutter is "#"
-        result, qt = Env.unquote("hello#world", EnvExpandFlags.STRIP_SPACES, EnvChars.POSIX)
+        result, qt = Env.unquote(
+            "hello#world", EnvExpandFlags.STRIP_SPACES, EnvChars.POSIX
+        )
         assert result == "hello"
         assert qt == EnvQuoteType.NONE
 
@@ -3409,20 +3718,26 @@ class TestUnquoteCutterLines1419_1444:
 
     def test_riscos_cutter_pipe(self):
         """Lines 1419-1432: RISC OS cutter is |"""
-        result, qt = Env.unquote("hello|world", EnvExpandFlags.STRIP_SPACES, EnvChars.RISCOS)
+        result, qt = Env.unquote(
+            "hello|world", EnvExpandFlags.STRIP_SPACES, EnvChars.RISCOS
+        )
         assert result == "hello"
         assert qt == EnvQuoteType.NONE
 
     def test_vms_cutter_exclaim(self):
         """Lines 1419-1432: VMS cutter is !"""
-        result, qt = Env.unquote("hello!world", EnvExpandFlags.STRIP_SPACES, EnvChars.VMS)
+        result, qt = Env.unquote(
+            "hello!world", EnvExpandFlags.STRIP_SPACES, EnvChars.VMS
+        )
         assert result == "hello"
         assert qt == EnvQuoteType.NONE
 
     def test_windows_cutter_double_colon(self):
         """Lines 1419-1432: Windows cutter is ::"""
         # Windows cutter is "::" (2 chars)
-        result, qt = Env.unquote("hello::world", EnvExpandFlags.STRIP_SPACES, EnvChars.WINDOWS)
+        result, qt = Env.unquote(
+            "hello::world", EnvExpandFlags.STRIP_SPACES, EnvChars.WINDOWS
+        )
         assert result == "hello"
         assert qt == EnvQuoteType.NONE
 
@@ -3437,13 +3752,17 @@ class TestUnquoteCutterLines1419_1444:
     def test_escape_before_cutter_posix(self):
         """Lines 1424-1426: escape before cutter"""
         # Escape the cutter so it's not recognized
-        result, qt = Env.unquote("hello\\#world", EnvExpandFlags.STRIP_SPACES, EnvChars.POSIX)
+        result, qt = Env.unquote(
+            "hello\\#world", EnvExpandFlags.STRIP_SPACES, EnvChars.POSIX
+        )
         # The escaped # should not trigger cutter
         assert "#" in result or qt == EnvQuoteType.NONE
 
     def test_cutter_strip_spaces(self):
         """Lines 1430-1431: strip spaces after cutter"""
-        result, qt = Env.unquote("hello#   ", EnvExpandFlags.STRIP_SPACES, EnvChars.POSIX)
+        result, qt = Env.unquote(
+            "hello#   ", EnvExpandFlags.STRIP_SPACES, EnvChars.POSIX
+        )
         assert result == "hello"
         assert qt == EnvQuoteType.NONE
 
@@ -3460,7 +3779,9 @@ class TestExpandPosixLines274_278:
     def test_set_vars_on_success(self):
         """Lines 274-278: set vars[name] = new_val on success"""
         vars_dict = {}
-        result = Env.expand_posix("$VAR", vars=vars_dict, expand_flags=EnvExpandFlags.DEFAULT)
+        result = Env.expand_posix(
+            "$VAR", vars=vars_dict, expand_flags=EnvExpandFlags.DEFAULT
+        )
         # After expansion, vars_dict should have VAR set
         # Actually, the code sets vars[name] = new_val only if the expansion succeeded
         # and vars is not None
@@ -3551,8 +3872,6 @@ class TestExpandPosixLine437:
         # ${VAR:-word} when VAR is set and non-null returns val
         result = Env.expand_posix("${VAR:-default}", vars=vars_dict)
         assert result == "value"
-
-
 
 
 class TestExpandSimpleLines745_750_Cover:
@@ -3699,7 +4018,6 @@ class TestExpandPosixLines330_339:
         assert "bar" in result
 
 
-
 class TestExpandSimpleCoverage:
     """Targeted tests for expand_simple missing lines"""
 
@@ -3738,22 +4056,27 @@ class TestExpandSimpleEasy:
 
     def test_windows_cutter(self):
         """Lines 1419-1444: Windows cutter"""
-        result, qt = Env.unquote("hello::world", EnvExpandFlags.STRIP_SPACES, EnvChars.WINDOWS)
+        result, qt = Env.unquote(
+            "hello::world", EnvExpandFlags.STRIP_SPACES, EnvChars.WINDOWS
+        )
         assert result == "hello"
 
     def test_riscos_cutter(self):
         """Lines 1419-1444: RISC OS cutter"""
-        result, qt = Env.unquote("hello|world", EnvExpandFlags.STRIP_SPACES, EnvChars.RISCOS)
+        result, qt = Env.unquote(
+            "hello|world", EnvExpandFlags.STRIP_SPACES, EnvChars.RISCOS
+        )
         assert result == "hello"
 
     def test_vms_cutter(self):
         """Lines 1419-1444: VMS cutter"""
-        result, qt = Env.unquote("hello!world", EnvExpandFlags.STRIP_SPACES, EnvChars.VMS)
+        result, qt = Env.unquote(
+            "hello!world", EnvExpandFlags.STRIP_SPACES, EnvChars.VMS
+        )
         assert result == "hello"
 
 
 import pytest
-
 
 
 class TestEnvQuote:
@@ -3762,34 +4085,27 @@ class TestEnvQuote:
         [
             (None, False, EnvChars.POSIX, None),
             ("", False, EnvChars.POSIX, ""),
-
             (None, False, EnvChars.WINDOWS, None),
             ("", False, EnvChars.WINDOWS, ""),
-
             (" ", False, EnvChars.POSIX, '" "'),
             (" ", False, EnvChars.RISCOS, '" "'),
             (" ", False, EnvChars.VMS, '" "'),
             (" ", False, EnvChars.WINDOWS, '" "'),
-
             ("''", False, EnvChars.POSIX, "''"),
             ("''", False, EnvChars.RISCOS, "''"),
             ("''", False, EnvChars.VMS, "''"),
             ("''", False, EnvChars.WINDOWS, "''"),
-
-            ("'a", False, EnvChars.POSIX, "\"'a\""),
-            ("a'", False, EnvChars.POSIX, "\"a'\""),
-            ("a'b", False, EnvChars.POSIX, "\"a'b\""),
-
-            ("a\"b", False, EnvChars.POSIX, "\"a\\\"b\""),
-            ("a\"b", False, EnvChars.RISCOS, "\"a\\\"b\""),
-            ("a\"b", False, EnvChars.VMS, "\"a^\"b\""),
-            ("a\"b", False, EnvChars.WINDOWS, "\"a^\"b\""),
-
-            ("a\\b", False, EnvChars.POSIX, "\"a\\\\b\""),
-            ("a\\b", False, EnvChars.RISCOS, "\"a\\\\b\""),
-            ("a^b", False, EnvChars.VMS, "\"a^^b\""),
-            ("a^b", False, EnvChars.WINDOWS, "\"a^^b\""),
-
+            ("'a", False, EnvChars.POSIX, '"\'a"'),
+            ("a'", False, EnvChars.POSIX, '"a\'"'),
+            ("a'b", False, EnvChars.POSIX, '"a\'b"'),
+            ('a"b', False, EnvChars.POSIX, '"a\\"b"'),
+            ('a"b', False, EnvChars.RISCOS, '"a\\"b"'),
+            ('a"b', False, EnvChars.VMS, '"a^"b"'),
+            ('a"b', False, EnvChars.WINDOWS, '"a^"b"'),
+            ("a\\b", False, EnvChars.POSIX, '"a\\\\b"'),
+            ("a\\b", False, EnvChars.RISCOS, '"a\\\\b"'),
+            ("a^b", False, EnvChars.VMS, '"a^^b"'),
+            ("a^b", False, EnvChars.WINDOWS, '"a^^b"'),
             ("a b", False, EnvChars.POSIX.copy_with(normal_quote=""), "a b"),
             ("'a\\b'", False, EnvChars.POSIX.copy_with(hard_quote=""), "\"'a\\\\b'\""),
         ],
