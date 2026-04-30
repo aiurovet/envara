@@ -18,8 +18,10 @@ import sys
 import fnmatch
 import subprocess
 import shlex
+from collections.abc import MutableMapping
 from typing import ClassVar
 
+from env_chars_data import EnvCharsData
 from envara.env_expand_flags import EnvExpandFlags
 from envara.env_platform_flags import EnvPlatformFlags
 from envara.env_quote_type import EnvQuoteType
@@ -96,7 +98,7 @@ class Env:
         input: Path | str,
         args: list[str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvChars = EnvChars.CURRENT,
+        chars: EnvCharsData = EnvChars.CURRENT,
     ) -> Path | str:
         """
         Unquote the input if required via flags, remove trailing line comment
@@ -164,7 +166,7 @@ class Env:
         # Perform unescape if requested
 
         if flags & EnvExpandFlags.UNESCAPE:
-            result = Env.unescape(result, chars=chars)
+            result = Env.unescape(str(result), chars=chars)
 
         # Reeturn final result
 
@@ -176,10 +178,10 @@ class Env:
 
     @staticmethod
     def expand_posix(
-        input: Path | str,
+        input: Path | str | None,
         args: list[str] | None = None,
-        vars: dict[str, str] | None = os.environ,
-        chars: EnvChars = EnvChars.CURRENT,
+        vars: MutableMapping[str, str] | None = None,
+        chars: EnvCharsData = EnvChars.CURRENT,
         expand_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
         subprocess_timeout: float | None = None,
     ) -> Path | str:
@@ -249,7 +251,7 @@ class Env:
                 length = int(sm.group(2)) if sm.group(2) is not None else None
                 if not is_set:
                     return f"{expand_char}{{{inner}}}"
-                text = val
+                text: str = val
                 if offset < 0:
                     offset = len(text) + offset
                     if offset < 0:
@@ -263,16 +265,15 @@ class Env:
                 assign_colon = rest.startswith(":=")
                 word = rest[2:] if assign_colon else rest[1:]
                 if (not is_set) or (assign_colon and is_null):
-                    new_val = Env.expand_posix(
+                    new_val = str(Env.expand_posix(
                         word,
                         args=args,
                         vars=vars,
                         expand_flags=expand_flags,
                         subprocess_timeout=subprocess_timeout,
-                    )
+                    ))
                     try:
-                        if vars is not None:
-                            vars[name] = new_val
+                        vars[name] = new_val
                     except Exception:
                         pass
                     return new_val
@@ -350,13 +351,13 @@ class Env:
                 if core.startswith("(?s:") and core.endswith(")\\Z"):
                     core = core[4:-3]
 
-                repl_eval = Env.expand_posix(
+                repl_eval = str(Env.expand_posix(
                     repl,
                     args=args,
                     vars=vars,
                     expand_flags=expand_flags,
                     subprocess_timeout=subprocess_timeout,
-                )
+                ))
 
                 if anchor == "#":
                     text = val
@@ -416,58 +417,58 @@ class Env:
             if rest.startswith(":-"):
                 word = rest[2:]
                 if (not is_set) or is_null:
-                    return Env.expand_posix(
+                    return str(Env.expand_posix(
                         word,
                         args=args,
                         vars=vars,
                         expand_flags=expand_flags,
                         subprocess_timeout=subprocess_timeout,
-                    )
+                    ))
                 return val
             if rest.startswith("-"):
                 word = rest[1:]
                 if not is_set:
-                    return Env.expand_posix(
+                    return str(Env.expand_posix(
                         word,
                         args=args,
                         vars=vars,
                         expand_flags=expand_flags,
                         subprocess_timeout=subprocess_timeout,
-                    )
+                    ))
                 return val
             if rest.startswith(":+"):
                 word = rest[2:]
                 if is_set and not is_null:
-                    return Env.expand_posix(
+                    return str(Env.expand_posix(
                         word,
                         args=args,
                         vars=vars,
                         expand_flags=expand_flags,
                         subprocess_timeout=subprocess_timeout,
-                    )
+                    ))
                 return ""
             if rest.startswith("+"):
                 word = rest[1:]
                 if is_set:
-                    return Env.expand_posix(
+                    return str(Env.expand_posix(
                         word,
                         args=args,
                         vars=vars,
                         expand_flags=expand_flags,
                         subprocess_timeout=subprocess_timeout,
-                    )
+                    ))
                 return ""
             if rest.startswith(":?"):
                 word = rest[2:]
                 if (not is_set) or is_null:
                     raise ValueError(
-                        Env.expand_posix(
+                        str(Env.expand_posix(
                             word,
                             args=args,
                             vars=vars,
                             expand_flags=expand_flags,
                             subprocess_timeout=subprocess_timeout,
-                        )
+                        ))
                         or f"{name}: parameter null or not set"
                     )
                 return val
@@ -475,12 +476,12 @@ class Env:
                 word = rest[1:]
                 if not is_set:
                     raise ValueError(
-                        Env.expand_posix(
+                        str(Env.expand_posix(
                             word,
                             args=args,
                             vars=vars,
                             subprocess_timeout=subprocess_timeout,
-                        )
+                        ))
                         or f"{name}: parameter not set"
                     )
                 return val
@@ -701,8 +702,8 @@ class Env:
     def expand_simple(
         input: str,
         args: list[str] | None = None,
-        vars: dict[str, str] | None = None,
-        chars: EnvChars = EnvChars.CURRENT,
+        vars: MutableMapping[str, str] | None = None,
+        chars: EnvCharsData = EnvChars.CURRENT,
     ) -> str:
         """
         Expand environment variables and sub-processes according to simple
@@ -1047,7 +1048,7 @@ class Env:
     def quote(
         input: str,
         is_forced: bool = False,
-        chars: EnvChars = EnvChars.CURRENT,
+        chars: EnvCharsData = EnvChars.CURRENT,
     ) -> str:
         """
         Enclose input in quotes. Neither leading, nor trailing whitespaces
@@ -1124,7 +1125,7 @@ class Env:
         input: str,
         args: list[str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT_SPLIT,
-        chars: EnvChars = EnvChars.CURRENT,
+        chars: EnvCharsData = EnvChars.CURRENT,
     ) -> list[str]:
         """
         Treat the input string as command and split it into array of strings
@@ -1263,7 +1264,7 @@ class Env:
 
     @staticmethod
     def unescape(
-        input: str, strip_blanks: bool = False, chars: EnvChars = EnvChars.CURRENT
+        input: str, strip_blanks: bool = False, chars: EnvCharsData = EnvChars.CURRENT
     ) -> str:
         """
         Unescape '\\t', '\\n', '\\u0022' etc.
@@ -1364,7 +1365,7 @@ class Env:
     def unquote(
         input: str,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvChars = EnvChars.CURRENT,
+        chars: EnvCharsData = EnvChars.CURRENT,
     ) -> tuple[str, EnvQuoteType]:
         """
         Remove enclosing quotes from a string ignoring everything beyond the
