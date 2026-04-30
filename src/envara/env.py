@@ -1023,11 +1023,9 @@ class Env:
 
             for platform in platforms:
 
-                # Perform extra checks
+                # Perform extra checks, platform is never empty or None
 
-                if not platform:
-                    continue
-                elif platform == Env.PLATFORM_POSIX:
+                if platform == Env.PLATFORM_POSIX:
                     if not Env.IS_POSIX:
                         continue
                 elif platform == Env.PLATFORM_WINDOWS:
@@ -1048,7 +1046,7 @@ class Env:
     @staticmethod
     def quote(
         input: str,
-        type: EnvQuoteType = EnvQuoteType.DEFAULT,
+        is_forced: bool = False,
         chars: EnvChars = EnvChars.CURRENT,
     ) -> str:
         """
@@ -1071,33 +1069,51 @@ class Env:
         :rtype: str
         """
 
-        # Initialise
+        # Check empty
 
-        result = "" if (input is None) else input
-        escape_char = chars.escape
+        if not input:
+            return input
 
-        # Define the quote being used
+        # Define the quote being used, and if it is empty, return
 
-        if type == EnvQuoteType.HARD:
-            quote = chars.hard_quote
-        elif type == EnvQuoteType.NORMAL:
-            quote = chars.normal_quote
-        else:
-            quote = ""
-
-        # If quote is empty, return the input itself
+        quote = chars.normal_quote
 
         if not quote:
-            return result
+            return input
+
+        # Initialise
+
+        result: str = input
+        length: int = len(result)
+
+        beg_chr: str = result[0]
+        end_chr: str = result[length - 1]
+
+        # Get the escape and hard-quote characters to use
+
+        esc: str = chars.escape
+        hquote: str = chars.hard_quote
+
+        # If quoting is not forced, and hard or normal quote is around already,
+        # or no space found, return as is
+
+        if not is_forced:
+            if (beg_chr == quote) or (beg_chr == hquote):
+                if (length > 1) and (end_chr == beg_chr):
+                    return result
+            elif (" " not in result) and (quote not in result):
+                if (not hquote) or (hquote not in result):
+                    if (not esc) or (esc not in result):
+                        return result
 
         # If input is not empty, escape the escape character, then the
         # internal quote(s), then embrace the result in desired quotes
         # and return
 
-        if result and (quote in result):
-            if escape_char in result:
-                result = result.replace(escape_char, f"{escape_char}{escape_char}")
-            result = result.replace(quote, f"{escape_char}{quote}")
+        if esc in result:
+            result = result.replace(esc, f"{esc}{esc}")
+        if quote in result:
+            result = result.replace(quote, f"{esc}{quote}")
 
         return f"{quote}{result}{quote}"
 
@@ -1367,90 +1383,81 @@ class Env:
         :rtype: tuple[str, EnvQuoteType]
         """
 
-        # If the input is None or empty, return the empty string
-
         if not input:
             return (input, EnvQuoteType.NONE)
-
-        # Initialize simple flags and result
 
         strip_spaces: bool = flags & EnvExpandFlags.STRIP_SPACES
         result: str = input.strip() if (strip_spaces) else input
 
-        # If the input contained stripped spaces only, return empty string
-
         if not result:
             return (result, EnvQuoteType.NONE)
 
-        # If a hard-quote is defined for the current platform, and the input
-        # is hard-quoted, remove those hard quotes and return the result.
-        # Fail if the input starts, but doesn't end with the hard quote.
-
+        escape: str = chars.escape
         quote: str = chars.hard_quote
 
         if quote and result.startswith(quote):
             result = result[len(quote) :]
-            end_pos: int = result.find(quote)
+            end_pos: int = -1
+            i: int = 0
+            orig_len: int = len(result)
+            while i < orig_len:
+                if result[i] == escape and i + 1 < orig_len:
+                    i += 2
+                    continue
+                if result[i] == quote:
+                    end_pos = i
+                    break
+                i += 1
             if end_pos < 0:
                 raise ValueError(f"Unterminated hard-quoted string: {input}")
             return (result[0:end_pos], EnvQuoteType.HARD)
 
-        # Initialize special characters
-
         escape: str = chars.escape
-        escaped_escape: str = escape + escape
-
         quote: str = chars.normal_quote
-        escaped_quote: str = escape + quote
-
-        # If normal-quoted, hide internal escaped quotes and escaped escapes,
-        # remove the surrounding normal quotes, then restore the hidden parts.
-        # Fail if the input starts, but doesn't end with the normal quote.
-        # No escaped character gets unescaped in this method.
 
         if quote and result.startswith(quote):
-            result = (
-                result[len(quote) :]
-                .replace(escaped_escape, "\x01")
-                .replace(escaped_quote, "\x02")
-            )
-
-            end_pos: int = result.find(quote)
-
+            result = result[len(quote) :]
+            end_pos: int = -1
+            i: int = 0
+            orig_len: int = len(result)
+            while i < orig_len:
+                if result[i] == escape and i + 1 < orig_len:
+                    i += 2
+                    continue
+                if result[i] == quote:
+                    end_pos = i
+                    break
+                i += 1
             if end_pos < 0:
                 raise ValueError(f"Unterminated quoted string: {input}")
-
-            result = (
-                result[0:end_pos]
-                .replace("\x02", escaped_quote)
-                .replace("\x01", escaped_escape)
-            )
-
-            return (result, EnvQuoteType.NORMAL)
-
-        # If this point is reached, the string is not considered as quoted, so
-        # the trailing line comment could be removed if needed
+            return (result[0:end_pos], EnvQuoteType.NORMAL)
 
         cutter: str = chars.cutter
-        escaped_cutter: str = escape + cutter
 
-        # Hide escaped escapes and escaped cutters
-
-        result = result.replace(escaped_escape, "\x01").replace(escaped_cutter, "\x02")
-
-        # If a cutter is found, cut the result, and furthermore, if spaces
-        # can be stripped, do that for the trailing ones if any are present
-
-        end_pos: int = result.find(cutter)
-
-        if end_pos >= 0:
-            result = result[0:end_pos]
-            if strip_spaces:
-                result = result.rstrip()
-
-        # Restore what was hidden and return result
-
-        result = result.replace("\x02", escaped_cutter).replace("\x01", escaped_escape)
+        if cutter:
+            i: int = 0
+            orig_len: int = len(result)
+            cutter_len: int = len(cutter)
+            while i < orig_len:
+                if result[i] == escape and i + 1 < orig_len:
+                    i += 2
+                    continue
+                if cutter_len == 1:
+                    if result[i] == cutter:
+                        result = result[0:i]
+                        if strip_spaces:
+                            result = result.rstrip()
+                        break
+                else:
+                    if (
+                        i + cutter_len <= orig_len
+                        and result[i : i + cutter_len] == cutter
+                    ):
+                        result = result[0:i]
+                        if strip_spaces:
+                            result = result.rstrip()
+                        break
+                i += 1
 
         return (result, EnvQuoteType.NONE)
 

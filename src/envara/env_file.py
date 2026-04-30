@@ -35,7 +35,7 @@ from envara.env_platform_flags import EnvPlatformFlags
 class EnvFile:
 
     DEFAULT_EXPAND_FLAGS: ClassVar[EnvExpandFlags] = (
-        EnvExpandFlags.DEFAULT | EnvExpandFlags.REMOVE_LINE_COMMENT
+        EnvExpandFlags.DEFAULT | EnvExpandFlags.STRIP_COMMENT
     )
     """Default flags to expand environment variables at every line in the file"""
 

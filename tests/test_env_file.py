@@ -29,7 +29,7 @@ EnvChars = env_chars_mod.EnvChars
 
 class TestEnvFileConstants:
     def test_default_expand_flags_has_remove_line_comment(self):
-        assert EnvFile.DEFAULT_EXPAND_FLAGS & EnvExpandFlags.REMOVE_LINE_COMMENT
+        assert EnvFile.DEFAULT_EXPAND_FLAGS & EnvExpandFlags.STRIP_COMMENT
 
     def test_re_key_value_is_compiled(self):
         assert isinstance(EnvFile.RE_KEY_VALUE, re.Pattern)

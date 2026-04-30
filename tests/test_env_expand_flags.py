@@ -22,10 +22,10 @@ class TestEnvExpandFlagsValues:
             ("NONE", 0),
             ("ALLOW_SHELL", 1 << 0),
             ("ALLOW_SUBPROC", 1 << 1),
-            ("REMOVE_LINE_COMMENT", 1 << 2),
-            ("REMOVE_QUOTES", 1 << 3),
-            ("SKIP_ENV_VARS", 1 << 4),
-            ("SKIP_HARD_QUOTED", 1 << 5),
+            ("SKIP_ENV_VARS", 1 << 2),
+            ("SKIP_HARD_QUOTED", 1 << 3),
+            ("STRIP_COMMENT", 1 << 4),
+            ("STRIP_QUOTES", 1 << 5),
             ("STRIP_SPACES", 1 << 6),
             ("UNESCAPE", 1 << 7),
         ],
@@ -36,7 +36,7 @@ class TestEnvExpandFlagsValues:
     def test_default_value(self):
         assert EnvExpandFlags.DEFAULT.value == (
             EnvExpandFlags.ALLOW_SHELL
-            | EnvExpandFlags.REMOVE_QUOTES
+            | EnvExpandFlags.STRIP_QUOTES
             | EnvExpandFlags.SKIP_HARD_QUOTED
             | EnvExpandFlags.STRIP_SPACES
             | EnvExpandFlags.UNESCAPE
@@ -67,8 +67,8 @@ class TestEnvExpandFlagsCombine:
         "flag1,flag2",
         [
             ("ALLOW_SHELL", "ALLOW_SUBPROC"),
-            ("ALLOW_SHELL", "REMOVE_LINE_COMMENT"),
-            ("REMOVE_QUOTES", "SKIP_HARD_QUOTED"),
+            ("ALLOW_SHELL", "STRIP_COMMENT"),
+            ("STRIP_QUOTES", "SKIP_HARD_QUOTED"),
             ("UNESCAPE", "STRIP_SPACES"),
         ],
     )
@@ -83,8 +83,8 @@ class TestEnvExpandFlagsCombine:
         "flag",
         [
             "ALLOW_SHELL",
-            "REMOVE_QUOTES",
             "SKIP_HARD_QUOTED",
+            "STRIP_QUOTES",
             "STRIP_SPACES",
             "UNESCAPE",
         ],
@@ -99,7 +99,7 @@ class TestEnvExpandFlagsDefault:
     def test_default_contains_expected_flags(self):
         expected = {
             EnvExpandFlags.ALLOW_SHELL,
-            EnvExpandFlags.REMOVE_QUOTES,
+            EnvExpandFlags.STRIP_QUOTES,
             EnvExpandFlags.SKIP_HARD_QUOTED,
             EnvExpandFlags.STRIP_SPACES,
             EnvExpandFlags.UNESCAPE,
@@ -109,7 +109,7 @@ class TestEnvExpandFlagsDefault:
 
     def test_default_excludes_shell_related_flags(self):
         assert not (EnvExpandFlags.DEFAULT & EnvExpandFlags.ALLOW_SUBPROC)
-        assert not (EnvExpandFlags.DEFAULT & EnvExpandFlags.REMOVE_LINE_COMMENT)
+        assert not (EnvExpandFlags.DEFAULT & EnvExpandFlags.STRIP_COMMENT)
         assert not (EnvExpandFlags.DEFAULT & EnvExpandFlags.SKIP_ENV_VARS)
 
     def test_default_is_not_none(self):
@@ -121,10 +121,10 @@ class TestEnvExpandFlagsBitwiseOperations:
     @pytest.mark.parametrize(
         "op,flag1,flag2,expected",
         [
-            ("or", "ALLOW_SHELL", "REMOVE_QUOTES", 1 << 0 | 1 << 3),
+            ("or", "ALLOW_SHELL", "STRIP_QUOTES", 1 << 0 | 1 << 5),
             ("and", "ALLOW_SHELL", "ALLOW_SUBPROC", 0),
             ("xor", "ALLOW_SHELL", "ALLOW_SHELL", 0),
-            ("xor", "ALLOW_SHELL", "REMOVE_QUOTES", 1 << 0 | 1 << 3),
+            ("xor", "ALLOW_SHELL", "STRIP_QUOTES", 1 << 0 | 1 << 5),
         ],
     )
     def test_bitwise_operations(self, op, flag1, flag2, expected):
@@ -136,6 +136,6 @@ class TestEnvExpandFlagsBitwiseOperations:
 
 class TestEnvExpandFlagsIdentity:
     def test_combined_flags_are_singleton(self):
-        result1 = EnvExpandFlags.ALLOW_SHELL | EnvExpandFlags.REMOVE_QUOTES
-        result2 = EnvExpandFlags.ALLOW_SHELL | EnvExpandFlags.REMOVE_QUOTES
+        result1 = EnvExpandFlags.ALLOW_SHELL | EnvExpandFlags.STRIP_QUOTES
+        result2 = EnvExpandFlags.ALLOW_SHELL | EnvExpandFlags.STRIP_QUOTES
         assert result1 == result2
