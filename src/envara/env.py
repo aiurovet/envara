@@ -68,9 +68,6 @@ class Env:
     """Rules on how to convert special characters when they
     follow an odd number of escape characters"""
 
-    SPLIT_RE: ClassVar[re.Pattern] = re.compile(r"""'([^']*)'|"([^"]*)"|([^\s]+)""")
-    """Regular expression to split command into array after escaped characters were hidden"""
-
     SYS_PLATFORM_MAP: ClassVar[dict[str, list[str]]] = {
         "": [PLATFORM_POSIX, PLATFORM_WINDOWS],  # both checked via os.sep
         "^aix": ["aix"],
@@ -95,10 +92,11 @@ class Env:
 
     @staticmethod
     def expand(
-        input: Path | str,
+        input: str | None,
         args: list[str] | None = None,
+        vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvCharsData = EnvChars.CURRENT,
+        chars: EnvChars = EnvChars.CURRENT,
     ) -> Path | str:
         """
         Unquote the input if required via flags, remove trailing line comment
@@ -112,17 +110,23 @@ class Env:
         :type input: Path  | str
 
         :param args: List of arguments to expand $#, $1, $2, ...
-        :type args: str
+            pass [] or None to avoid expansion
+        :type args: list[str] | None
+
+        :param vars: Dictionary of pairs string => string;
+            if None, os.environ will be used; pass {} to avoid expansion
+        :type vars: MutableMapping[str, str] | None
 
         :param flags: Flags controlling what/how to expand input
         :type flags: EnvExpandFlags
 
-        :param chars: Enviroment-specific characters to parse various tokens
-            like escaped characters, environment variables, etc.
+        :param chars: Platform-specific special environment characters to
+            parse various tokens like escaped characters, environment
+            variables, etc.
         :type chars: EnvChars
 
         :return: Expanded string or Path object
-        :rtype: Path | str
+        :rtype: str
         """
 
         # If flags provided, map them to unquote parameters and post-processing
@@ -130,15 +134,9 @@ class Env:
         if flags is None:
             flags = EnvExpandFlags.DEFAULT
 
-        # Check what should be the type of expanded input
-
-        is_path: bool = isinstance(input, Path)
-
         # Remove quotes if found
 
-        result, quote_type = Env.unquote(
-            str(input) if is_path else input, flags=flags, chars=chars
-        )
+        result, quote_type = Env.unquote(input, flags=flags, chars=chars)
 
         # SKIP_SINGLE_QUOTED prevents any expansion
 
@@ -146,21 +144,16 @@ class Env:
             if quote_type == EnvQuoteType.HARD:
                 return result
 
-        # SKIP_ENVIRON forcefully disables env var expansion.
-
-        vars_dict = {} if (flags & EnvExpandFlags.SKIP_ENV_VARS) else os.environ
-
         # Perform POSIX-style or Windows-style expansions based on
         # the first active expand character detected during unquoting
 
         if chars and chars.expand == EnvChars.POSIX.expand:
-            result = Env.expand_posix(result, args=args, vars=vars_dict, chars=chars)
+            result = Env.__expand_posix(
+                result, args=args, vars=vars, flags=flags, chars=chars
+            )
         else:
-            result = Env.expand_simple(
-                result,
-                args=args,
-                vars=vars_dict,
-                chars=chars,
+            result = Env.__expand_simple(
+                result, args=args, vars=vars, flags=flags, chars=chars
             )
 
         # Perform unescape if requested
@@ -168,43 +161,62 @@ class Env:
         if flags & EnvExpandFlags.UNESCAPE:
             result = Env.unescape(str(result), chars=chars)
 
-        # Reeturn final result
+        # Return final result
 
-        return Path(result) if is_path else result
+        return result
+
+    ###########################################################################
+
+    @staticmethod
+    def expand_path(
+        path: Path | None,
+        args: list[str] | None = None,
+        flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
+        chars: EnvChars = EnvChars.CURRENT,
+    ) -> Path | None:
+        """
+        A wrapper around expand() for paths
+        """
+        if not path:
+            return path
+
+        result: str = Env.expand_path(
+            path=str(path), args=args, flags=flags, chars=chars
+        )
+
+        return Path(result) if result else None
 
     ###########################################################################
     # This code was mainly generated using Copilot
     ###########################################################################
 
     @staticmethod
-    def expand_posix(
-        input: Path | str | None,
+    def __expand_posix(
+        input: Path | str,
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
+        flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
         chars: EnvCharsData = EnvChars.CURRENT,
-        expand_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
         subprocess_timeout: float | None = None,
-    ) -> Path | str:
+    ) -> str | None:
         """
         Expand environment variables and sub-processes according to complex
         POSIX rules: like ${ABC:-${DEF:-$(uname -a)}. See the description
         of arguments under the main method expand(...)
         """
         if input is None:
-            return ""
-
-        is_path = isinstance(input, Path)
+            return input
 
         if vars is None:
             vars = os.environ
 
-        allow_shell: bool = (expand_flags & EnvExpandFlags.ALLOW_SHELL) != 0
+        allow_shell: bool = (flags & EnvExpandFlags.ALLOW_SHELL) != 0
 
         allow_subprocess: bool = allow_shell or (
-            (expand_flags & EnvExpandFlags.ALLOW_SUBPROC) != 0
+            (flags & EnvExpandFlags.ALLOW_SUBPROC) != 0
         )
 
-        s = str(input) if is_path else input
+        s = input
         res: list[str] = []
         i = 0
         inp_len = len(s)
@@ -214,14 +226,14 @@ class Env:
         expand_char = chars.expand
         escape_char = chars.escape
 
-        def get_var(name: str):
-            return vars.get(name) if vars is not None else os.environ.get(name)
+        # def get_var(name: str):
+        #     return vars.get(name) if vars is not None else os.environ.get(name)
 
         def eval_braced(inner: str) -> str:
             # Length: ${#NAME}
             if inner.startswith("#"):
                 name = inner[1:]
-                val = get_var(name)
+                val = vars.get(name)
                 if val is None:
                     return f"{expand_char}{{{inner}}}"
                 return str(len(val))
@@ -240,7 +252,7 @@ class Env:
             name = m.group(1)
             rest = inner[m.end() :]
 
-            val = get_var(name)
+            val = vars.get(name)
             is_set = val is not None
             is_null = (val == "") if is_set else False
 
@@ -265,13 +277,16 @@ class Env:
                 assign_colon = rest.startswith(":=")
                 word = rest[2:] if assign_colon else rest[1:]
                 if (not is_set) or (assign_colon and is_null):
-                    new_val = str(Env.expand_posix(
-                        word,
-                        args=args,
-                        vars=vars,
-                        expand_flags=expand_flags,
-                        subprocess_timeout=subprocess_timeout,
-                    ))
+                    new_val = str(
+                        Env.__expand_posix(
+                            word,
+                            args=args,
+                            vars=vars,
+                            flags=flags,
+                            chars=chars,
+                            subprocess_timeout=subprocess_timeout,
+                        )
+                    )
                     try:
                         vars[name] = new_val
                     except Exception:
@@ -351,13 +366,16 @@ class Env:
                 if core.startswith("(?s:") and core.endswith(")\\Z"):
                     core = core[4:-3]
 
-                repl_eval = str(Env.expand_posix(
-                    repl,
-                    args=args,
-                    vars=vars,
-                    expand_flags=expand_flags,
-                    subprocess_timeout=subprocess_timeout,
-                ))
+                repl_eval = str(
+                    Env.__expand_posix(
+                        repl,
+                        args=args,
+                        vars=vars,
+                        flags=flags,
+                        chars=chars,
+                        subprocess_timeout=subprocess_timeout,
+                    )
+                )
 
                 if anchor == "#":
                     text = val
@@ -417,58 +435,73 @@ class Env:
             if rest.startswith(":-"):
                 word = rest[2:]
                 if (not is_set) or is_null:
-                    return str(Env.expand_posix(
-                        word,
-                        args=args,
-                        vars=vars,
-                        expand_flags=expand_flags,
-                        subprocess_timeout=subprocess_timeout,
-                    ))
+                    return str(
+                        Env.__expand_posix(
+                            word,
+                            args=args,
+                            vars=vars,
+                            flags=flags,
+                            chars=chars,
+                            subprocess_timeout=subprocess_timeout,
+                        )
+                    )
                 return val
             if rest.startswith("-"):
                 word = rest[1:]
                 if not is_set:
-                    return str(Env.expand_posix(
-                        word,
-                        args=args,
-                        vars=vars,
-                        expand_flags=expand_flags,
-                        subprocess_timeout=subprocess_timeout,
-                    ))
+                    return str(
+                        Env.__expand_posix(
+                            word,
+                            args=args,
+                            vars=vars,
+                            flags=flags,
+                            chars=chars,
+                            subprocess_timeout=subprocess_timeout,
+                        )
+                    )
                 return val
             if rest.startswith(":+"):
                 word = rest[2:]
                 if is_set and not is_null:
-                    return str(Env.expand_posix(
-                        word,
-                        args=args,
-                        vars=vars,
-                        expand_flags=expand_flags,
-                        subprocess_timeout=subprocess_timeout,
-                    ))
+                    return str(
+                        Env.__expand_posix(
+                            word,
+                            args=args,
+                            vars=vars,
+                            flags=flags,
+                            chars=chars,
+                            subprocess_timeout=subprocess_timeout,
+                        )
+                    )
                 return ""
             if rest.startswith("+"):
                 word = rest[1:]
                 if is_set:
-                    return str(Env.expand_posix(
-                        word,
-                        args=args,
-                        vars=vars,
-                        expand_flags=expand_flags,
-                        subprocess_timeout=subprocess_timeout,
-                    ))
+                    return str(
+                        Env.__expand_posix(
+                            word,
+                            args=args,
+                            vars=vars,
+                            flags=flags,
+                            chars=chars,
+                            subprocess_timeout=subprocess_timeout,
+                        )
+                    )
                 return ""
             if rest.startswith(":?"):
                 word = rest[2:]
                 if (not is_set) or is_null:
                     raise ValueError(
-                        str(Env.expand_posix(
-                            word,
-                            args=args,
-                            vars=vars,
-                            expand_flags=expand_flags,
-                            subprocess_timeout=subprocess_timeout,
-                        ))
+                        str(
+                            Env.__expand_posix(
+                                word,
+                                args=args,
+                                vars=vars,
+                                flags=flags,
+                                chars=chars,
+                                subprocess_timeout=subprocess_timeout,
+                            )
+                        )
                         or f"{name}: parameter null or not set"
                     )
                 return val
@@ -476,12 +509,15 @@ class Env:
                 word = rest[1:]
                 if not is_set:
                     raise ValueError(
-                        str(Env.expand_posix(
-                            word,
-                            args=args,
-                            vars=vars,
-                            subprocess_timeout=subprocess_timeout,
-                        ))
+                        str(
+                            Env.__expand_posix(
+                                word,
+                                args=args,
+                                vars=vars,
+                                chars=chars,
+                                subprocess_timeout=subprocess_timeout,
+                            )
+                        )
                         or f"{name}: parameter not set"
                     )
                 return val
@@ -527,11 +563,12 @@ class Env:
                         f"Unterminated backtick command substitution in: {input}"
                     )
                 inner = s[i + 1 : j]
-                cmd = Env.expand_posix(
+                cmd = Env.__expand_posix(
                     inner,
                     args=args,
                     vars=vars,
-                    expand_flags=expand_flags,
+                    flags=flags,
+                    chars=chars,
                     subprocess_timeout=subprocess_timeout,
                 )
                 if not allow_subprocess:
@@ -600,11 +637,12 @@ class Env:
                 if j >= inp_len:
                     raise ValueError(f"Unterminated command substitution in: {input}")
                 inner = s[i + 2 : j]
-                cmd = Env.expand_posix(
+                cmd = Env.__expand_posix(
                     inner,
                     args=args,
                     vars=vars,
-                    expand_flags=expand_flags,
+                    flags=flags,
+                    chars=chars,
                     subprocess_timeout=subprocess_timeout,
                 )
                 if not allow_subprocess:
@@ -679,7 +717,7 @@ class Env:
                     while j < inp_len and (s[j].isalnum() or s[j] == "_"):
                         j += 1
                     name = s[start:j]
-                    val = get_var(name)
+                    val = vars.get(name)
                     if val is None:
                         res.append(s[i:j])
                     else:
@@ -692,18 +730,19 @@ class Env:
 
         result = "".join(res)
 
-        return Path(result) if is_path else result
+        return result
 
     ###########################################################################
     # This code was mainly generated using Copilot
     ###########################################################################
 
     @staticmethod
-    def expand_simple(
-        input: str,
+    def __expand_simple(
+        input: str | None,
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
-        chars: EnvCharsData = EnvChars.CURRENT,
+        flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
+        chars: EnvChars = EnvChars.CURRENT,
     ) -> str:
         """
         Expand environment variables and sub-processes according to simple
@@ -711,7 +750,7 @@ class Env:
         the description of arguments under the main method expand(...)
         """
         if input is None:
-            return ""
+            return input
 
         is_path = isinstance(input, Path)
 
@@ -942,7 +981,7 @@ class Env:
 
         result = "".join(out)
 
-        return Path(result) if is_path else result
+        return result
 
     ###########################################################################
 
@@ -1061,8 +1100,9 @@ class Env:
         :param type: Type of quotes to enclose in
         :type type: EnvQuoteType
 
-        :param chars: Enviroment-specific characters to parse various tokens
-            like escaped characters, environment variables, etc.
+        :param chars: Platform-specific special environment characters to
+            parse various tokens like escaped characters, environment
+            variables, etc.
         :type chars: EnvChars
 
         :return: Quoted string with possible quotes and escape characters from
@@ -1093,17 +1133,17 @@ class Env:
         # Get the escape and hard-quote characters to use
 
         esc: str = chars.escape
-        hquote: str = chars.hard_quote
+        hard_quote: str = chars.hard_quote
 
         # If quoting is not forced, and hard or normal quote is around already,
         # or no space found, return as is
 
         if not is_forced:
-            if (beg_chr == quote) or (beg_chr == hquote):
+            if (beg_chr == quote) or (beg_chr == hard_quote):
                 if (length > 1) and (end_chr == beg_chr):
                     return result
             elif (" " not in result) and (quote not in result):
-                if (not hquote) or (hquote not in result):
+                if (not hard_quote) or (hard_quote not in result):
                     if (not esc) or (esc not in result):
                         return result
 
@@ -1122,141 +1162,137 @@ class Env:
 
     @staticmethod
     def split(
-        input: str,
+        input: str | None,
         args: list[str] | None = None,
-        flags: EnvExpandFlags = EnvExpandFlags.DEFAULT_SPLIT,
+        vars: MutableMapping[str, str] | None = None,
+        flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
         chars: EnvCharsData = EnvChars.CURRENT,
     ) -> list[str]:
         """
-        Treat the input string as command and split it into array of strings
-        where the first item is executable, and the rest are the arguments
-        (pipe and beyond are treated as arguments too). Then if flags not set
-        to EnvExpandFlags.NONE, expand environment variables and application
-        arguments in every token that is not a literal string
+        Split input into tokens following platform-independent command-line
+        rules: based on the normal and the hard quotes (if the latter defined)
 
-        :param input: Input string to split
-        :type input: str
+        :param input: String to split
+        :type input: str | None
 
-        :param args: List of arguments to expand $#, $1, $2, ...
-        :type args: str
+        :param chars: Platform-specific special environment characters to
+            parse various tokens like escaped characters, environment
+            variables, etc.
+        :type chars: EnvCharsData
 
-        :param flags: Flags controlling what/how to expand input
-        :type flags: EnvExpandFlags
-
-        :param chars: Enviroment-specific characters to parse various tokens
-            like escaped characters, environment variables, etc.
-        :type chars: EnvChars
-
-        :return: List of strings representing the executable and its arguments
-        :rtype: str
+        :return: List of tokens
+        :rtype: list[str]
         """
-        # Resolve escape character if not specified
+        # If the input is empty or None, return empty list
 
-        cutter: str = chars.cutter
-        escape: str = chars.escape
+        if not input:
+            return []
 
-        # Prepare special characters that should be temporarily hidden
+        # Simplify special characters
 
-        escape_escaped: str = escape + escape
-        apos_escaped: str = escape + "'" if Env.IS_POSIX else None
-        cutter_escaped: str = escape + cutter
-        quote_escaped: str = escape + '"'
-        space_escaped: str = escape + " "
-        tab_escaped: str = escape + "\t"
+        escape = chars.escape
+        normal_quote = chars.normal_quote
+        hard_quote = chars.hard_quote
 
-        # Make a copy of the input string by resolving continued lines and
-        # temporarily hiding special characters
+        def append_token_and_reset(
+            result: list[str],
+            token: list[str],
+            args: list[str] | None = None,
+            vars: MutableMapping[str, str] | None = None,
+            flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
+            chars: EnvCharsData = EnvChars.CURRENT,
+        ) -> bool:
+            joined = "".join(token) 
+            token.clear()
+            if chars.cutter and joined.startswith(chars.cutter):
+                return False
+            result.append(
+                Env.expand(
+                    joined, args=args, vars=vars, flags=flags, chars=chars
+                )
+            )
+            return True
 
-        input_ex: str = (
-            input.replace(escape + "\r\n", " ")
-            .replace(escape + "\n", " ")
-            .replace(escape_escaped, "\x01")
-            .replace(tab_escaped, "\x02")
-            .replace(space_escaped, "\x03")
-            .replace(quote_escaped, "\x04")
-            .replace(cutter_escaped, "\x05")
-        )
-
-        if apos_escaped:
-            input_ex = input_ex.replace(apos_escaped, "\x06")
-
-        # Prepare result list and a pattern callback
+        # Define cumulative lists
 
         result: list[str] = []
-        is_cut: list[bool] = [False]
+        token: list[str] = []
 
-        def sub_proc(m: re.Match):
-            """
-            A callback to process the command-line tokens (arguments)
-            found in the input
-            """
-            # Check the token should be cut and skip the rest if so
+        # Define local flags and special characters
 
-            if is_cut[0]:
-                return
+        curr_quote = None
+        in_token = False
+        is_escaped = False
+        is_ready = False
 
-            # Analyze matching groups
+        # Loop through every character from the input, accumulate current token
+        # and append when it ends, then restart anew
 
-            grps = m.groups()
-            token: str = grps[0]  # this group is for single-quoted strings
+        for ch in input:
+            if is_ready:
+                is_escaped = False
+                is_ready = False
+                in_token = False
+                curr_quote = None
 
-            if token and Env.IS_POSIX:
-                # If a hard-quoted token of encountered, and runing under
-                # POSIX, restore all hidden escaped characters as they were
-                # before hiding: the escape was literal
+                if len(token) > 0:
+                    if not append_token_and_reset(
+                               result=result, token=token, args=args,
+                               vars=vars, flags=flags, chars=chars
+                           ):
+                        break
 
-                result.append(
-                    token.replace("\x06", apos_escaped)
-                    .replace("\x05", cutter_escaped)
-                    .replace("\x04", quote_escaped)
-                    .replace("\x03", space_escaped)
-                    .replace("\x02", tab_escaped)
-                    .replace("\x01", escape_escaped)
+            if is_escaped:
+                token.append(ch)
+                is_escaped = False
+                continue
+
+            if curr_quote is None:
+                if ch == escape:
+                    is_escaped = True
+                    in_token = True
+                    continue
+                elif (ch == normal_quote) or (ch == hard_quote):
+                    curr_quote = ch
+                    in_token = True
+                    continue
+                elif ch in string.whitespace:
+                    is_ready = in_token
+                    continue
+            elif curr_quote == normal_quote:
+                if ch == escape:
+                    is_escaped = True
+                    continue
+                elif ch == curr_quote:
+                    is_ready = True
+                    continue
+            elif hard_quote and (curr_quote == hard_quote):
+                if ch == curr_quote:
+                    is_ready = True
+                    continue
+
+            if not in_token and (ch in string.whitespace):
+                continue
+
+            token.append(ch)
+            in_token = True
+
+        # If the last token wasn't appended yet, ensure there is no
+        # unterminated sequence, then append it
+
+        if len(token) > 0:
+            if is_escaped:
+                raise ValueError(f"Unterminated escape sequence in: {input}")
+
+            if curr_quote is not None:
+                raise ValueError(
+                    f"Unterminated {"hard-" if curr_quote == hard_quote else ""}quoted argument in: {input}"
                 )
-            else:
-                # If a normally quoted or plain token encountered, apply the
-                # cutter rules, then replace the previously hidden characters
-                # with their unescaped equivalents
 
-                token = grps[1]
-                is_quoted: bool = True if token else False
-
-                # If a string was not quoted, look for a cutter in the beginning
-                # of a token and remove that token as well as anything beyond that
-
-                if not is_quoted:
-                    token = grps[2]
-                    if cutter:
-                        cutter_pos: int = token.find(cutter)
-                        if cutter_pos == 0:
-                            is_cut[0] = True
-                            return
-
-                # Restore escaped apostrophe as the plain one if it is
-                # relevant to the current platform
-
-                if apos_escaped:
-                    token = token.replace("\x06", "'")
-
-                # Restore the rest hidden escaped characters as the plain ones
-
-                token = (
-                    token.replace("\x05", cutter)
-                    .replace("\x04", '"')
-                    .replace("\x03", " ")
-                    .replace("\x02", "\t")
-                    .replace("\x01", escape)
-                )
-
-                # Expand possible environment variables et al
-
-                result.append(Env.expand(token, args=args, flags=flags, chars=chars))
-
-            # Doesn't matter what to return, as that value won't be used
-
-            return ""
-
-        Env.SPLIT_RE.sub(sub_proc, input_ex)
+            append_token_and_reset(
+                result=result, token=token, args=args,
+                vars=vars, flags=flags, chars=chars
+            )
 
         return result
 
@@ -1275,8 +1311,9 @@ class Env:
         :param strip_blanks: True = remove leading and trailing blanks
         :type strip_blanks: bool
 
-        :param chars: Enviroment-specific characters to parse various tokens
-            like escaped characters, environment variables, etc.
+        :param chars: Platform-specific special environment characters to
+            parse various tokens like escaped characters, environment
+            variables, etc.
         :type chars: EnvChars
 
         :return: Unescaped string, optionally, stripped of blanks
@@ -1383,8 +1420,9 @@ class Env:
             only two bits are considered: STRIP_SPACES and REMOVE_LINE_COMMENT
         :type flags: EnvExpandFlags
 
-        :param chars: Enviroment-specific characters to parse various tokens
-            like escaped characters, environment variables, etc.
+        :param chars: Platform-specific special environment characters to
+            parse various tokens like escaped characters, environment
+            variables, etc.
         :type chars: EnvChars
 
         :return: Unquoted input and the type of surrounding quotes (see EnvQuoteType)

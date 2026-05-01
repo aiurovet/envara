@@ -22,12 +22,11 @@ class TestEnvExpandFlagsValues:
             ("NONE", 0),
             ("ALLOW_SHELL", 1 << 0),
             ("ALLOW_SUBPROC", 1 << 1),
-            ("SKIP_ENV_VARS", 1 << 2),
-            ("SKIP_HARD_QUOTED", 1 << 3),
-            ("STRIP_COMMENT", 1 << 4),
-            ("STRIP_QUOTES", 1 << 5),
-            ("STRIP_SPACES", 1 << 6),
-            ("UNESCAPE", 1 << 7),
+            ("SKIP_HARD_QUOTED", 1 << 2),
+            ("STRIP_COMMENT", 1 << 3),
+            ("STRIP_SPACES", 1 << 4),
+            ("UNESCAPE", 1 << 5),
+            ("UNQUOTE", 1 << 6),
         ],
     )
     def test_flag_values(self, flag, expected_value):
@@ -36,10 +35,10 @@ class TestEnvExpandFlagsValues:
     def test_default_value(self):
         assert EnvExpandFlags.DEFAULT.value == (
             EnvExpandFlags.ALLOW_SHELL
-            | EnvExpandFlags.STRIP_QUOTES
             | EnvExpandFlags.SKIP_HARD_QUOTED
             | EnvExpandFlags.STRIP_SPACES
             | EnvExpandFlags.UNESCAPE
+            | EnvExpandFlags.UNQUOTE
         )
 
 
@@ -68,7 +67,7 @@ class TestEnvExpandFlagsCombine:
         [
             ("ALLOW_SHELL", "ALLOW_SUBPROC"),
             ("ALLOW_SHELL", "STRIP_COMMENT"),
-            ("STRIP_QUOTES", "SKIP_HARD_QUOTED"),
+            ("UNQUOTE", "SKIP_HARD_QUOTED"),
             ("UNESCAPE", "STRIP_SPACES"),
         ],
     )
@@ -84,9 +83,9 @@ class TestEnvExpandFlagsCombine:
         [
             "ALLOW_SHELL",
             "SKIP_HARD_QUOTED",
-            "STRIP_QUOTES",
             "STRIP_SPACES",
             "UNESCAPE",
+            "UNQUOTE",
         ],
     )
     def test_flag_in_default(self, flag):
@@ -99,10 +98,10 @@ class TestEnvExpandFlagsDefault:
     def test_default_contains_expected_flags(self):
         expected = {
             EnvExpandFlags.ALLOW_SHELL,
-            EnvExpandFlags.STRIP_QUOTES,
             EnvExpandFlags.SKIP_HARD_QUOTED,
             EnvExpandFlags.STRIP_SPACES,
             EnvExpandFlags.UNESCAPE,
+            EnvExpandFlags.UNQUOTE,
         }
         for flag in expected:
             assert flag & EnvExpandFlags.DEFAULT == flag
@@ -121,10 +120,10 @@ class TestEnvExpandFlagsBitwiseOperations:
     @pytest.mark.parametrize(
         "op,flag1,flag2,expected",
         [
-            ("or", "ALLOW_SHELL", "STRIP_QUOTES", 1 << 0 | 1 << 5),
+            ("or", "ALLOW_SHELL", "UNQUOTE", 1 << 0 | 1 << 5),
             ("and", "ALLOW_SHELL", "ALLOW_SUBPROC", 0),
             ("xor", "ALLOW_SHELL", "ALLOW_SHELL", 0),
-            ("xor", "ALLOW_SHELL", "STRIP_QUOTES", 1 << 0 | 1 << 5),
+            ("xor", "ALLOW_SHELL", "UNQUOTE", 1 << 0 | 1 << 5),
         ],
     )
     def test_bitwise_operations(self, op, flag1, flag2, expected):
@@ -136,6 +135,6 @@ class TestEnvExpandFlagsBitwiseOperations:
 
 class TestEnvExpandFlagsIdentity:
     def test_combined_flags_are_singleton(self):
-        result1 = EnvExpandFlags.ALLOW_SHELL | EnvExpandFlags.STRIP_QUOTES
-        result2 = EnvExpandFlags.ALLOW_SHELL | EnvExpandFlags.STRIP_QUOTES
+        result1 = EnvExpandFlags.ALLOW_SHELL | EnvExpandFlags.UNQUOTE
+        result2 = EnvExpandFlags.ALLOW_SHELL | EnvExpandFlags.UNQUOTE
         assert result1 == result2

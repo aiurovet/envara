@@ -743,12 +743,13 @@ def get_default_windup_char() -> str: ...
 | `NONE` | `0` | No flag set |
 | `ALLOW_SHELL` | `1 << 0` | Execute raw shell commands like `$(...)` or `` `...` `` — `expand_posix()` only |
 | `ALLOW_SUBPROC` | `1 << 1` | Parse shell commands like `$(...)` or `` `...` `` and execute — `expand_posix()` only |
-| `REMOVE_LINE_COMMENT` | `1 << 2` | Remove hash `#` (outside the quotes if found) and everything beyond that |
-| `REMOVE_QUOTES` | `1 << 3` | Remove leading and trailing quote; don't expand single-quoted strings |
-| `SKIP_ENV_VARS` | `1 << 4` | Do not expand environment variables |
-| `SKIP_SINGLE_QUOTED` | `1 << 5` | If a string is embraced in apostrophes, don't expand it |
-| `UNESCAPE` | `1 << 6` | Expand escaped characters, including characters represented by hexadecimal or unicode sequences |
-| `DEFAULT` | `ALLOW_SHELL \| REMOVE_QUOTES \| SKIP_SINGLE_QUOTED \| UNESCAPE` | Default set of flags |
+| `SKIP_HARD_QUOTED` | `1 << 2` | If a string is embraced in hard quotes, don't expand it (POSIX only) |
+| `STRIP_COMMENT` | `1 << 3` | Remove line comment from a cutter onwards |
+| `STRIP_SPACES` | `1 << 4` | Remove spaces around a string, but not after unquoting |
+| `UNESCAPE` | `1 << 5` | Expand escaped characters, including characters represented by hexadecimal or unicode sequences |
+| `UNQUOTE` | `1 << 6` | Remove leading and trailing quote; don't expand single-quoted strings |
+| `DEFAULT` | `ALLOW_SHELL \| SKIP_SINGLE_QUOTED \| STRIP_SPACES \| UNESCAPE \| UNQUOTE` | Default set of flags |
+| `DEFAULT_SPLIT` | `DEFAULT \| STRIP_COMMENT` | Default set of flags to split a string into command-line arguments |
 
 ---
 

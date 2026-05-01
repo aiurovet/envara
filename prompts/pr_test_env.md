@@ -15,14 +15,16 @@ Execute prompts/pr_test_any.md ensuring that:
 - Mocks other methods of Env
 - Sets flags to default when passed as None
 - Calls unquote when needed
-- Calls expand_posix or expand_simple with empty dict for vars when EnvExpandFlags.SKIP_ENV_VARS is set
 - Returns Path if input is Path, otherwise returns str
 - Skips expansion (no expand_posix or expand_simple called) when string is hard-quoted (EnvQuoteType.HARD with EnvExpandFlags.SKIP_HARD_QUOTED)
 - Routes to expand_posix when expand_char is "$" (POSIX)
-- Routes to expand_simple when expand_char is "%" (Windows), "<" (RISCOS), or "'" (VMS)
+- Routes to expand_simple otherwise
 - Calls unescape when needed
 
-## methods expand_posix and expand_simple:
+## method expand_path:
+- Mocks Env.expand and checks it was called with the right arguments
+
+## methods __expand_posix and __expand_simple:
 - Contains parametrized tests called test_expand_posix and test_expand_simple that:
   - has the following parameters: input_str, vars, args, expected
   - assigns vars to mocked os.environ
