@@ -500,7 +500,7 @@ class TestEnvExpandPosix:
     def test_expand_posix(self, input_str, vars, args, expected):
         """Parametrized test ensuring maximum coverage for POSIX expansion"""
         with patch.dict(os.environ, vars or {}, clear=vars is not None):
-            result = Env._Env__expand_posix(input_str, vars=vars, args=args)
+            result = Env._Env__expand_posix(input_str, vars=vars, args=args, chars=EnvChars.POSIX)
             assert result == expected
 
 
@@ -1217,7 +1217,7 @@ class TestExpandPosixAllFeatures:
         """Parametrized test for parameter expansion features."""
         args = ["one", "two"] if "1" in input_str else None
         with patch.dict(os.environ, vars or {}, clear=vars is not None):
-            result = Env._Env__expand_posix(input_str, vars=vars, args=args)
+            result = Env._Env__expand_posix(input_str, vars=vars, args=args, chars=EnvChars.POSIX)
             assert result == expected
 
     @pytest.mark.parametrize(
