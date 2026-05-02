@@ -1194,23 +1194,24 @@ class Env:
         normal_quote = chars.normal_quote
         hard_quote = chars.hard_quote
 
-        def append_token_and_reset(
+        def add_token_and_reset(
             result: list[str],
             token: list[str],
+            quote: bool = False,
             args: list[str] | None = None,
             vars: MutableMapping[str, str] | None = None,
             flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
             chars: EnvCharsData = EnvChars.CURRENT,
         ) -> bool:
-            joined = "".join(token) 
+            tokstr = "".join(token) 
             token.clear()
-            if chars.cutter and joined.startswith(chars.cutter):
-                return False
-            result.append(
-                Env.expand(
-                    joined, args=args, vars=vars, flags=flags, chars=chars
+            if chars.cutter and tokstr.startswith(chars.cutter):
+                return 
+            if not quote or (quote != chars.hard_quote):
+                tokstr = Env.expand(
+                    tokstr, args=args, vars=vars, flags=flags, chars=chars
                 )
-            )
+            result.append(tokstr)
             return True
 
         # Define cumulative lists
@@ -1220,10 +1221,10 @@ class Env:
 
         # Define local flags and special characters
 
-        curr_quote = None
         in_token = False
         is_escaped = False
         is_ready = False
+        quote = None
 
         # Loop through every character from the input, accumulate current token
         # and append when it ends, then restart anew
@@ -1233,12 +1234,12 @@ class Env:
                 is_escaped = False
                 is_ready = False
                 in_token = False
-                curr_quote = None
+                quote = None
 
                 if len(token) > 0:
-                    if not append_token_and_reset(
-                               result=result, token=token, args=args,
-                               vars=vars, flags=flags, chars=chars
+                    if not add_token_and_reset(
+                               result=result, token=token, quote=quote,
+                               args=args, vars=vars, flags=flags, chars=chars
                            ):
                         break
 
@@ -1247,27 +1248,27 @@ class Env:
                 is_escaped = False
                 continue
 
-            if curr_quote is None:
+            if quote is None:
                 if ch == escape:
                     is_escaped = True
                     in_token = True
                     continue
                 elif (ch == normal_quote) or (ch == hard_quote):
-                    curr_quote = ch
+                    quote = ch
                     in_token = True
                     continue
                 elif ch in string.whitespace:
                     is_ready = in_token
                     continue
-            elif curr_quote == normal_quote:
+            elif quote == normal_quote:
                 if ch == escape:
                     is_escaped = True
                     continue
-                elif ch == curr_quote:
+                elif ch == quote:
                     is_ready = True
                     continue
-            elif hard_quote and (curr_quote == hard_quote):
-                if ch == curr_quote:
+            elif hard_quote and (quote == hard_quote):
+                if ch == quote:
                     is_ready = True
                     continue
 
@@ -1284,12 +1285,12 @@ class Env:
             if is_escaped:
                 raise ValueError(f"Unterminated escape sequence in: {input}")
 
-            if curr_quote is not None:
+            if quote is not None:
                 raise ValueError(
-                    f"Unterminated {"hard-" if curr_quote == hard_quote else ""}quoted argument in: {input}"
+                    f"Unterminated {"hard-" if quote == hard_quote else ""}quoted argument in: {input}"
                 )
 
-            append_token_and_reset(
+            add_token_and_reset(
                 result=result, token=token, args=args,
                 vars=vars, flags=flags, chars=chars
             )
