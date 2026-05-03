@@ -19,6 +19,7 @@ class TestEnvCharsConstants:
             (
                 "POSIX",
                 {
+                    "is_posix": True,
                     "expand": "$",
                     "windup": "",
                     "escape": "\\",
@@ -30,6 +31,7 @@ class TestEnvCharsConstants:
             (
                 "WINDOWS",
                 {
+                    "is_posix": False,
                     "expand": "%",
                     "windup": "%",
                     "escape": "^",
@@ -41,6 +43,7 @@ class TestEnvCharsConstants:
             (
                 "RISCOS",
                 {
+                    "is_posix": False,
                     "expand": "<",
                     "windup": ">",
                     "escape": "\\",
@@ -52,6 +55,7 @@ class TestEnvCharsConstants:
             (
                 "VMS",
                 {
+                    "is_posix": False,
                     "expand": "'",
                     "windup": "'",
                     "escape": "^",

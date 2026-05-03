@@ -23,7 +23,9 @@ class EnvCharsData:
         """
 
         return (
-            (other.expand == self.expand)
+            (other.is_posix == self.is_posix)
+            and (other.is_posix == self.is_posix)
+            and (other.expand == self.expand)
             and (other.windup == self.windup)
             and (other.escape == self.escape)
             and (other.cutter == self.cutter)
@@ -36,6 +38,7 @@ class EnvCharsData:
 
     def __init__(
         self,
+        is_posix: bool | None = False,
         expand: str | None = None,
         windup: str | None = None,
         escape: str | None = None,
@@ -47,6 +50,10 @@ class EnvCharsData:
         Constructor
 
         :param self: The object
+
+        :param is_posix: True if need to expand environment variables and
+            command-line arguments in POSIX (more precisely, bash) style
+        :type is_posix: bool
 
         :param expand: String that denotes the start of an environment
             variable token
@@ -77,6 +84,8 @@ class EnvCharsData:
         self.expand: str = expand or ""
         self.expand_len: int = len(self.expand)
 
+        self.is_posix: bool = True if is_posix else False
+
         self.windup: str = windup or ""
         self.windup_len: int = len(self.windup)
 
@@ -99,6 +108,7 @@ class EnvCharsData:
 
     def copy_with(
         self,
+        is_posix: bool | None = None,
         expand: str | None = None,
         windup: str | None = None,
         escape: str | None = None,
@@ -115,6 +125,7 @@ class EnvCharsData:
         """
 
         return EnvCharsData(
+            is_posix=(is_posix if is_posix is not None else self.is_posix),
             expand=(expand if expand is not None else self.expand),
             windup=(windup if windup is not None else self.windup),
             escape=(escape if escape is not None else self.escape),

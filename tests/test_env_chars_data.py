@@ -11,6 +11,7 @@ class TestEnvCharsDataConstructor:
     @pytest.mark.parametrize(
         "field,value",
         [
+            ("is_posix", True),
             ("expand", "$"),
             ("windup", ">"),
             ("escape", "\\"),
@@ -26,6 +27,7 @@ class TestEnvCharsDataConstructor:
     def test_constructor_defaults(self):
         info = _make_envcharsdata()
 
+        assert info.is_posix == False
         assert info.expand == ""
         assert info.windup == ""
         assert info.escape == ""
@@ -65,6 +67,7 @@ class TestEnvCharsDataEquality:
     @pytest.mark.parametrize(
         "field,val1,val2",
         [
+            ("is_posix", True, False),
             ("expand", "$", "%"),
             ("windup", "", ">"),
             ("escape", "\\", "^"),
@@ -80,6 +83,7 @@ class TestEnvCharsDataEquality:
 
     def test_eq_equal_objects(self):
         info1 = _make_envcharsdata(
+            is_posix=True,
             expand="$",
             windup="",
             escape="\\",
@@ -88,6 +92,7 @@ class TestEnvCharsDataEquality:
             normal_quote='"',
         )
         info2 = _make_envcharsdata(
+            is_posix=True,
             expand="$",
             windup="",
             escape="\\",
@@ -105,6 +110,7 @@ class TestEnvCharsDataEquality:
 
     def test_eq_all_attributes_differ(self):
         info1 = _make_envcharsdata(
+            is_posix=True,
             expand="$",
             windup="",
             escape="\\",
@@ -113,6 +119,7 @@ class TestEnvCharsDataEquality:
             normal_quote='"',
         )
         info2 = _make_envcharsdata(
+            is_posix=False,
             expand="%",
             windup=">",
             escape="^",
@@ -127,6 +134,7 @@ class TestEnvCharsDataCopyWith:
     @pytest.mark.parametrize(
         "field,val1,val2",
         [
+            ("is_posix", True, False),
             ("expand", "$", "%"),
             ("windup", "", ">"),
             ("escape", "\\", "^"),
@@ -142,6 +150,7 @@ class TestEnvCharsDataCopyWith:
 
     def test_copy_with_no_changes(self):
         src = _make_envcharsdata(
+            is_posix=True,
             expand="$",
             windup=">",
             escape="\\",
@@ -152,6 +161,7 @@ class TestEnvCharsDataCopyWith:
 
         result = src.copy_with()
 
+        assert result.is_posix == True
         assert result.expand == "$"
         assert result.windup == ">"
         assert result.escape == "\\"
@@ -161,6 +171,7 @@ class TestEnvCharsDataCopyWith:
 
     def test_copy_with_multiple_changes(self):
         src = _make_envcharsdata(
+            is_posix=True,
             expand="$",
             windup="",
             escape="\\",
@@ -171,6 +182,7 @@ class TestEnvCharsDataCopyWith:
 
         result = src.copy_with(expand="%", windup=">", escape="^")
 
+        assert result.is_posix == True
         assert result.expand == "%"
         assert result.windup == ">"
         assert result.escape == "^"

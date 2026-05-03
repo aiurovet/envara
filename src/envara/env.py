@@ -1203,10 +1203,10 @@ class Env:
             flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
             chars: EnvCharsData = EnvChars.CURRENT,
         ) -> bool:
-            tokstr = "".join(token) 
+            tokstr = "".join(token)
             token.clear()
             if chars.cutter and tokstr.startswith(chars.cutter):
-                return 
+                return
             if not quote or (quote != chars.hard_quote):
                 tokstr = Env.expand(
                     tokstr, args=args, vars=vars, flags=flags, chars=chars
@@ -1238,9 +1238,14 @@ class Env:
 
                 if len(token) > 0:
                     if not add_token_and_reset(
-                               result=result, token=token, quote=quote,
-                               args=args, vars=vars, flags=flags, chars=chars
-                           ):
+                        result=result,
+                        token=token,
+                        quote=quote,
+                        args=args,
+                        vars=vars,
+                        flags=flags,
+                        chars=chars,
+                    ):
                         break
 
             if is_escaped:
@@ -1291,8 +1296,12 @@ class Env:
                 )
 
             add_token_and_reset(
-                result=result, token=token, args=args,
-                vars=vars, flags=flags, chars=chars
+                result=result,
+                token=token,
+                args=args,
+                vars=vars,
+                flags=flags,
+                chars=chars,
             )
 
         return result

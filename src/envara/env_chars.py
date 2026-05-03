@@ -6,7 +6,6 @@
 
 from typing import ClassVar
 
-# import envara
 from env_chars_data import EnvCharsData
 import os
 
@@ -32,34 +31,28 @@ class EnvChars:
     """True if the app is running under Windows or OS/2"""
 
     POSIX: ClassVar[EnvCharsData] = EnvCharsData(
-        expand="$", windup="", escape="\\", cutter="#", hard_quote="'", normal_quote='"'
+        is_posix=True, expand="$", windup="", escape="\\", cutter="#", hard_quote="'", normal_quote='"'
     )
     """POSIX-specific set of environment-related characters"""
 
     RISCOS: ClassVar = EnvCharsData(
-        expand="<", windup=">", escape="\\", cutter="|", hard_quote="", normal_quote='"'
+        is_posix=False, expand="<", windup=">", escape="\\", cutter="|", hard_quote="", normal_quote='"'
     )
     """RiscOS-specific set of environment-related characters"""
 
     VMS: ClassVar = EnvCharsData(
-        expand="'", windup="'", escape="^", cutter="!", hard_quote="", normal_quote='"'
+        is_posix=False, expand="'", windup="'", escape="^", cutter="!", hard_quote="", normal_quote='"'
     )
     """OpenVMS-specific set of environment-related characters"""
 
     WINDOWS: ClassVar = EnvCharsData(
-        expand="%", windup="%", escape="^", cutter="::", hard_quote="", normal_quote='"'
+        is_posix=False, expand="%", windup="%", escape="^", cutter="::", hard_quote="", normal_quote='"'
     )
     """Windows-specific set of environment-related characters"""
 
     DEFAULT: ClassVar[EnvCharsData] = (
-        RISCOS.copy_with()
-        if IS_RISCOS
-        else (
-            VMS.copy_with()
-            if IS_VMS
-            else WINDOWS.copy_with() if IS_WINDOWS else POSIX.copy_with()
-        )
-    )
+        RISCOS if IS_RISCOS else (VMS if IS_VMS else WINDOWS if IS_WINDOWS else POSIX)
+    ).copy_with()
     """Default OS-specific set of environment-related characters"""
 
     CURRENT: ClassVar[EnvCharsData] = DEFAULT.copy_with()
@@ -69,14 +62,13 @@ class EnvChars:
 
     @staticmethod
     def init_default() -> EnvCharsData:
-        if EnvChars.IS_RISCOS:
-            EnvChars.DEFAULT = EnvChars.RISCOS.copy_with()
-        elif EnvChars.IS_VMS:
-            EnvChars.DEFAULT = EnvChars.VMS.copy_with()
-        elif EnvChars.IS_WINDOWS:
-            EnvChars.DEFAULT = EnvChars.WINDOWS.copy_with()
-        else:
-            EnvChars.DEFAULT = EnvChars.POSIX.copy_with()
+        EnvChars.DEFAULT = (
+            EnvChars.RISCOS if EnvChars.IS_RISCOS else (
+                EnvChars.VMS if EnvChars.IS_VMS else (
+                    EnvChars.WINDOWS if EnvChars.IS_WINDOWS else EnvChars.POSIX
+                )
+            )
+        ).copy_with()
 
         return EnvChars.DEFAULT
 
