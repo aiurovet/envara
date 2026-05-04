@@ -96,7 +96,7 @@ class Env:
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvChars = EnvChars.CURRENT,
+        chars: EnvCharsData = EnvChars.CURRENT,
     ) -> Path | str:
         """
         Unquote the input if required via flags, remove trailing line comment
@@ -123,7 +123,7 @@ class Env:
         :param chars: Platform-specific special environment characters to
             parse various tokens like escaped characters, environment
             variables, etc.
-        :type chars: EnvChars
+        :type chars: EnvCharsData
 
         :return: Expanded string or Path object
         :rtype: str
@@ -147,7 +147,7 @@ class Env:
         # Perform POSIX-style or Windows-style expansions based on
         # the first active expand character detected during unquoting
 
-        if chars and chars.expand == EnvChars.POSIX.expand:
+        if chars and chars.is_posix:
             result = Env.__expand_posix(
                 result, args=args, vars=vars, flags=flags, chars=chars
             )
@@ -173,7 +173,7 @@ class Env:
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvChars = EnvChars.CURRENT,
+        chars: EnvCharsData = EnvChars.CURRENT,
     ) -> Path | None:
         """
         A wrapper around expand() for paths
@@ -743,7 +743,7 @@ class Env:
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvChars = EnvChars.CURRENT,
+        chars: EnvCharsData = EnvChars.CURRENT,
     ) -> str:
         """
         Expand environment variables and sub-processes according to simple
@@ -1105,7 +1105,7 @@ class Env:
         :param chars: Platform-specific special environment characters to
             parse various tokens like escaped characters, environment
             variables, etc.
-        :type chars: EnvChars
+        :type chars: EnvCharsData
 
         :return: Quoted string with possible quotes and escape characters from
                  the inside being escaped
@@ -1321,7 +1321,7 @@ class Env:
         :param chars: Platform-specific special environment characters to
             parse various tokens like escaped characters, environment
             variables, etc.
-        :type chars: EnvChars
+        :type chars: EnvCharsData
 
         :return: Unescaped string, optionally, stripped of blanks
         :rtype: str
@@ -1429,7 +1429,7 @@ class Env:
         :param chars: Platform-specific special environment characters to
             parse various tokens like escaped characters, environment
             variables, etc.
-        :type chars: EnvChars
+        :type chars: EnvCharsData
 
         :return: Unquoted input and the type of surrounding quotes (see EnvQuoteType)
         :rtype: tuple[str, EnvQuoteType]

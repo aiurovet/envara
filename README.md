@@ -89,7 +89,7 @@ Class for string expansions.
 
 | Name | Type | Description |
 |---|---|---|
-| `IS_POSIX` | `bool` | `True` if the app is running under Linux, UNIX, BSD, macOS or similar |
+| `IS_POSIX` | `bool` | `True` if the app is running under Linux, UNIX, BSD, macOS or similar (in fact, bash-compatible) |
 | `IS_RISCOS` | `bool` | `True` if the app is running under Risc OS |
 | `IS_VMS` | `bool` | `True` if the app is running under OpenVMS or similar |
 | `IS_WINDOWS` | `bool` | `True` if the app is running under Windows or OS/2 |
