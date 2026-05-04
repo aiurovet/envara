@@ -171,6 +171,7 @@ class Env:
     def expand_path(
         path: Path | None,
         args: list[str] | None = None,
+        vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
         chars: EnvChars = EnvChars.CURRENT,
     ) -> Path | None:
@@ -180,8 +181,8 @@ class Env:
         if not path:
             return path
 
-        result: str = Env.expand_path(
-            path=str(path), args=args, flags=flags, chars=chars
+        result: str = Env.expand(
+            input=str(path), args=args, vars=vars, flags=flags, chars=chars
         )
 
         return Path(result) if result else None

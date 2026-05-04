@@ -1,5 +1,6 @@
 import os
 import subprocess
+from pathlib import Path
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -4220,10 +4221,14 @@ class TestEnvSplit:
             (EnvChars.POSIX, "hello\\ world", ["hello world"]),
             # Double backslash = literal backslash
             (EnvChars.POSIX, "hello\\\\world", ["hello\\world"]),
+            # POSIX: chars by hexadecimal and unicode code
+            (EnvChars.POSIX, "\\x41A\\u0042B", ["AABB"]),
             # Windows: caret escape - space escaped = part of token
             (EnvChars.WINDOWS, "hello^ world", ["hello world"]),
             # Double caret = literal caret
             (EnvChars.WINDOWS, "hello^^world", ["hello^world"]),
+            # POSIX: chars by hexadecimal and unicode code
+            (EnvChars.WINDOWS, "^x41A^u0042B", ["AABB"]),
             # RISCOS: backslash escape
             (EnvChars.RISCOS, "hello\\ world", ["hello world"]),
         ],
@@ -4590,3 +4595,130 @@ class TestEnvSplit:
         """Test that pipes, redirects etc. are treated as arguments."""
         result = Env.split(input_str, flags=EnvExpandFlags.NONE)
         assert result == expected
+
+
+class TestEnvExpandPath:
+    """Tests for Env.expand_path() method covering various platforms"""
+
+    @pytest.mark.parametrize(
+        "path,vars,args,chars,expected",
+        [
+            # POSIX paths
+            ("/home/$USER", {"USER": "test"}, None, EnvChars.POSIX, "/home/test"),
+            ("$HOME/docs", {"HOME": "/home/test"}, None, EnvChars.POSIX, "/home/test/docs"),
+            ("${HOME}/file.txt", {"HOME": "/home/test"}, None, EnvChars.POSIX, "/home/test/file.txt"),
+            # Windows paths
+            ("C:\\Users\\%USER%", {"USER": "test"}, None, EnvChars.WINDOWS, "C:\\Users\\test"),
+            ("%APPDATA%\\config", {"APPDATA": "C:\\AppData"}, None, EnvChars.WINDOWS, "C:\\AppData\\config"),
+            # RISC OS paths
+            ("<HOME>.!Apps", {"HOME": "$.test"}, None, EnvChars.RISCOS, "$.test.!Apps"),
+            # VMS paths
+            ("'HOME'", {"HOME": "device"}, None, EnvChars.VMS, "device"),
+            # None path returns None
+            (None, {}, None, EnvChars.POSIX, None),
+            # Empty string returns None (falsy result)
+            ("", {}, None, EnvChars.POSIX, None),
+        ],
+    )
+    def test_expand_path_parametrized(
+        self,
+        path: str | None,
+        vars: dict[str, str],
+        args: list[str] | None,
+        chars: EnvChars,
+        expected: str | None,
+    ):
+        """Parametrized test for expand_path across platforms."""
+        with patch.dict(os.environ, vars, clear=True):
+            result = Env.expand_path(
+                Path(path) if path else None,
+                args=args,
+                vars=vars if vars else None,
+                chars=chars,
+            )
+            if expected is None:
+                assert result is None
+            else:
+                assert str(result) == expected
+
+    @pytest.mark.parametrize(
+        "path,vars,flags,chars,expected",
+        [
+            # Empty vars dict prevents env var expansion
+            ("$HOME", {}, EnvExpandFlags.NONE, EnvChars.POSIX, "$HOME"),
+            ("%HOME%", {}, EnvExpandFlags.NONE, EnvChars.WINDOWS, "%HOME%"),
+            # UNESCAPE flag with paths
+            ("path\\twith\\tescape", {}, EnvExpandFlags.UNESCAPE, EnvChars.POSIX, "path\twith\tescape"),
+            # UNQUOTE flag
+            ('"$HOME"', {"HOME": "/home"}, EnvExpandFlags.UNQUOTE, EnvChars.POSIX, "/home"),
+        ],
+    )
+    def test_expand_path_flags(
+        self,
+        path: str,
+        vars: dict[str, str],
+        flags: EnvExpandFlags,
+        chars: EnvChars,
+        expected: str,
+    ):
+        """Test expand_path with various flags."""
+        result = Env.expand_path(Path(path), vars=vars, flags=flags, chars=chars)
+        assert str(result) == expected
+
+    @pytest.mark.parametrize(
+        "path,args,chars,expected",
+        [
+            # Argument expansion in paths
+            ("$1/config", ["arg1"], EnvChars.POSIX, "arg1/config"),
+            ("%1%\\config", ["arg1"], EnvChars.WINDOWS, "arg1\\config"),
+        ],
+    )
+    def test_expand_path_args(
+        self,
+        path: str,
+        args: list[str],
+        chars: EnvChars,
+        expected: str,
+    ):
+        """Test expand_path with argument expansion."""
+        result = Env.expand_path(Path(path), args=args, chars=chars)
+        assert str(result) == expected
+
+    def test_expand_path_returns_path_object(self):
+        """Test that expand_path returns a Path object."""
+        result = Env.expand_path(Path("/home/test"), chars=EnvChars.POSIX)
+        assert isinstance(result, Path)
+
+    def test_expand_path_empty_vars_uses_environ(self):
+        """Test that expand_path uses os.environ when vars is None."""
+        with patch.dict(os.environ, {"TEST_VAR": "/test/path"}, clear=True):
+            result = Env.expand_path(Path("$TEST_VAR"), vars=None, chars=EnvChars.POSIX)
+            assert str(result) == "/test/path"
+
+    def test_expand_path_strip_spaces(self):
+        """Test STRIP_SPACES flag with paths."""
+        result = Env.expand_path(Path("/home/test"), flags=EnvExpandFlags.STRIP_SPACES, chars=EnvChars.POSIX)
+        assert str(result) == "/home/test"
+
+    @pytest.mark.parametrize(
+        "chars,path,expected",
+        [
+            (EnvChars.POSIX, "$HOME", "/home/test"),
+            (EnvChars.WINDOWS, "%HOME%", "C:\\Users\\test"),
+            (EnvChars.RISCOS, "<HOME>", "$.test"),
+        ],
+    )
+    def test_expand_path_all_platforms(
+        self,
+        chars: EnvChars,
+        path: str,
+        expected: str,
+    ):
+        """Test expand_path across all platforms with env vars set."""
+        vars_dict = {"HOME": "/home/test"} if chars == EnvChars.POSIX else {"HOME": "C:\\Users\\test"} if chars == EnvChars.WINDOWS else {"HOME": "$.test"}
+        with patch.dict(os.environ, vars_dict, clear=True):
+            result = Env.expand_path(Path(path), vars=vars_dict, chars=chars)
+            assert expected in str(result)
+
+
+
