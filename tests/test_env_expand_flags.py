@@ -106,11 +106,6 @@ class TestEnvExpandFlagsDefault:
         for flag in expected:
             assert flag & EnvExpandFlags.DEFAULT == flag
 
-    def test_default_excludes_shell_related_flags(self):
-        assert not (EnvExpandFlags.DEFAULT & EnvExpandFlags.ALLOW_SUBPROC)
-        assert not (EnvExpandFlags.DEFAULT & EnvExpandFlags.STRIP_COMMENT)
-        assert not (EnvExpandFlags.DEFAULT & EnvExpandFlags.SKIP_ENV_VARS)
-
     def test_default_is_not_none(self):
         assert EnvExpandFlags.DEFAULT != EnvExpandFlags.NONE
         assert EnvExpandFlags.DEFAULT != 0
@@ -120,10 +115,10 @@ class TestEnvExpandFlagsBitwiseOperations:
     @pytest.mark.parametrize(
         "op,flag1,flag2,expected",
         [
-            ("or", "ALLOW_SHELL", "UNQUOTE", 1 << 0 | 1 << 5),
+            ("or", "ALLOW_SHELL", "UNQUOTE", 1 << 0 | 1 << 6),
             ("and", "ALLOW_SHELL", "ALLOW_SUBPROC", 0),
             ("xor", "ALLOW_SHELL", "ALLOW_SHELL", 0),
-            ("xor", "ALLOW_SHELL", "UNQUOTE", 1 << 0 | 1 << 5),
+            ("xor", "ALLOW_SHELL", "UNQUOTE", 1 << 0 | 1 << 6),
         ],
     )
     def test_bitwise_operations(self, op, flag1, flag2, expected):

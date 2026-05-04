@@ -796,6 +796,7 @@ class Env:
                         out.append(expand_char)
                         i += 2
                         continue
+                    out.append(ch)
                     out.append(nxt)
                     i += 2
                     continue
@@ -1197,7 +1198,6 @@ class Env:
         def add_token_and_reset(
             result: list[str],
             token: list[str],
-            quote: bool = False,
             args: list[str] | None = None,
             vars: MutableMapping[str, str] | None = None,
             flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
@@ -1207,10 +1207,9 @@ class Env:
             token.clear()
             if chars.cutter and tokstr.startswith(chars.cutter):
                 return
-            if not quote or (quote != chars.hard_quote):
-                tokstr = Env.expand(
-                    tokstr, args=args, vars=vars, flags=flags, chars=chars
-                )
+            tokstr = Env.expand(
+                tokstr, args=args, vars=vars, flags=flags, chars=chars
+            )
             result.append(tokstr)
             return True
 
@@ -1240,7 +1239,6 @@ class Env:
                     if not add_token_and_reset(
                         result=result,
                         token=token,
-                        quote=quote,
                         args=args,
                         vars=vars,
                         flags=flags,
@@ -1256,28 +1254,26 @@ class Env:
             if quote is None:
                 if ch == escape:
                     is_escaped = True
-                    in_token = True
-                    continue
                 elif (ch == normal_quote) or (ch == hard_quote):
-                    quote = ch
-                    in_token = True
-                    continue
+                    if in_token:
+                        quote = None
+                        in_token = False
+                    else:
+                        quote = ch
+                        in_token = True
                 elif ch in string.whitespace:
                     is_ready = in_token
-                    continue
             elif quote == normal_quote:
                 if ch == escape:
                     is_escaped = True
-                    continue
                 elif ch == quote:
                     is_ready = True
-                    continue
             elif hard_quote and (quote == hard_quote):
                 if ch == quote:
                     is_ready = True
-                    continue
 
-            if not in_token and (ch in string.whitespace):
+            if ((not in_token) or not quote) and (ch in string.whitespace):
+                is_ready = True
                 continue
 
             token.append(ch)
@@ -1290,7 +1286,7 @@ class Env:
             if is_escaped:
                 raise ValueError(f"Unterminated escape sequence in: {input}")
 
-            if quote is not None:
+            if (quote is not None) and (ch != quote):
                 raise ValueError(
                     f"Unterminated {"hard-" if quote == hard_quote else ""}quoted argument in: {input}"
                 )
@@ -1366,11 +1362,6 @@ class Env:
                 chr_lst.append(chr(int(input[acc_beg_pos:acc_end_pos], 16)))
                 is_escaped = False
 
-            if cur_char in chars.escape:
-                is_escaped = not is_escaped
-                esc_pos = cur_pos if (is_escaped) else -1
-                continue
-
             if is_escaped:
                 if cur_char in Env.SPECIAL:
                     cur_char = Env.SPECIAL[cur_char]
@@ -1383,6 +1374,10 @@ class Env:
                     acc_end_pos = acc_beg_pos + 2
                     continue
                 is_escaped = False
+            elif cur_char == chars.escape:
+                is_escaped = not is_escaped
+                esc_pos = cur_pos if (is_escaped) else -1
+                continue
 
             chr_lst.append(cur_char)
 
