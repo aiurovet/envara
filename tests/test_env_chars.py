@@ -75,54 +75,26 @@ class TestEnvCharsConstants:
             assert getattr(platform, attr) == expected_value
 
 
-class TestEnvCharsSelect:
+class TestEnvCharsDataAttrs:
     @pytest.mark.parametrize(
-        "is_posix,is_riscos,is_vms,is_windows,expected_expand",
+        "platform,expected_expand",
         [
-            pytest.param(True, False, False, False, "$", id="posix"),
-            pytest.param(False, True, False, False, "<", id="riscos"),
-            pytest.param(False, False, True, False, "'", id="vms"),
-            pytest.param(False, False, False, True, "%", id="windows"),
+            ("POSIX", "$"),
+            ("RISCOS", "<"),
+            ("WINDOWS", "%"),
         ],
     )
-    def test_select_sets_default_based_on_platform(
-        self, mocker, is_posix, is_riscos, is_vms, is_windows, expected_expand
-    ):
-        EnvChars = _get_envchars(is_posix, is_riscos, is_vms, is_windows)
-        EnvChars.select("test")
+    def test_platform_expand(self, platform, expected_expand):
+        EnvChars = _get_envchars()
+        assert getattr(EnvChars, platform).expand == expected_expand
 
+    def test_select_init_default_when_not_set(self):
+        EnvChars = env_chars_mod.EnvChars
+        EnvChars.DEFAULT = None
+        EnvChars.CURRENT = None
+        result = EnvChars.select("test")
+        assert result is not None
         assert EnvChars.DEFAULT is not None
-        assert EnvChars.DEFAULT.expand == expected_expand
-
-    @pytest.mark.xfail(
-        reason="Source bug: startswith gets EnvCharsData instead of string"
-    )
-    def test_select_sets_current_based_on_comment(self, mocker):
-        EnvChars = _get_envchars(is_posix=True)
-        EnvChars.select("# test")
-
-        assert EnvChars.CURRENT is not None
-        assert EnvChars.CURRENT.expand == "$"
-
-    @pytest.mark.xfail(
-        reason="Source bug: startswith gets EnvCharsData instead of string"
-    )
-    def test_select_copies_constants(self):
-        EnvChars = _get_envchars(is_posix=True)
-        EnvChars.select("test")
-
-        assert EnvChars.DEFAULT is not EnvChars.POSIX
-        assert EnvChars.CURRENT is not EnvChars.POSIX
-
-    @pytest.mark.xfail(
-        reason="Source bug: startswith gets EnvCharsData instead of string"
-    )
-    def test_select_with_empty_string(self):
-        EnvChars = _get_envchars(is_posix=True)
-        EnvChars.select("")
-
-        assert EnvChars.CURRENT is not None
-        assert EnvChars.CURRENT.expand == "$"
 
 
 class TestEnvCharsMethods:
@@ -154,23 +126,52 @@ class TestEnvCharsMethods:
         assert EnvChars.CURRENT.expand == "%"
 
 
-class TestEnvCharsDataAttrs:
+class TestEnvCharsSelect:
+
+    @pytest.mark.xfail(
+        reason="Source bug: startswith gets EnvCharsData instead of string"
+    )
+    def test_select_copies_constants(self):
+        EnvChars = _get_envchars(is_posix=True)
+        EnvChars.select("test")
+
+        assert EnvChars.DEFAULT is not EnvChars.POSIX
+        assert EnvChars.CURRENT is not EnvChars.POSIX
+
+    @pytest.mark.xfail(
+        reason="Source bug: startswith gets EnvCharsData instead of string"
+    )
+    def test_select_sets_current_based_on_comment(self, mocker):
+        EnvChars = _get_envchars(is_posix=True)
+        EnvChars.select("# test")
+
+        assert EnvChars.CURRENT is not None
+        assert EnvChars.CURRENT.expand == "$"
+
     @pytest.mark.parametrize(
-        "platform,expected_expand",
+        "is_posix,is_riscos,is_vms,is_windows,expected_expand",
         [
-            ("POSIX", "$"),
-            ("RISCOS", "<"),
-            ("WINDOWS", "%"),
+            pytest.param(True, False, False, False, "$", id="posix"),
+            pytest.param(False, True, False, False, "<", id="riscos"),
+            pytest.param(False, False, True, False, "'", id="vms"),
+            pytest.param(False, False, False, True, "%", id="windows"),
         ],
     )
-    def test_platform_expand(self, platform, expected_expand):
-        EnvChars = _get_envchars()
-        assert getattr(EnvChars, platform).expand == expected_expand
+    def test_select_sets_default_based_on_platform(
+        self, mocker, is_posix, is_riscos, is_vms, is_windows, expected_expand
+    ):
+        EnvChars = _get_envchars(is_posix, is_riscos, is_vms, is_windows)
+        EnvChars.select("test")
 
-    def test_select_init_default_when_not_set(self):
-        EnvChars = env_chars_mod.EnvChars
-        EnvChars.DEFAULT = None
-        EnvChars.CURRENT = None
-        result = EnvChars.select("test")
-        assert result is not None
         assert EnvChars.DEFAULT is not None
+        assert EnvChars.DEFAULT.expand == expected_expand
+
+    @pytest.mark.xfail(
+        reason="Source bug: startswith gets EnvCharsData instead of string"
+    )
+    def test_select_with_empty_string(self):
+        EnvChars = _get_envchars(is_posix=True)
+        EnvChars.select("")
+
+        assert EnvChars.CURRENT is not None
+        assert EnvChars.CURRENT.expand == "$"

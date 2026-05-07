@@ -60,6 +60,11 @@ class TestEnvFilterConstructor:
 
 
 class TestEnvFilterEquality:
+    def test_equality_different_all_values(self):
+        f1 = EnvFilter(all_values=["dev", "prod"])
+        f2 = EnvFilter(all_values=["staging"])
+        assert f1 != f2
+
     def test_equality_different_cur_values(self):
         f1 = EnvFilter(cur_values=["dev"])
         f2 = EnvFilter(cur_values=["prod"])
@@ -70,24 +75,19 @@ class TestEnvFilterEquality:
         f2 = EnvFilter(indicator="app")
         assert f1 != f2
 
-    def test_equality_different_all_values(self):
-        f1 = EnvFilter(all_values=["dev", "prod"])
-        f2 = EnvFilter(all_values=["staging"])
-        assert f1 != f2
-
     def test_equality_same_params(self):
         f1 = EnvFilter(indicator="env")
         f2 = EnvFilter(indicator="env")
         assert f1 == f2
 
-    def test_equality_with_none(self):
-        f = EnvFilter()
-        assert f != None
-
     def test_equality_with_different_type(self):
         f = EnvFilter()
         assert f != "not a filter"
         assert f != 42
+
+    def test_equality_with_none(self):
+        f = EnvFilter()
+        assert f != None
 
 
 class TestEnvFilterHasValue:
@@ -182,12 +182,12 @@ class TestEnvFilterSearch:
         result = f.search("prod")
         assert result == -1
 
-    def test_search_with_no_cur_values(self):
-        f = EnvFilter(indicator="env", cur_values=None)
-        result = f.search("env")
-        assert result == 0
-
     def test_search_with_empty_cur_values(self):
         f = EnvFilter(indicator="env", cur_values=[])
         result = f.search("other")
         assert result == -1
+
+    def test_search_with_no_cur_values(self):
+        f = EnvFilter(indicator="env", cur_values=None)
+        result = f.search("env")
+        assert result == 0
