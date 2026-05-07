@@ -15,9 +15,10 @@ Please note that version `0.4.0` brings breaking changes: mainly, a switch from 
 - [Sample Usage](#sample-usage)
 - [Library Overview](#library-overview)
 - [POSIX-style Expansions](#posix-style-expansions)
-- [Windows-like Expansions](#windows-like-expansions)
+- ['Simple' expansions implemented in _Env.expand_ for Windows, OpenVMS, and RiscOS](#simple-expansions-implemented-in-_envexpand_-for-windows-openvms-and-riscos)
 - [Dot-env File Lookup](#dot-env-file-lookup)
 - [Which Expansion to Choose?](#which-expansion-to-choose)
+- [Good Luck!](#good-luck)
 
 ---
 
