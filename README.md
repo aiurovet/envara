@@ -193,27 +193,19 @@ Implemented via `Env.expand()` which calls private method `_Env__expand_posix()`
 - The executed command's stdout (with trailing newline removed) is inserted into the result
 - Timeouts and non-zero exit codes raise `ValueError`
 
-### Safety and configuration
+### Safety and Configuration
 
 The following parameters control execution of command substitutions:
-- `expand_flags`: `EnvExpandFlags` controls expansion
+- `flags`: `EnvExpandFlags` controls expansion
   - `ALLOW_SHELL` - command substitutions executed with `shell=True` (less safe, more flexible)
   - `ALLOW_SUBPROC` - executed with `shell=False` using `shlex.split()` (safer)
-- `subprocess_timeout` - timeout in seconds; `TimeoutExpired` becomes `ValueError`
 
----
+## 'Simple' expansions implemented in _Env.expand_ for Windows, OpenVMS, and RiscOS
 
-## Windows-like Expansions
-
-Implemented via `Env.expand()` which calls private method `_Env__expand_simple()`.
-
-Supports:
-- `%NAME%` expansion
-- `%1`, `%*` arguments
-- `%~` modifiers for extracting path components
-- Substring form: `%NAME:~start[,length]%` (negative `start` counts from end)
-- RiscOS-like variables: `<NAME>`
-- OpenVMS-like: `'NAME'`
+This method of expansion supports:
+- Windows-style `%NAME%`, `%1`, `%*`, `%%`, and simple `%~` modifiers (e.g., `%~dp1`) for extracting path components on Windows-like inputs.
+- A substring form for named variables using the syntax `%NAME:~start[,length]%` - negative `start` counts from the end.
+- Similarly supports OpenVMS-like variables expansion `'NAME'` as well as RiscOS-like `<NAME>`.
 
 ---
 
@@ -269,8 +261,7 @@ CMD_CHROME = "chrome $BROWSER_ARGS"
 
 ## Which Expansion to Choose?
 
-You don't have to decide in the code. It is all about what `EnvFile.load()` encounters first while analysing each line irrespective of the platform: dollar or percent. And escape character will be chosen similarly between backslash and caret. However, the POSIX-style expansions are by far more flexible and highly recommended.
-
+By default, the expansion specific to the current platform will be chosen. But you can override that by having the first non-empty line representing a line comment for the desired platform. For instance, if the first non-empty line in a dot-env file starts with `#`, it will force to use POSIX rules. If with `::`, then DOS/Windows rules, if `!`, then OpenVMS, and if `|`, then RiscOS. It is always a good idea to start such file with a meaningful comment anyway, so you can kill two birds with one stone.
 ---
 
 ## Good Luck!
