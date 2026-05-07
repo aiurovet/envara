@@ -6,7 +6,7 @@ A library to expand environment variables, application arguments and escape sequ
 
 Does not depend on any special Python package.
 
-Please note that version `0.4.0` brings breaking changes: mainly, a switch from mutiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in dot-env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line.
+Please note that version `0.4.0` brings breaking changes: mainly, a switch from multiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in dot-env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line.
 
 ---
 
@@ -15,9 +15,9 @@ Please note that version `0.4.0` brings breaking changes: mainly, a switch from 
 - [Sample Usage](#sample-usage)
 - [Library Overview](#library-overview)
 - [POSIX-style Expansions](#posix-style-expansions)
-- ['Simple' expansions implemented in _Env.expand_ for Windows, OpenVMS, and RiscOS](#simple-expansions-implemented-in-_envexpand_-for-windows-openvms-and-riscos)
+- [Simple Expansions for Windows, OpenVMS, and RiscOS](#simple-expansions-for-windows-openvms-and-riscos)
 - [Dot-env File Lookup](#dot-env-file-lookup)
-- [Which Expansion to Choose?](#which-expansion-to-choose)
+- [What Kind of Expansion to Choose in Dot-Env Files?](#what-kind-of-expansion-to-choose-in-dot-env-files)
 - [Good Luck!](#good-luck)
 
 ---
@@ -118,14 +118,7 @@ Key class variables:
 - `IS_WINDOWS` - `True` if running under Windows or OS/2
 
 ### `EnvFile` class
-Class for string expansions. Provides static methods to:
-- Read series of `key=value` lines from env files
-- Remove line comments
-- Expand environment variables and arguments
-- Expand escaped characters
-- Execute sub-commands on POSIX-compliant platforms
-- Sets or update those environment variables
-- Allows hierarchical OS-specific stacking of such files
+Reads series of `key=value` lines from env files, removes line comments, expands environment values and arguments, expands escaped characters, and sets or updates those as environment variables. Also allows hierarchical OS-specific stacking of such files.
 
 ### `EnvFilter` and `EnvFilters`
 Environment-related filtering, mainly for use with `EnvFile`. Allows filtering env files based on:
@@ -203,7 +196,9 @@ The following parameters control execution of command substitutions:
   - `ALLOW_SHELL` - command substitutions executed with `shell=True` (less safe, more flexible)
   - `ALLOW_SUBPROC` - executed with `shell=False` using `shlex.split()` (safer)
 
-## 'Simple' expansions implemented in _Env.expand_ for Windows, OpenVMS, and RiscOS
+---
+
+## Simple Expansions for Windows, OpenVMS, and RiscOS
 
 This method of expansion supports:
 - Windows-style `%NAME%`, `%1`, `%*`, `%%`, and simple `%~` modifiers (e.g., `%~dp1`) for extracting path components on Windows-like inputs.
@@ -262,7 +257,7 @@ CMD_CHROME = "chrome $BROWSER_ARGS"
 
 ---
 
-## Which Expansion to Choose?
+## What Kind of Expansion to Choose in Dot-Env Files?
 
 By default, the expansion specific to the current platform will be chosen. But you can override that by having the first non-empty line representing a line comment for the desired platform. For instance, if the first non-empty line in a dot-env file starts with `#`, it will force to use POSIX rules. If with `::`, then DOS/Windows rules, if `!`, then OpenVMS, and if `|`, then RiscOS. It is always a good idea to start such file with a meaningful comment anyway, so you can kill two birds with one stone.
 
