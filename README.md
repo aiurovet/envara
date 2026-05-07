@@ -8,6 +8,46 @@ Does not depend on any special Python package.
 
 ---
 
+## Table of Contents
+
+- [Sample Usage](#sample-usage)
+- [class `Env`](#class-env)
+  - [Class Variables](#class-variables)
+  - [`Env.expand()`](#envexpand)
+  - [`Env.get_all_platforms()`](#envget_all_platforms)
+  - [`Env.get_cur_platforms()`](#envget_cur_platforms)
+  - [`Env.quote()`](#envquote)
+  - [`Env.unescape()`](#envunescape)
+  - [`Env.unquote()`](#envunquote)
+- [class `EnvFile`](#class-envfile)
+  - [`EnvFile.get_files()`](#envfileget_files)
+  - [`EnvFile.load()`](#envfileload)
+  - [`EnvFile.load_from_str()`](#envfileload_from_str)
+  - [`EnvFile.read_text()`](#envfileread_text)
+- [class `EnvFilter`](#class-envfilter)
+  - [`EnvFilter.__init__()`](#envfilter__init__)
+  - [`EnvFilter.has_value()`](#envfilterhas_value)
+  - [`EnvFilter.search()`](#envfiltersearch)
+- [class `EnvFilters`](#class-envfilters)
+  - [`EnvFilters.process()`](#envfiltersprocess)
+- [class `EnvParseInfo`](#class-envparseinfo)
+  - [`EnvParseInfo.__init__()`](#envparseinfo__init__)
+  - [`EnvParseInfo.copy_to()`](#envparseinfocopy_to)
+  - [`EnvParseInfo.get_default_cutter_char()`](#envparseinfoget_default_cutter_char)
+  - [`EnvParseInfo.get_default_escape_char()`](#envparseinfoget_default_escape_char)
+  - [`EnvParseInfo.get_default_expand_char()`](#envparseinfoget_default_expand_char)
+  - [`EnvParseInfo.get_default_windup_char()`](#envparseinfoget_default_windup_char)
+- [class `EnvExpandFlags`](#class-envexpandflags)
+- [class `EnvFileFlags`](#class-envfileflags)
+- [class `EnvPlatformFlags`](#class-envplatformflags)
+- [class `EnvQuoteType`](#class-envquotetype)
+- [Dot-env file lookup](#dot-env-file-lookup)
+- [POSIX-style expansions implemented in *envara*](#posix-style-expansions-implemented-in-envara)
+- [Windows-like expansions implemented in *envara*](#windows-like-expansions-implemented-in-envara)
+- [Which expansion to choose?](#which-expansion-to-choose)
+
+---
+
 ## Sample Usage
 
 1. Install _envara_ from _PyPI_
@@ -686,7 +726,7 @@ The `EnvFile.load()` method looks for the following files. The leading dot is op
 **For any filter:**
 
 ```
-`[.-_]env[.-_]`
+[.-_]env[.-_]
 ```
 
 **Platforms** (added to the list of filters by default):
@@ -846,3 +886,5 @@ Windows-style percent-delimited expansions are provided by `Env.expand()` which 
 You don't have to decide in the code. It is all about what `EnvFile.load()` encounters first while analysing each line irrespective the platform: dollar or percent. And escape character will be chosen similarly between backslash and caret. However, the POSIX-style assignments are by far more flexible and highly recommended.
 
 ## __Good Luck!__
+
+[Back to top](#table-of-contents)
