@@ -4309,7 +4309,9 @@ class TestEnvSplit:
     def test_split_posix_hard_quoted(self, input_str: str, expected: list[str]):
         """Test POSIX hard-quoted (single-quoted) strings are literal."""
         with patch.dict(os.environ, {"HOME": "/home/test", "USER": "test"}, clear=True):
-            result = Env.split(input_str, flags=EnvExpandFlags.SKIP_HARD_QUOTED, chars=EnvChars.POSIX)
+            result = Env.split(
+                input_str, flags=EnvExpandFlags.SKIP_HARD_QUOTED, chars=EnvChars.POSIX
+            )
             assert result == expected
 
     # Escape character handling
@@ -4706,11 +4708,35 @@ class TestEnvExpandPath:
         [
             # POSIX paths
             ("/home/$USER", {"USER": "test"}, None, EnvChars.POSIX, "/home/test"),
-            ("$HOME/docs", {"HOME": "/home/test"}, None, EnvChars.POSIX, "/home/test/docs"),
-            ("${HOME}/file.txt", {"HOME": "/home/test"}, None, EnvChars.POSIX, "/home/test/file.txt"),
+            (
+                "$HOME/docs",
+                {"HOME": "/home/test"},
+                None,
+                EnvChars.POSIX,
+                "/home/test/docs",
+            ),
+            (
+                "${HOME}/file.txt",
+                {"HOME": "/home/test"},
+                None,
+                EnvChars.POSIX,
+                "/home/test/file.txt",
+            ),
             # Windows paths
-            ("C:\\Users\\%USER%", {"USER": "test"}, None, EnvChars.WINDOWS, "C:\\Users\\test"),
-            ("%APPDATA%\\config", {"APPDATA": "C:\\AppData"}, None, EnvChars.WINDOWS, "C:\\AppData\\config"),
+            (
+                "C:\\Users\\%USER%",
+                {"USER": "test"},
+                None,
+                EnvChars.WINDOWS,
+                "C:\\Users\\test",
+            ),
+            (
+                "%APPDATA%\\config",
+                {"APPDATA": "C:\\AppData"},
+                None,
+                EnvChars.WINDOWS,
+                "C:\\AppData\\config",
+            ),
             # RISC OS paths
             ("<HOME>.!Apps", {"HOME": "$.test"}, None, EnvChars.RISCOS, "$.test.!Apps"),
             # VMS paths
@@ -4749,9 +4775,21 @@ class TestEnvExpandPath:
             ("$HOME", {}, EnvExpandFlags.NONE, EnvChars.POSIX, "$HOME"),
             ("%HOME%", {}, EnvExpandFlags.NONE, EnvChars.WINDOWS, "%HOME%"),
             # UNESCAPE flag with paths
-            ("path\\twith\\tescape", {}, EnvExpandFlags.UNESCAPE, EnvChars.POSIX, "path\twith\tescape"),
+            (
+                "path\\twith\\tescape",
+                {},
+                EnvExpandFlags.UNESCAPE,
+                EnvChars.POSIX,
+                "path\twith\tescape",
+            ),
             # UNQUOTE flag
-            ('"$HOME"', {"HOME": "/home"}, EnvExpandFlags.UNQUOTE, EnvChars.POSIX, "/home"),
+            (
+                '"$HOME"',
+                {"HOME": "/home"},
+                EnvExpandFlags.UNQUOTE,
+                EnvChars.POSIX,
+                "/home",
+            ),
         ],
     )
     def test_expand_path_flags(
@@ -4798,7 +4836,9 @@ class TestEnvExpandPath:
 
     def test_expand_path_strip_spaces(self):
         """Test STRIP_SPACES flag with paths."""
-        result = Env.expand_path(Path("/home/test"), flags=EnvExpandFlags.STRIP_SPACES, chars=EnvChars.POSIX)
+        result = Env.expand_path(
+            Path("/home/test"), flags=EnvExpandFlags.STRIP_SPACES, chars=EnvChars.POSIX
+        )
         assert str(result) == "/home/test"
 
     @pytest.mark.parametrize(
@@ -4816,10 +4856,15 @@ class TestEnvExpandPath:
         expected: str,
     ):
         """Test expand_path across all platforms with env vars set."""
-        vars_dict = {"HOME": "/home/test"} if chars == EnvChars.POSIX else {"HOME": "C:\\Users\\test"} if chars == EnvChars.WINDOWS else {"HOME": "$.test"}
+        vars_dict = (
+            {"HOME": "/home/test"}
+            if chars == EnvChars.POSIX
+            else (
+                {"HOME": "C:\\Users\\test"}
+                if chars == EnvChars.WINDOWS
+                else {"HOME": "$.test"}
+            )
+        )
         with patch.dict(os.environ, vars_dict, clear=True):
             result = Env.expand_path(Path(path), vars=vars_dict, chars=chars)
             assert expected in str(result)
-
-
-

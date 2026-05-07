@@ -14,6 +14,7 @@ with open(env_expand_flags_file) as f:
 
 EnvExpandFlags = env_expand_flags_mod.EnvExpandFlags
 
+
 class TestEnvExpandFlagsBitwiseOperations:
     @pytest.mark.parametrize(
         "op,flag1,flag2,expected",
@@ -24,14 +25,11 @@ class TestEnvExpandFlagsBitwiseOperations:
             ("xor", "ALLOW_SHELL", "UNQUOTE", 1 << 0 | 1 << 6),
         ],
     )
-
     def test_bitwise_operations(self, op, flag1, flag2, expected):
         f1 = getattr(EnvExpandFlags, flag1) if isinstance(flag1, str) else flag1
         f2 = getattr(EnvExpandFlags, flag2) if isinstance(flag2, str) else flag2
         result = getattr(f1, f"__{op}__")(f2)
         assert (result.value if hasattr(result, "value") else result) == expected
-
-
 
 
 class TestEnvExpandFlagsCombine:
@@ -67,7 +65,6 @@ class TestEnvExpandFlagsCombine:
         assert combined & f2 == f2
 
 
-
 class TestEnvExpandFlagsDefault:
 
     def test_default_contains_expected_flags(self):
@@ -81,12 +78,9 @@ class TestEnvExpandFlagsDefault:
         for flag in expected:
             assert flag & EnvExpandFlags.DEFAULT == flag
 
-
     def test_default_is_not_none(self):
         assert EnvExpandFlags.DEFAULT != EnvExpandFlags.NONE
         assert EnvExpandFlags.DEFAULT != 0
-
-
 
 
 class TestEnvExpandFlagsIdentity:
@@ -103,25 +97,19 @@ class TestEnvExpandFlagsIsIntFlag:
         assert issubclass(EnvExpandFlags, IntFlag)
 
 
-
-
 class TestEnvExpandFlagsNone:
 
     def test_none_combines_with_and(self):
         result = EnvExpandFlags.ALLOW_SHELL & EnvExpandFlags.NONE
         assert result == EnvExpandFlags.NONE
 
-
-
     def test_none_combines_with_or(self):
         result = EnvExpandFlags.NONE | EnvExpandFlags.ALLOW_SHELL
         assert result == EnvExpandFlags.ALLOW_SHELL
 
-
     def test_none_is_zero(self):
         assert EnvExpandFlags.NONE == 0
         assert EnvExpandFlags.NONE.value == 0
-
 
 
 class TestEnvExpandFlagsValues:
@@ -150,4 +138,3 @@ class TestEnvExpandFlagsValues:
     )
     def test_flag_values(self, flag, expected_value):
         assert getattr(EnvExpandFlags, flag).value == expected_value
-

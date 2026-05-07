@@ -31,22 +31,46 @@ class EnvChars:
     """True if the app is running under Windows or OS/2"""
 
     POSIX: ClassVar[EnvCharsData] = EnvCharsData(
-        is_posix=True, expand="$", windup="", escape="\\", cutter="#", hard_quote="'", normal_quote='"'
+        is_posix=True,
+        expand="$",
+        windup="",
+        escape="\\",
+        cutter="#",
+        hard_quote="'",
+        normal_quote='"',
     )
     """POSIX-specific set of environment-related characters"""
 
     RISCOS: ClassVar = EnvCharsData(
-        is_posix=False, expand="<", windup=">", escape="\\", cutter="|", hard_quote="", normal_quote='"'
+        is_posix=False,
+        expand="<",
+        windup=">",
+        escape="\\",
+        cutter="|",
+        hard_quote="",
+        normal_quote='"',
     )
     """RiscOS-specific set of environment-related characters"""
 
     VMS: ClassVar = EnvCharsData(
-        is_posix=False, expand="'", windup="'", escape="^", cutter="!", hard_quote="", normal_quote='"'
+        is_posix=False,
+        expand="'",
+        windup="'",
+        escape="^",
+        cutter="!",
+        hard_quote="",
+        normal_quote='"',
     )
     """OpenVMS-specific set of environment-related characters"""
 
     WINDOWS: ClassVar = EnvCharsData(
-        is_posix=False, expand="%", windup="%", escape="^", cutter="::", hard_quote="", normal_quote='"'
+        is_posix=False,
+        expand="%",
+        windup="%",
+        escape="^",
+        cutter="::",
+        hard_quote="",
+        normal_quote='"',
     )
     """Windows-specific set of environment-related characters"""
 
@@ -63,10 +87,12 @@ class EnvChars:
     @staticmethod
     def init_default() -> EnvCharsData:
         EnvChars.DEFAULT = (
-            EnvChars.RISCOS if EnvChars.IS_RISCOS else (
-                EnvChars.VMS if EnvChars.IS_VMS else (
-                    EnvChars.WINDOWS if EnvChars.IS_WINDOWS else EnvChars.POSIX
-                )
+            EnvChars.RISCOS
+            if EnvChars.IS_RISCOS
+            else (
+                EnvChars.VMS
+                if EnvChars.IS_VMS
+                else (EnvChars.WINDOWS if EnvChars.IS_WINDOWS else EnvChars.POSIX)
             )
         ).copy_with()
 

@@ -14,6 +14,7 @@ with open(env_platform_flags_file) as f:
 
 EnvPlatformFlags = env_platform_flags_mod.EnvPlatformFlags
 
+
 class TestEnvPlatformFlagsBitwiseOperations:
     @pytest.mark.parametrize(
         "op,flag1,flag2,expected",
@@ -23,14 +24,11 @@ class TestEnvPlatformFlagsBitwiseOperations:
             ("xor", "ADD_EMPTY", "ADD_EMPTY", 0),
         ],
     )
-
     def test_bitwise_operations(self, op, flag1, flag2, expected):
         f1 = getattr(EnvPlatformFlags, flag1)
         f2 = getattr(EnvPlatformFlags, flag2)
         result = getattr(f1, f"__{op}__")(f2)
         assert (result.value if hasattr(result, "value") else result) == expected
-
-
 
 
 class TestEnvPlatformFlagsCombine:
@@ -39,17 +37,13 @@ class TestEnvPlatformFlagsCombine:
         combined = EnvPlatformFlags.ADD_EMPTY & EnvPlatformFlags.ADD_EMPTY
         assert combined == EnvPlatformFlags.ADD_EMPTY
 
-
     def test_or_with_self(self):
         combined = EnvPlatformFlags.ADD_EMPTY | EnvPlatformFlags.ADD_EMPTY
         assert combined == EnvPlatformFlags.ADD_EMPTY
 
-
     def test_xor_with_self(self):
         combined = EnvPlatformFlags.ADD_EMPTY ^ EnvPlatformFlags.ADD_EMPTY
         assert combined == EnvPlatformFlags.NONE
-
-
 
 
 class TestEnvPlatformFlagsIdentity:
@@ -57,12 +51,10 @@ class TestEnvPlatformFlagsIdentity:
         "member",
         ["NONE", "ADD_EMPTY"],
     )
-
     def test_enum_members_are_singleton(self, member):
         m1 = getattr(EnvPlatformFlags, member)
         m2 = getattr(EnvPlatformFlags, member)
         assert m1 is m2
-
 
     def test_none_not_equal_to_add_empty(self):
         assert EnvPlatformFlags.NONE != EnvPlatformFlags.ADD_EMPTY
@@ -74,25 +66,19 @@ class TestEnvPlatformFlagsIsIntFlag:
         assert issubclass(EnvPlatformFlags, IntFlag)
 
 
-
-
 class TestEnvPlatformFlagsNone:
 
     def test_none_combines_with_and(self):
         result = EnvPlatformFlags.ADD_EMPTY & EnvPlatformFlags.NONE
         assert result == EnvPlatformFlags.NONE
 
-
-
     def test_none_combines_with_or(self):
         result = EnvPlatformFlags.NONE | EnvPlatformFlags.ADD_EMPTY
         assert result == EnvPlatformFlags.ADD_EMPTY
 
-
     def test_none_is_zero(self):
         assert EnvPlatformFlags.NONE == 0
         assert EnvPlatformFlags.NONE.value == 0
-
 
 
 class TestEnvPlatformFlagsValues:
@@ -103,8 +89,5 @@ class TestEnvPlatformFlagsValues:
             ("ADD_EMPTY", 1 << 0),
         ],
     )
-
     def test_flag_values(self, member, expected_value):
         assert getattr(EnvPlatformFlags, member).value == expected_value
-
-

@@ -14,6 +14,7 @@ def get_main_output():
 
     return local_vars.get("main")
 
+
 class TestEnvaraMain:
 
     def test_main_prints_class_list(self, capsys):
@@ -23,14 +24,11 @@ class TestEnvaraMain:
         assert "class Env:" in captured.out
         assert "class EnvFile:" in captured.out
 
-
     def test_main_prints_copyright_year(self, capsys):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
         assert "2026" in captured.out
-
-
 
     def test_main_prints_env_methods(self, capsys):
         main = get_main_output()
@@ -45,14 +43,12 @@ class TestEnvaraMain:
         assert ".unescape()" in captured.out
         assert ".unquote()" in captured.out
 
-
     def test_main_prints_envara_header(self, capsys):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
         assert "envara" in captured.out.lower()
         assert "Alexander Iurovetski" in captured.out
-
 
     def test_main_prints_envfile_methods(self, capsys):
         main = get_main_output()
@@ -62,20 +58,17 @@ class TestEnvaraMain:
         assert ".load_from_str()" in captured.out
         assert ".read_text()" in captured.out
 
-
     def test_main_prints_platform_info(self, capsys):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
         assert ".env" in captured.out
 
-
     def test_main_returns_zero(self):
         main = get_main_output()
         assert main is not None
         result = main()
         assert result == 0
-
 
 
 class TestEnvaraMainContent:
@@ -86,14 +79,11 @@ class TestEnvaraMainContent:
         captured = capsys.readouterr()
         assert "filter" in captured.out.lower() or "example" in captured.out.lower()
 
-
-
     def test_prints_file_patterns(self, capsys):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
         assert ".env" in captured.out
-
 
     def test_prints_library_description(self, capsys):
         main = get_main_output()
@@ -101,7 +91,6 @@ class TestEnvaraMainContent:
         captured = capsys.readouterr()
         assert "environment" in captured.out.lower()
         assert "variable" in captured.out.lower()
-
 
 
 class TestEnvaraMainEdgeCases:
@@ -113,15 +102,12 @@ class TestEnvaraMainEdgeCases:
         except Exception as e:
             pytest.fail(f"main() raised an exception: {e}")
 
-
-
     def test_main_output_is_multiline(self, capsys):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
         assert "\n" in captured.out
         assert len(captured.out.split("\n")) > 10
-
 
 
 class TestEnvaraMainIntegration:
@@ -157,11 +143,8 @@ class TestEnvaraMainOutput:
             ".env",
         ],
     )
-
     def test_main_contains_expected_output(self, expected_string, capsys):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
         assert expected_string in captured.out
-
-

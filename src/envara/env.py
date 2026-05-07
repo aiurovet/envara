@@ -1283,9 +1283,7 @@ class Env:
             token.clear()
             if chars.cutter and tokstr.startswith(chars.cutter):
                 return
-            tokstr = Env.expand(
-                tokstr, args=args, vars=vars, flags=flags, chars=chars
-            )
+            tokstr = Env.expand(tokstr, args=args, vars=vars, flags=flags, chars=chars)
             result.append(tokstr)
             return True
 
