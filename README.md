@@ -265,6 +265,7 @@ CMD_CHROME = "chrome $BROWSER_ARGS"
 ## Which Expansion to Choose?
 
 By default, the expansion specific to the current platform will be chosen. But you can override that by having the first non-empty line representing a line comment for the desired platform. For instance, if the first non-empty line in a dot-env file starts with `#`, it will force to use POSIX rules. If with `::`, then DOS/Windows rules, if `!`, then OpenVMS, and if `|`, then RiscOS. It is always a good idea to start such file with a meaningful comment anyway, so you can kill two birds with one stone.
+
 ---
 
 ## Good Luck!
