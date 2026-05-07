@@ -6,6 +6,8 @@ A library to expand environment variables, application arguments and escape sequ
 
 Does not depend on any special Python package.
 
+Please note that version `0.4.0` brings breaking changes: mainly, a switch from mutiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in dot-env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line.
+
 ---
 
 ## Table of Contents
