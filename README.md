@@ -628,8 +628,8 @@ def copy_to(
 | Member | Value | Description |
 |---|---|---|
 | `NONE` | `0` | No flag set |
-| `ALLOW_SHELL` | `1 << 0` | Execute raw shell commands like `$(...)` or `` `...` `` — `expand_posix()` only |
-| `ALLOW_SUBPROC` | `1 << 1` | Parse shell commands like `$(...)` or `` `...` `` and execute — `expand_posix()` only |
+| `ALLOW_SHELL` | `1 << 0` | Execute raw shell commands like `$(...)` or `` `...` `` — used by `Env.expand()` |
+| `ALLOW_SUBPROC` | `1 << 1` | Parse shell commands like `$(...)` or `` `...` `` and execute — used by `Env.expand()` |
 | `SKIP_HARD_QUOTED` | `1 << 2` | If a string is embraced in hard quotes, don't expand it (POSIX only) |
 | `STRIP_COMMENT` | `1 << 3` | Remove line comment from a cutter onwards |
 | `STRIP_SPACES` | `1 << 4` | Remove spaces around a string, but not after unquoting |
@@ -756,7 +756,7 @@ CMD_CHROME = "chrome $BROWSER_ARGS"
 
 ## POSIX-style expansions implemented in _envara_
 
-Windows-style percent-delimited expansions are provided by `Env.__expand_posix()` which is called by `Env.expand()`.
+POSIX-style expansions are provided by `Env.expand()` which calls private method `_Env__expand_posix()`.
 
 ### Supported constructs
 
@@ -809,7 +809,7 @@ Windows-style percent-delimited expansions are provided by `Env.__expand_posix()
 
 - Command substitution
   - _$(...)_ and _\`...\`_ are supported.
-  - Inner content is first expanded using `__expand_posix()` before execution (so nested expansions and defaults work inside command substitutions).
+  - Inner content is first expanded using the private method `_Env__expand_posix()` before execution (so nested expansions and defaults work inside command substitutions).
   - The executed command's stdout (with trailing newline removed) is inserted into the result.
   - If the command exits with a non-zero status, _ValueError_ is raised (including _stderr_ text in the message).
   - Timeouts raise _ValueError_.
@@ -837,9 +837,9 @@ Command substitution runs local commands; ensure the expanded input is trusted o
   - Command substitution variations and safety flags
 - If you add any feature dealing with command execution, add tests that cover both normal and disabled execution modes: `(exp_flags & (EnvExpFlags.ALLOW_SHELL | EnvExpFlags.ALLOW_SUBPROC)) == 0)` as well as timeouts.
 
-## Symmetric (Windows-like) expansions implemented in _envara_
+## Windows-like expansions implemented in _envara_
 
-Windows-style percent-delimited expansions are provided by `Env.__expand_simple()` which is called by `Env.expand()`. This method supports `%NAME%`, `%1`, `%*`, `%%`, and simple `%~` modifiers (e.g., `%~dp1`) for extracting path components on Windows-like inputs. Additionally, it supports a substring form for named variables using the syntax `%NAME:~start[,length]%` - negative `start` counts from the end. It also supports RiscOS-like variables expansion `<NAME>` as well as OpenVMS-like `'NAME'`.
+Windows-style percent-delimited expansions are provided by `Env.expand()` which calls the private method `_Env__expand_simple()`. This method supports `%NAME%`, `%1`, `%*`, `%%`, and simple `%~` modifiers (e.g., `%~dp1`) for extracting path components on Windows-like inputs. Additionally, it supports a substring form for named variables using the syntax `%NAME:~start[,length]%` - negative `start` counts from the end. It also supports RiscOS-like variables expansion `<NAME>` as well as OpenVMS-like `'NAME'`.
 
 ## Which expansion to choose?
 
