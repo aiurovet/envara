@@ -115,7 +115,14 @@ Key class variables:
 - `IS_WINDOWS` - `True` if running under Windows or OS/2
 
 ### `EnvFile` class
-Reads series of `key=value` lines from env files, removes line comments, expands environment values and arguments, expands escaped characters, and sets or updates those as environment variables. Also allows hierarchical OS-specific stacking of such files.
+Class for string expansions. Provides static methods to:
+- Read series of `key=value` lines from env files
+- Remove line comments
+- Expand environment variables and arguments
+- Expand escaped characters
+- Execute sub-commands on POSIX-compliant platforms
+- Sets or update those environment variables
+- Allows hierarchical OS-specific stacking of such files
 
 ### `EnvFilter` and `EnvFilters`
 Environment-related filtering, mainly for use with `EnvFile`. Allows filtering env files based on:
