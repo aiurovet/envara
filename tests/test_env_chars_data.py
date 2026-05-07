@@ -103,10 +103,14 @@ class TestEnvCharsDataEquality:
         assert info1 == info2
 
     def test_eq_with_none(self):
-        pass
+        info = _make_envcharsdata(expand="$")
+        assert info != None
 
     def test_eq_with_different_type(self):
-        pass
+        info = _make_envcharsdata(expand="$")
+        assert info != "not an EnvCharsData"
+        assert info != 42
+        assert info != {"expand": "$"}
 
     def test_eq_all_attributes_differ(self):
         info1 = _make_envcharsdata(

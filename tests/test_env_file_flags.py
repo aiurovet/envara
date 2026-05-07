@@ -14,38 +14,24 @@ with open(env_file_flags_file) as f:
 
 EnvFileFlags = env_file_flags_mod.EnvFileFlags
 
-
-class TestEnvFileFlagsValues:
+class TestEnvFileFlagsBitwiseOperations:
     @pytest.mark.parametrize(
-        "flag,expected_value",
+        "op,flag1,flag2,expected",
         [
-            ("NONE", 0),
-            ("ADD_PLATFORMS_BEFORE", 1 << 0),
-            ("ADD_PLATFORMS_AFTER", 1 << 1),
-            ("RESET_ACCUMULATED", 1 << 2),
+            ("or", "ADD_PLATFORMS_BEFORE", "RESET_ACCUMULATED", 1 << 0 | 1 << 2),
+            ("and", "ADD_PLATFORMS_BEFORE", "ADD_PLATFORMS_AFTER", 0),
+            ("xor", "ADD_PLATFORMS_BEFORE", "ADD_PLATFORMS_BEFORE", 0),
+            ("xor", "ADD_PLATFORMS_BEFORE", "RESET_ACCUMULATED", 1 << 0 | 1 << 2),
         ],
     )
-    def test_flag_values(self, flag, expected_value):
-        assert getattr(EnvFileFlags, flag).value == expected_value
+
+    def test_bitwise_operations(self, op, flag1, flag2, expected):
+        f1 = getattr(EnvFileFlags, flag1)
+        f2 = getattr(EnvFileFlags, flag2)
+        result = getattr(f1, f"__{op}__")(f2)
+        assert (result.value if hasattr(result, "value") else result) == expected
 
 
-class TestEnvFileFlagsIsIntFlag:
-    def test_is_intflag(self):
-        assert issubclass(EnvFileFlags, IntFlag)
-
-
-class TestEnvFileFlagsNone:
-    def test_none_is_zero(self):
-        assert EnvFileFlags.NONE == 0
-        assert EnvFileFlags.NONE.value == 0
-
-    def test_none_combines_with_or(self):
-        result = EnvFileFlags.NONE | EnvFileFlags.ADD_PLATFORMS_BEFORE
-        assert result == EnvFileFlags.ADD_PLATFORMS_BEFORE
-
-    def test_none_combines_with_and(self):
-        result = EnvFileFlags.ADD_PLATFORMS_BEFORE & EnvFileFlags.NONE
-        assert result == EnvFileFlags.NONE
 
 
 class TestEnvFileFlagsCombine:
@@ -57,6 +43,7 @@ class TestEnvFileFlagsCombine:
             ("ADD_PLATFORMS_AFTER", "RESET_ACCUMULATED"),
         ],
     )
+
     def test_or_combines_flags(self, flag1, flag2):
         f1 = getattr(EnvFileFlags, flag1)
         f2 = getattr(EnvFileFlags, flag2)
@@ -65,41 +52,76 @@ class TestEnvFileFlagsCombine:
         assert combined & f2 == f2
 
 
+
+
+class TestEnvFileFlagsIdentity:
+
+    def test_combined_flags_are_singleton(self):
+        result1 = EnvFileFlags.ADD_PLATFORMS_BEFORE | EnvFileFlags.RESET_ACCUMULATED
+        result2 = EnvFileFlags.ADD_PLATFORMS_BEFORE | EnvFileFlags.RESET_ACCUMULATED
+        assert result1 == result2
+
+
+    def test_none_not_equal_to_flags(self):
+        assert EnvFileFlags.NONE != EnvFileFlags.ADD_PLATFORMS_BEFORE
+        assert EnvFileFlags.NONE != EnvFileFlags.ADD_PLATFORMS_AFTER
+        assert EnvFileFlags.NONE != EnvFileFlags.RESET_ACCUMULATED
+
+
+class TestEnvFileFlagsIsIntFlag:
+
+    def test_is_intflag(self):
+        assert issubclass(EnvFileFlags, IntFlag)
+
+
+
+
 class TestEnvFileFlagsMutuallyExclusive:
+
     def test_platform_flags_are_exclusive(self):
         assert not (
             EnvFileFlags.ADD_PLATFORMS_BEFORE & EnvFileFlags.ADD_PLATFORMS_AFTER
         )
+
 
     def test_platform_flags_can_combine(self):
         combined = EnvFileFlags.ADD_PLATFORMS_BEFORE | EnvFileFlags.ADD_PLATFORMS_AFTER
         assert combined == (1 << 0 | 1 << 1)
 
 
-class TestEnvFileFlagsBitwiseOperations:
+
+
+class TestEnvFileFlagsNone:
+
+    def test_none_combines_with_and(self):
+        result = EnvFileFlags.ADD_PLATFORMS_BEFORE & EnvFileFlags.NONE
+        assert result == EnvFileFlags.NONE
+
+
+
+    def test_none_combines_with_or(self):
+        result = EnvFileFlags.NONE | EnvFileFlags.ADD_PLATFORMS_BEFORE
+        assert result == EnvFileFlags.ADD_PLATFORMS_BEFORE
+
+
+    def test_none_is_zero(self):
+        assert EnvFileFlags.NONE == 0
+        assert EnvFileFlags.NONE.value == 0
+
+
+
+class TestEnvFileFlagsValues:
     @pytest.mark.parametrize(
-        "op,flag1,flag2,expected",
+        "flag,expected_value",
         [
-            ("or", "ADD_PLATFORMS_BEFORE", "RESET_ACCUMULATED", 1 << 0 | 1 << 2),
-            ("and", "ADD_PLATFORMS_BEFORE", "ADD_PLATFORMS_AFTER", 0),
-            ("xor", "ADD_PLATFORMS_BEFORE", "ADD_PLATFORMS_BEFORE", 0),
-            ("xor", "ADD_PLATFORMS_BEFORE", "RESET_ACCUMULATED", 1 << 0 | 1 << 2),
+            ("NONE", 0),
+            ("ADD_PLATFORMS_BEFORE", 1 << 0),
+            ("ADD_PLATFORMS_AFTER", 1 << 1),
+            ("RESET_ACCUMULATED", 1 << 2),
         ],
     )
-    def test_bitwise_operations(self, op, flag1, flag2, expected):
-        f1 = getattr(EnvFileFlags, flag1)
-        f2 = getattr(EnvFileFlags, flag2)
-        result = getattr(f1, f"__{op}__")(f2)
-        assert (result.value if hasattr(result, "value") else result) == expected
+
+    def test_flag_values(self, flag, expected_value):
+        assert getattr(EnvFileFlags, flag).value == expected_value
 
 
-class TestEnvFileFlagsIdentity:
-    def test_combined_flags_are_singleton(self):
-        result1 = EnvFileFlags.ADD_PLATFORMS_BEFORE | EnvFileFlags.RESET_ACCUMULATED
-        result2 = EnvFileFlags.ADD_PLATFORMS_BEFORE | EnvFileFlags.RESET_ACCUMULATED
-        assert result1 == result2
-
-    def test_none_not_equal_to_flags(self):
-        assert EnvFileFlags.NONE != EnvFileFlags.ADD_PLATFORMS_BEFORE
-        assert EnvFileFlags.NONE != EnvFileFlags.ADD_PLATFORMS_AFTER
-        assert EnvFileFlags.NONE != EnvFileFlags.RESET_ACCUMULATED

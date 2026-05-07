@@ -22,9 +22,11 @@ class EnvCharsData:
         :param other: The object to compare to
         """
 
+        if not isinstance(other, EnvCharsData):
+            return False
+
         return (
             (other.is_posix == self.is_posix)
-            and (other.is_posix == self.is_posix)
             and (other.expand == self.expand)
             and (other.windup == self.windup)
             and (other.escape == self.escape)

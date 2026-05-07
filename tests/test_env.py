@@ -1268,7 +1268,7 @@ class TestExpandPosixAllFeatures:
         "input_str,vars",
         [
             (r"\$VAR", {"VAR": "value"}),
-            (r"\$\n", {}),
+            (r"$\n", {}),
             (r"\$\{VAR}", {"VAR": "val"}),
             (r"\\", {}),
             ("\\$VAR", {"VAR": "value"}),
@@ -1278,6 +1278,107 @@ class TestExpandPosixAllFeatures:
         """Test escape character handling."""
         result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX)
         assert isinstance(result, str)
+
+    # Case modification tests: ^, ^^, ,, ,, ~, ~~
+    @pytest.mark.parametrize(
+        "input_str,vars,expected",
+        [
+            # ${var^} - uppercase first character
+            ("${X^}", {"X": "hello"}, "Hello"),
+            ("${X^}", {"X": "Hello"}, "Hello"),
+            ("${X^}", {"X": "123abc"}, "123abc"),
+            ("${X^}", {"X": ""}, ""),
+            # ${var^^} - uppercase all characters
+            ("${X^^}", {"X": "hello"}, "HELLO"),
+            ("${X^^}", {"X": "Hello World"}, "HELLO WORLD"),
+            ("${X^^}", {"X": "123abc"}, "123ABC"),
+            ("${X^^}", {"X": ""}, ""),
+            # ${var,} - lowercase first character
+            ("${X,}", {"X": "HELLO"}, "hELLO"),
+            ("${X,}", {"X": "Hello"}, "hello"),
+            ("${X,}", {"X": "123ABC"}, "123ABC"),
+            ("${X,}", {"X": ""}, ""),
+            # ${var,,} - lowercase all characters
+            ("${X,,}", {"X": "HELLO"}, "hello"),
+            ("${X,,}", {"X": "Hello World"}, "hello world"),
+            ("${X,,}", {"X": "123ABC"}, "123abc"),
+            ("${X,,}", {"X": ""}, ""),
+            # ${var~} - toggle case of first character
+            ("${X~}", {"X": "hello"}, "Hello"),
+            ("${X~}", {"X": "Hello"}, "hello"),
+            ("${X~}", {"X": "123abc"}, "123abc"),
+            ("${X~}", {"X": ""}, ""),
+            # ${var~~} - toggle case of all characters
+            ("${X~~}", {"X": "Hello"}, "hELLO"),
+            ("${X~~}", {"X": "HeLLo WoRLd"}, "hEllO wOrlD"),
+            ("${X~~}", {"X": "123abc"}, "123ABC"),
+            ("${X~~}", {"X": ""}, ""),
+        ],
+    )
+    def test_expand_posix_case_modification(
+        self, input_str: str, vars: dict[str, str], expected: str
+    ):
+        """Test basic case modification features."""
+        result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX)
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        "input_str,vars,expected",
+        [
+            # Pattern-based: ${var^pattern}
+            ("${X^[a-z]}", {"X": "hello"}, "Hello"),
+            ("${X^[a-z]}", {"X": "Hello"}, "Hello"),
+            ("${X^[0-9]}", {"X": "123abc"}, "123abc"),
+            ("${X^[h]}", {"X": "hello"}, "Hello"),
+            ("${X^[e]}", {"X": "hello"}, "hello"),
+            # Pattern-based: ${var^^pattern}
+            ("${X^^[a-z]}", {"X": "hello"}, "HELLO"),
+            ("${X^^[aeiou]}", {"X": "hello"}, "hEllO"),
+            ("${X^^[0-9]}", {"X": "123abc"}, "123abc"),
+            # Pattern-based: ${var,pattern}
+            ("${X,[A-Z]}", {"X": "HELLO"}, "hELLO"),
+            ("${X,[A-Z]}", {"X": "Hello"}, "hello"),
+            ("${X,[0-9]}", {"X": "123ABC"}, "123ABC"),
+            ("${X,[H]}", {"X": "HELLO"}, "hELLO"),
+            ("${X,[E]}", {"X": "HELLO"}, "HELLO"),
+            # Pattern-based: ${var,,pattern}
+            ("${X,,[A-Z]}", {"X": "HELLO"}, "hello"),
+            ("${X,,[AEIOU]}", {"X": "HeLLo"}, "HeLLo"),
+            ("${X,,[0-9]}", {"X": "123ABC"}, "123ABC"),
+        ],
+    )
+    def test_expand_posix_case_modification_pattern(
+        self, input_str: str, vars: dict[str, str], expected: str
+    ):
+        """Test pattern-based case modification features."""
+        result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX)
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        "input_str,vars,expected",
+        [
+            # Unset variable returns the expression unchanged
+            ("${UNSET^}", {}, "${UNSET^}"),
+            ("${UNSET^^}", {}, "${UNSET^^}"),
+            ("${UNSET,}", {}, "${UNSET,}"),
+            ("${UNSET,,}", {}, "${UNSET,,}"),
+            ("${UNSET~}", {}, "${UNSET~}"),
+            ("${UNSET~~}", {}, "${UNSET~~}"),
+            # Null (empty) variable returns empty string (variable is set)
+            ("${NULL^}", {"NULL": ""}, ""),
+            ("${NULL^^}", {"NULL": ""}, ""),
+            ("${NULL,}", {"NULL": ""}, ""),
+            ("${NULL,,}", {"NULL": ""}, ""),
+            ("${NULL~}", {"NULL": ""}, ""),
+            ("${NULL~~}", {"NULL": ""}, ""),
+        ],
+    )
+    def test_expand_posix_case_modification_unset(
+        self, input_str: str, vars: dict[str, str], expected: str
+    ):
+        """Test case modification with unset or null variables."""
+        result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX)
+        assert result == expected
 
 
 class TestExpandPosixErrorHandling:

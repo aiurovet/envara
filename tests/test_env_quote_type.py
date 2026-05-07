@@ -14,39 +14,60 @@ with open(env_quote_type_file) as f:
 
 EnvQuoteType = env_quote_type_mod.EnvQuoteType
 
-
-class TestEnvQuoteTypeValues:
+class TestEnvQuoteTypeIdentity:
     @pytest.mark.parametrize(
-        "member,expected_value",
-        [
-            ("NONE", 0),
-            ("HARD", 1),
-            ("NORMAL", 2),
-            ("DEFAULT", 2),
-        ],
+        "member",
+        ["NONE", "HARD", "NORMAL", "DEFAULT"],
     )
-    def test_enum_values(self, member, expected_value):
-        assert getattr(EnvQuoteType, member).value == expected_value
 
-    def test_default_equals_normal(self):
-        assert EnvQuoteType.DEFAULT == EnvQuoteType.NORMAL
+    def test_enum_members_are_singleton(self, member):
+        m1 = getattr(EnvQuoteType, member)
+        m2 = getattr(EnvQuoteType, member)
+        assert m1 is m2
+
+
 
 
 class TestEnvQuoteTypeIsIntEnum:
+
     def test_is_intenum(self):
         assert issubclass(EnvQuoteType, IntEnum)
 
 
+
+
 class TestEnvQuoteTypeNone:
+
     def test_none_is_zero(self):
         assert EnvQuoteType.NONE == 0
         assert EnvQuoteType.NONE.value == 0
 
+
     def test_none_not_hard(self):
         assert EnvQuoteType.NONE != EnvQuoteType.HARD
 
+
     def test_none_not_normal(self):
         assert EnvQuoteType.NONE != EnvQuoteType.NORMAL
+
+
+
+
+class TestEnvQuoteTypeOrdering:
+    @pytest.mark.parametrize(
+        "member1,member2,expected",
+        [
+            ("NONE", "HARD", True),
+            ("NONE", "NORMAL", True),
+            ("HARD", "NORMAL", True),
+            ("NORMAL", "HARD", False),
+        ],
+    )
+
+    def test_enum_less_than(self, member1, member2, expected):
+        m1 = getattr(EnvQuoteType, member1)
+        m2 = getattr(EnvQuoteType, member2)
+        assert (m1 < m2) == expected
 
 
 class TestEnvQuoteTypeRelationships:
@@ -63,10 +84,12 @@ class TestEnvQuoteTypeRelationships:
             ("DEFAULT", "HARD", False),
         ],
     )
+
     def test_enum_equality(self, member1, member2, expected):
         m1 = getattr(EnvQuoteType, member1)
         m2 = getattr(EnvQuoteType, member2)
         assert (m1 == m2) == expected
+
 
     @pytest.mark.parametrize(
         "member,int_value",
@@ -81,28 +104,21 @@ class TestEnvQuoteTypeRelationships:
         assert getattr(EnvQuoteType, member) == int_value
 
 
-class TestEnvQuoteTypeIdentity:
-    @pytest.mark.parametrize(
-        "member",
-        ["NONE", "HARD", "NORMAL", "DEFAULT"],
-    )
-    def test_enum_members_are_singleton(self, member):
-        m1 = getattr(EnvQuoteType, member)
-        m2 = getattr(EnvQuoteType, member)
-        assert m1 is m2
 
 
-class TestEnvQuoteTypeOrdering:
+class TestEnvQuoteTypeValues:
+    def test_default_equals_normal(self):
+        assert EnvQuoteType.DEFAULT == EnvQuoteType.NORMAL
+
     @pytest.mark.parametrize(
-        "member1,member2,expected",
+        "member,expected_value",
         [
-            ("NONE", "HARD", True),
-            ("NONE", "NORMAL", True),
-            ("HARD", "NORMAL", True),
-            ("NORMAL", "HARD", False),
+            ("NONE", 0),
+            ("HARD", 1),
+            ("NORMAL", 2),
+            ("DEFAULT", 2),
         ],
     )
-    def test_enum_less_than(self, member1, member2, expected):
-        m1 = getattr(EnvQuoteType, member1)
-        m2 = getattr(EnvQuoteType, member2)
-        assert (m1 < m2) == expected
+    def test_enum_values(self, member, expected_value):
+        assert getattr(EnvQuoteType, member).value == expected_value
+

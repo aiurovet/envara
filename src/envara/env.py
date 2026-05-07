@@ -102,9 +102,8 @@ class Env:
         Unquote the input if required via flags, remove trailing line comment
         if required via flags, expand the result with the arguments if
         required via flags, expand the result with the environment variables'
-        values. The method follows POSIX and DOS/Windows expansion conventions
-        depending on what was found first: dollar or percent, then backslash
-        or caret (obviously, the POSIX style is by far more advanced)
+        values. The method follows POSIX (in fact, bash) and DOS/Windows/
+        OpenVMS/RiscOS expansion conventions depending on chars.is_posix
 
         :param input: Path or string to expand
         :type input: Path  | str
@@ -144,8 +143,7 @@ class Env:
             if quote_type == EnvQuoteType.HARD:
                 return result
 
-        # Perform POSIX-style or Windows-style expansions based on
-        # the first active expand character detected during unquoting
+        # Perform POSIX-style (in fact, bash) or Windows-style expansions
 
         if chars and chars.is_posix:
             result = Env.__expand_posix(
@@ -202,8 +200,8 @@ class Env:
     ) -> str | None:
         """
         Expand environment variables and sub-processes according to complex
-        POSIX rules: like ${ABC:-${DEF:-$(uname -a)}. See the description
-        of arguments under the main method expand(...)
+        POSIX (in fact, bash) rules: like ${ABC:-${DEF:-$(uname -a)}. See the
+        description of arguments under the main method expand(...)
         """
         if input is None:
             return input
@@ -515,6 +513,7 @@ class Env:
                                 word,
                                 args=args,
                                 vars=vars,
+                                flags=flags,
                                 chars=chars,
                                 subprocess_timeout=subprocess_timeout,
                             )
@@ -522,6 +521,82 @@ class Env:
                         or f"{name}: parameter not set"
                     )
                 return val
+
+            # Case modification: ^, ^^, ,, ,, ~, ~~
+            # ${var^} - uppercase first character
+            # ${var^^} - uppercase all characters
+            # ${var,} - lowercase first character
+            # ${var,,} - lowercase all characters
+            # ${var~} - toggle case of first character
+            # ${var~~} - toggle case of all characters
+            if rest.startswith("^^"):
+                pattern = rest[2:] if len(rest) > 2 else None
+                if val is None:
+                    return f"{expand_char}{{{inner}}}"
+                text = val
+                if pattern:
+                    # Uppercase all characters matching pattern
+                    result = ""
+                    for ch in text:
+                        if fnmatch.fnmatchcase(ch, pattern):
+                            result += ch.upper()
+                        else:
+                            result += ch
+                    return result
+                return text.upper()
+            if rest.startswith("^"):
+                pattern = rest[1:] if len(rest) > 1 else None
+                if val is None:
+                    return f"{expand_char}{{{inner}}}"
+                text = val
+                if pattern:
+                    # Uppercase first character if it matches pattern
+                    if text and fnmatch.fnmatchcase(text[0], pattern):
+                        return text[0].upper() + text[1:]
+                    return text
+                if text:
+                    return text[0].upper() + text[1:]
+                return text
+            if rest.startswith(",,"):
+                pattern = rest[2:] if len(rest) > 2 else None
+                if val is None:
+                    return f"{expand_char}{{{inner}}}"
+                text = val
+                if pattern:
+                    # Lowercase all characters matching pattern
+                    result = ""
+                    for ch in text:
+                        if fnmatch.fnmatchcase(ch, pattern):
+                            result += ch.lower()
+                        else:
+                            result += ch
+                    return result
+                return text.lower()
+            if rest.startswith(","):
+                pattern = rest[1:] if len(rest) > 1 else None
+                if val is None:
+                    return f"{expand_char}{{{inner}}}"
+                text = val
+                if pattern:
+                    # Lowercase first character if it matches pattern
+                    if text and fnmatch.fnmatchcase(text[0], pattern):
+                        return text[0].lower() + text[1:]
+                    return text
+                if text:
+                    return text[0].lower() + text[1:]
+                return text
+            if rest.startswith("~~"):
+                if val is None:
+                    return f"{expand_char}{{{inner}}}"
+                text = val
+                return text.swapcase()
+            if rest.startswith("~"):
+                if val is None:
+                    return f"{expand_char}{{{inner}}}"
+                text = val
+                if text:
+                    return text[0].swapcase() + text[1:]
+                return text
 
             if is_set:
                 return val

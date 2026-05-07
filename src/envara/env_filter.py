@@ -56,6 +56,15 @@ class EnvFilter:
         self.cur_values = cur_values
         self.all_values = all_values or self.cur_values
 
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, EnvFilter):
+            return False
+        return (
+            self.indicator == other.indicator
+            and self.cur_values == other.cur_values
+            and self.all_values == other.all_values
+        )
+
     ###########################################################################
 
     @staticmethod
