@@ -179,9 +179,14 @@ Implemented via `Env.expand()` which calls private method `_Env__expand_posix()`
 - Pattern-based forms: `${var^[pattern]}`, `${var^^[pattern]}`, `${var,[pattern]}`, `${var,,[pattern]}` - apply to characters matching the glob pattern
 - When variable is unset, the expression is returned unchanged; when null (empty), the empty string is returned
 
-**Escaping:**
-- A backslash before `$` prevents expansion
+**Unescaping:**
+- An escape character before `$` prevents expansion
 - Pairs of backslashes reduce appropriately
+- An escape character followed by `xNN` converts into an ASCII character with the hexadecimal code `NN`
+- An escape character followed by `uNNNN` converts into a Unicode character with the hexadecimal code `NNNN`
+- An escape character followed by `a`, `b`, `f`, `n`, `r`, `t`, `v` is expanded to a bell, back, form-feed,
+  newline, carriage-return, horizontal tab, vertical tab
+- All other characters, preceded by the escape one, convert to themselves
 
 **Command substitution:**
 - `$(...)` and backtick commands are supported
