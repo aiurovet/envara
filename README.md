@@ -6,6 +6,8 @@ A library to expand environment variables, application arguments and escape sequ
 
 Does not depend on any special Python package.
 
+Please note that version 0.4.0 brings breaking changes: mainly, a switch from mutiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in dot-env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line.
+
 ---
 
 ## Table of Contents
@@ -43,7 +45,7 @@ Does not depend on any special Python package.
 - [class `EnvQuoteType`](#class-envquotetype)
 - [Dot-env file lookup](#dot-env-file-lookup)
 - [POSIX-style expansions implemented in *envara*](#posix-style-expansions-implemented-in-envara)
-- [Windows-like expansions implemented in *envara*](#windows-like-expansions-implemented-in-envara)
+- [Windows/OpenVMS/RiscOS-like expansions implemented in *envara*](#windows-like-expansions-implemented-in-envara)
 - [Which expansion to choose?](#which-expansion-to-choose)
 
 ---
@@ -148,9 +150,8 @@ Class for string expansions.
 Unquote the input if required via flags, remove trailing line comment if
 required via flags, expand the result with the arguments if required via flags,
 expand the result with the environment variables' values. The method follows
-POSIX and DOS/Windows expansion conventions depending on what was found first:
-dollar or percent, then backslash or caret (obviously, the POSIX style is by far
-more advanced).
+POSIX and Windows/OpenVMS/RiscOS expansion rules depending on parameter that
+defines those rules (special characters and is_posix flag).
 
 ```python
 @staticmethod
@@ -877,13 +878,13 @@ Command substitution runs local commands; ensure the expanded input is trusted o
   - Command substitution variations and safety flags
 - If you add any feature dealing with command execution, add tests that cover both normal and disabled execution modes: `(exp_flags & (EnvExpFlags.ALLOW_SHELL | EnvExpFlags.ALLOW_SUBPROC)) == 0)` as well as timeouts.
 
-## Windows-like expansions implemented in _envara_
+## 'Simple' expansions implemented in _envara_ for Windows, OpenVMS, RiscOS
 
 Windows-style percent-delimited expansions are provided by `Env.expand()` which calls the private method `_Env__expand_simple()`. This method supports `%NAME%`, `%1`, `%*`, `%%`, and simple `%~` modifiers (e.g., `%~dp1`) for extracting path components on Windows-like inputs. Additionally, it supports a substring form for named variables using the syntax `%NAME:~start[,length]%` - negative `start` counts from the end. It also supports RiscOS-like variables expansion `<NAME>` as well as OpenVMS-like `'NAME'`.
 
 ## Which expansion to choose?
 
-You don't have to decide in the code. It is all about what `EnvFile.load()` encounters first while analysing each line irrespective the platform: dollar or percent. And escape character will be chosen similarly between backslash and caret. However, the POSIX-style assignments are by far more flexible and highly recommended.
+By default, the expansion specific to the current platform will be chosen. But you can override that by having the first non-empty line representing a line comment for the desired platform. For instance, if the first non-empty line in a dot-env file starts with `#`, it will force to use POSIX rules. If with `::`, then DOS/Windows rules, if `!`, then OpenVMS, and if `|`, then RiscOS. It is always a good idea to start such file with a meaningful comment anyway, so you can kill two birds with one stone.
 
 ## __Good Luck!__
 
