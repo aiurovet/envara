@@ -146,59 +146,6 @@ def expand(
 
 ---
 
-### `Env.expand_posix()`
-
-This code was mainly generated using Copilot
-
-> `str`
-
-Expand environment variables and sub-processes according to complex POSIX rules:
-like `${ABC:-${DEF:-$(uname -a)}}`. See the description of arguments under the
-main method `expand(...)`.
-
-```python
-@staticmethod
-def expand_posix(
-    input: Path | str,
-    args: list[str] | None = None,
-    vars: dict[str, str] | None = os.environ,
-    expand_char: str = EnvParseInfo.POSIX_EXPAND_CHAR,
-    escape_char: str = EnvParseInfo.POSIX_ESCAPE_CHAR,
-    expand_flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-    subprocess_timeout: float | None = None,
-) -> Path | str: ...
-```
-
-**Returns** — Expanded Path object or string.
-
----
-
-### `Env.expand_simple()`
-
-This code was mainly generated using Copilot
-
-> `str`
-
-Expand environment variables and sub-processes according to simple rules and
-symmetric expand characters: like `%ABC%` in Windows or `<ABC>` in RiscOS.
-See the description of arguments under the main method `expand(...)`.
-
-```python
-@staticmethod
-def expand_simple(
-    input: Path | str,
-    args: list[str] | None = None,
-    vars: dict[str, str] | None = None,
-    expand_char: str = EnvParseInfo.WINDOWS_EXPAND_CHAR,
-    windup_char: str | None = None,
-    escape_char: str = EnvParseInfo.WINDOWS_ESCAPE_CHAR,
-) -> str: ...
-```
-
-**Returns** — Expanded Path pbject or string.
-
----
-
 ### `Env.get_all_platforms()`
 
 > `list[str]`
@@ -674,66 +621,6 @@ def copy_to(
 
 ---
 
-### `EnvParseInfo.get_default_cutter_char()`
-
-> `str`
-
-Get the platform-specific default cutter character.
-
-```python
-@staticmethod
-def get_default_cutter_char() -> str: ...
-```
-
-**Returns** — Default cutter character: `#` on POSIX, `` on Windows, `!` on VMS, `|` on RiscOS.
-
----
-
-### `EnvParseInfo.get_default_escape_char()`
-
-> `str`
-
-Get the platform-specific default escape character.
-
-```python
-@staticmethod
-def get_default_escape_char() -> str: ...
-```
-
-**Returns** — Default escape character: `\` on POSIX/RiscOS, `^` on Windows/VMS.
-
----
-
-### `EnvParseInfo.get_default_expand_char()`
-
-> `str`
-
-Get the platform-specific default expand character.
-
-```python
-@staticmethod
-def get_default_expand_char() -> str: ...
-```
-
-**Returns** — Default expand character: `$` on POSIX, `%` on Windows, `'` on VMS, `<` on RiscOS.
-
----
-
-### `EnvParseInfo.get_default_windup_char()`
-
-> `str`
-
-Get the platform-specific default windup character that is used to close the environment variable expansion.
-
-```python
-@staticmethod
-def get_default_windup_char() -> str: ...
-```
-
-**Returns** — Default windup character: `>` on RiscOS, otherwise the default expand character.
-
----
-
 ## class `EnvExpandFlags`
 
 `IntFlag` enumeration controlling the behaviour of `Env.expand(...)`.
@@ -869,7 +756,7 @@ CMD_CHROME = "chrome $BROWSER_ARGS"
 
 ## POSIX-style expansions implemented in _envara_
 
-Windows-style percent-delimited expansions are provided by `Env.expand_posix()` which is called by `Env.expand()`.
+Windows-style percent-delimited expansions are provided by `Env.__expand_posix()` which is called by `Env.expand()`.
 
 ### Supported constructs
 
@@ -922,7 +809,7 @@ Windows-style percent-delimited expansions are provided by `Env.expand_posix()` 
 
 - Command substitution
   - _$(...)_ and _\`...\`_ are supported.
-  - Inner content is first expanded using _expand_posix()_ before execution (so nested expansions and defaults work inside command substitutions).
+  - Inner content is first expanded using `__expand_posix()` before execution (so nested expansions and defaults work inside command substitutions).
   - The executed command's stdout (with trailing newline removed) is inserted into the result.
   - If the command exits with a non-zero status, _ValueError_ is raised (including _stderr_ text in the message).
   - Timeouts raise _ValueError_.
@@ -952,7 +839,7 @@ Command substitution runs local commands; ensure the expanded input is trusted o
 
 ## Symmetric (Windows-like) expansions implemented in _envara_
 
-Windows-style percent-delimited expansions are provided by `Env.expand_simple()` which is called by `Env.expand()`. This method supports `%NAME%`, `%1`, `%*`, `%%`, and simple `%~` modifiers (e.g., `%~dp1`) for extracting path components on Windows-like inputs. Additionally, it supports a substring form for named variables using the syntax `%NAME:~start[,length]%` - negative `start` counts from the end. It also supports RiscOS-like variables expansion `<NAME>` as well as OpenVMS-like `'NAME'`.
+Windows-style percent-delimited expansions are provided by `Env.__expand_simple()` which is called by `Env.expand()`. This method supports `%NAME%`, `%1`, `%*`, `%%`, and simple `%~` modifiers (e.g., `%~dp1`) for extracting path components on Windows-like inputs. Additionally, it supports a substring form for named variables using the syntax `%NAME:~start[,length]%` - negative `start` counts from the end. It also supports RiscOS-like variables expansion `<NAME>` as well as OpenVMS-like `'NAME'`.
 
 ## Which expansion to choose?
 
