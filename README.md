@@ -906,6 +906,16 @@ Windows-style percent-delimited expansions are provided by `Env.expand_posix()` 
     - _${VAR///X}_ inserts _X_ between every position (including start and end) - tests demonstrate the exact behavior.
     - Anchored empty patterns are treated as no-ops in prefix/suffix anchored forms.
 
+- Case modification
+  - _${var^}_ - uppercase first character.
+  - _${var^^}_ - uppercase all characters.
+  - _${var,}_ - lowercase first character.
+  - _${var,,}_ - lowercase all characters.
+  - _${var~}_ - toggle case of first character.
+  - _${var~~}_ - toggle case of all characters.
+  - Pattern-based forms: _${var^[pattern]}_, _${var^^[pattern]}_, _${var,[pattern]}_, _${var,,[pattern]}_ - apply to characters matching the glob pattern.
+  - When variable is unset, the expression is returned unchanged; when null (empty), the empty string is returned.
+
 - Escaping
   - A backslash before _$_ or _\`_ prevents expansion: _\\$NAME_ → literal _$NAME_, _\\\`cmd\\\`_ → literal \`cmd\`.
   - Pairs of backslashes reduce appropriately.
@@ -931,14 +941,13 @@ The following parameters control execution of command substitutions and improve 
 Command substitution runs local commands; ensure the expanded input is trusted or use the safety flags to disable or restrict execution. Use these options when expecting to expand untrusted input.
 
 ### Development notes
-
-- Unit tests live in _tests/test_trying.py_ and cover:
+- Unit tests live in _tests/test_env.py_ and cover:
   - Basic operators and alternatives
   - Pattern removals and substitutions (including anchored and global variants)
   - Nested expansions and defaults
+  - Case modification operators (^, ^^, ,, ,, ~, ~~) with pattern support
   - Edge cases like empty patterns and replacements equal to original text
   - Command substitution variations and safety flags
-
 - If you add any feature dealing with command execution, add tests that cover both normal and disabled execution modes: `(exp_flags & (EnvExpFlags.ALLOW_SHELL | EnvExpFlags.ALLOW_SUBPROC)) == 0)` as well as timeouts.
 
 ## Symmetric (Windows-like) expansions implemented in _envara_
