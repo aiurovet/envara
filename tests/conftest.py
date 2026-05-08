@@ -1,7 +1,7 @@
 from pathlib import Path
 import sys
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -16,9 +16,9 @@ import env_file
 import env_file_flags
 import env_expand_flags
 
-envara.Env = type("Env", (), {})()
-envara.EnvChars = env_chars.EnvChars
-envara.EnvCharsData = env_chars_data.EnvCharsData
+envara.Env = type("Env", (), {})() # type: ignore
+envara.EnvChars = env_chars.EnvChars # type: ignore
+envara.EnvCharsData = env_chars_data.EnvCharsData # type: ignore
 
 env_chars_mod = env_chars
 env_chars_data_mod = env_chars_data

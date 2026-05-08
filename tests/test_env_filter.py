@@ -1,6 +1,5 @@
 import pytest
 import re
-from unittest.mock import MagicMock
 from tests.conftest import env_filter_mod as EnvFilterModule
 
 
@@ -37,7 +36,7 @@ class TestEnvFilterConstructor:
             ("custom", None),
         ],
     )
-    def test_constructor_params(self, indicator, cur_values):
+    def test_constructor_params(self, indicator: str, cur_values: list[str]):
         f = EnvFilter(indicator=indicator, cur_values=cur_values)
         assert f.indicator == indicator
         assert f.cur_values == cur_values
@@ -107,7 +106,7 @@ class TestEnvFilterHasValue:
             ("env", None, False, False),
         ],
     )
-    def test_has_value(self, input_str, value, expected_found, expected_equal):
+    def test_has_value(self, input_str: str, value: str, expected_found: bool, expected_equal: bool):
         found, equal = EnvFilter.has_value(input_str, value)
         assert found == expected_found
         assert equal == expected_equal
@@ -122,7 +121,7 @@ class TestEnvFilterHasValue:
         assert equal is False
 
     def test_has_value_just_separator(self):
-        found, equal = EnvFilter.has_value(".", "env")
+        found, _ = EnvFilter.has_value(".", "env")
         assert found is False
 
     def test_has_value_with_separators(self):
@@ -137,7 +136,7 @@ class TestEnvFilterIntegration:
 
     def test_complex_matching(self):
         f = EnvFilter(indicator="app", cur_values=["v1"])
-        found, _ = EnvFilter.has_value("v1.0.0", "v1")
+        found, _ = f.has_value("v1.0.0", "v1")
         assert found is True
 
     def test_full_workflow(self):
@@ -167,7 +166,7 @@ class TestEnvFilterSearch:
             ("env", ["dev"], "", -1),
         ],
     )
-    def test_search(self, indicator, cur_values, input_str, expected):
+    def test_search(self, indicator: str, cur_values: list[str] | None, input_str: str, expected: int):
         f = EnvFilter(indicator=indicator, cur_values=cur_values)
         result = f.search(input_str)
         assert result == expected

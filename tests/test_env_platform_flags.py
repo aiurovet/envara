@@ -24,7 +24,7 @@ class TestEnvPlatformFlagsBitwiseOperations:
             ("xor", "ADD_EMPTY", "ADD_EMPTY", 0),
         ],
     )
-    def test_bitwise_operations(self, op, flag1, flag2, expected):
+    def test_bitwise_operations(self, op: str, flag1: str, flag2: str, expected: int):
         f1 = getattr(EnvPlatformFlags, flag1)
         f2 = getattr(EnvPlatformFlags, flag2)
         result = getattr(f1, f"__{op}__")(f2)
@@ -51,7 +51,7 @@ class TestEnvPlatformFlagsIdentity:
         "member",
         ["NONE", "ADD_EMPTY"],
     )
-    def test_enum_members_are_singleton(self, member):
+    def test_enum_members_are_singleton(self, member: str):
         m1 = getattr(EnvPlatformFlags, member)
         m2 = getattr(EnvPlatformFlags, member)
         assert m1 is m2
@@ -89,5 +89,5 @@ class TestEnvPlatformFlagsValues:
             ("ADD_EMPTY", 1 << 0),
         ],
     )
-    def test_flag_values(self, member, expected_value):
+    def test_flag_values(self, member: str, expected_value: int):
         assert getattr(EnvPlatformFlags, member).value == expected_value

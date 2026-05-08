@@ -1,4 +1,3 @@
-import pytest
 from tests.conftest import env_filter_mod, env_filters_mod
 
 

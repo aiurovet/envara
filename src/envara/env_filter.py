@@ -20,13 +20,13 @@ class EnvFilter:
     DEFAULT_INDICATOR: ClassVar[str] = "env"
     """Default dot-env file type without leading extension separator"""
 
-    DEFAULT_STRIP_RE: ClassVar[re.Pattern] = re.compile(r"^\s+|\s*(,)\s*|\s+$")
+    DEFAULT_STRIP_RE: ClassVar[re.Pattern[str]] = re.compile(r"^\s+|\s*(,)\s*|\s+$")
     """Regex to strip all unnecessary blanks around every delimited field"""
 
     VALUE_SEPARATORS: ClassVar[str] = ".-_"
     """Any of these characters separates values in an input string"""
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, EnvFilter):
             return False
         return (
@@ -201,7 +201,7 @@ class EnvFilter:
 
         # Check whether input is in scope at all
 
-        in_scope = any(EnvFilter.has_value(input, x)[0] for x in self.all_values)
+        in_scope = any(EnvFilter.has_value(input, x)[0] for x in self.all_values or [])
 
         # If input is not in scope, then top match. Otherwise, not found
 

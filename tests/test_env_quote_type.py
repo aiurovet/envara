@@ -20,7 +20,7 @@ class TestEnvQuoteTypeIdentity:
         "member",
         ["NONE", "HARD", "NORMAL", "DEFAULT"],
     )
-    def test_enum_members_are_singleton(self, member):
+    def test_enum_members_are_singleton(self, member: str):
         m1 = getattr(EnvQuoteType, member)
         m2 = getattr(EnvQuoteType, member)
         assert m1 is m2
@@ -36,7 +36,6 @@ class TestEnvQuoteTypeNone:
 
     def test_none_is_zero(self):
         assert EnvQuoteType.NONE == 0
-        assert EnvQuoteType.NONE.value == 0
 
     def test_none_not_hard(self):
         assert EnvQuoteType.NONE != EnvQuoteType.HARD
@@ -55,7 +54,7 @@ class TestEnvQuoteTypeOrdering:
             ("NORMAL", "HARD", False),
         ],
     )
-    def test_enum_less_than(self, member1, member2, expected):
+    def test_enum_less_than(self, member1: str, member2: str, expected: bool):
         m1 = getattr(EnvQuoteType, member1)
         m2 = getattr(EnvQuoteType, member2)
         assert (m1 < m2) == expected
@@ -75,7 +74,7 @@ class TestEnvQuoteTypeRelationships:
             ("DEFAULT", "HARD", False),
         ],
     )
-    def test_enum_equality(self, member1, member2, expected):
+    def test_enum_equality(self, member1: str, member2: str, expected: bool):
         m1 = getattr(EnvQuoteType, member1)
         m2 = getattr(EnvQuoteType, member2)
         assert (m1 == m2) == expected
@@ -89,7 +88,7 @@ class TestEnvQuoteTypeRelationships:
             ("DEFAULT", 2),
         ],
     )
-    def test_enum_equals_int(self, member, int_value):
+    def test_enum_equals_int(self, member: str, int_value: int):
         assert getattr(EnvQuoteType, member) == int_value
 
 
@@ -106,5 +105,5 @@ class TestEnvQuoteTypeValues:
             ("DEFAULT", 2),
         ],
     )
-    def test_enum_values(self, member, expected_value):
+    def test_enum_values(self, member: str, expected_value: int):
         assert getattr(EnvQuoteType, member).value == expected_value

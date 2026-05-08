@@ -41,10 +41,10 @@ class Env:
     IS_RISCOS: ClassVar[bool] = EnvChars.IS_RISCOS
     """True if the app is running under Risc OS"""
 
-    IS_VMS: ClassVar[bool] = os.sep == EnvChars.IS_VMS
+    IS_VMS: ClassVar[bool] = EnvChars.IS_VMS
     """True if the app is running under OpenVMS or similar"""
 
-    IS_WINDOWS: ClassVar[bool] = os.sep == EnvChars.IS_WINDOWS
+    IS_WINDOWS: ClassVar[bool] = EnvChars.IS_WINDOWS
     """True if the app is running under Windows or OS/2"""
 
     PLATFORM_POSIX: ClassVar[str] = "posix"
@@ -96,8 +96,8 @@ class Env:
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvCharsData = EnvChars.CURRENT,
-    ) -> Path | str:
+        chars: EnvCharsData = EnvChars.Current,
+    ) -> str | None:
         """
         Unquote the input if required via flags, remove trailing line comment
         if required via flags, expand the result with the arguments if
@@ -105,8 +105,8 @@ class Env:
         values. The method follows POSIX (in fact, bash) and DOS/Windows/
         OpenVMS/RiscOS expansion conventions depending on chars.is_posix
 
-        :param input: Path or string to expand
-        :type input: Path  | str
+        :param input: String to expand
+        :type input: str | None
 
         :param args: List of arguments to expand $#, $1, $2, ...
             pass [] or None to avoid expansion
@@ -125,13 +125,8 @@ class Env:
         :type chars: EnvCharsData
 
         :return: Expanded string or Path object
-        :rtype: str
+        :rtype: str | None
         """
-
-        # If flags provided, map them to unquote parameters and post-processing
-
-        if flags is None:
-            flags = EnvExpandFlags.DEFAULT
 
         # Remove quotes if found
 
@@ -171,7 +166,7 @@ class Env:
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvCharsData = EnvChars.CURRENT,
+        chars: EnvCharsData = EnvChars.Current,
     ) -> Path | None:
         """
         A wrapper around expand() for paths
@@ -191,11 +186,11 @@ class Env:
 
     @staticmethod
     def __expand_posix(
-        input: Path | str,
+        input: str | None,
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvCharsData = EnvChars.CURRENT,
+        chars: EnvCharsData = EnvChars.Current,
         subprocess_timeout: float | None = None,
     ) -> str | None:
         """
@@ -646,7 +641,7 @@ class Env:
                     flags=flags,
                     chars=chars,
                     subprocess_timeout=subprocess_timeout,
-                )
+                ) or ""
                 if not allow_subprocess:
                     res.append(s[i : j + 1])
                     i = j + 1
@@ -720,7 +715,7 @@ class Env:
                     flags=flags,
                     chars=chars,
                     subprocess_timeout=subprocess_timeout,
-                )
+                ) or ""
                 if not allow_subprocess:
                     res.append(s[i : j + 1])
                     i = j + 1
@@ -818,8 +813,8 @@ class Env:
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvCharsData = EnvChars.CURRENT,
-    ) -> str:
+        chars: EnvCharsData = EnvChars.Current,
+    ) -> str | None:
         """
         Expand environment variables and sub-processes according to simple
         rules and symmetric expand characters: like %ABC% in Windows. See
@@ -896,7 +891,7 @@ class Env:
             if is_flexible:
                 if j < ln and s[j] == "~":
                     k = j + 1
-                    mods = []
+                    mods: list[str] = []
                     while k < ln and s[k].isalpha():
                         mods.append(s[k])
                         k += 1
@@ -914,25 +909,25 @@ class Env:
                         if args and 0 <= idx < len(args):
                             tokval = args[idx]
 
-                            def part_drive(t):
+                            def part_drive(t: str) -> str:
                                 return os.path.splitdrive(t)[0]
 
-                            def part_path(t):
+                            def part_path(t: str) -> str:
                                 p = os.path.dirname(t)
                                 if p and not p.endswith(os.sep):
                                     p = p + os.sep
                                 return p
 
-                            def part_name(t):
+                            def part_name(t: str) -> str:
                                 return os.path.splitext(os.path.basename(t))[0]
 
-                            def part_ext(t):
+                            def part_ext(t: str) -> str:
                                 return os.path.splitext(t)[1]
 
-                            def part_full(t):
+                            def part_full(t: str) -> str:
                                 return os.path.abspath(t)
 
-                            out_frag = []
+                            out_frag: list[str] = []
                             for m in mods:
                                 if m == "d":
                                     out_frag.append(part_drive(tokval))
@@ -1164,7 +1159,7 @@ class Env:
     def quote(
         input: str,
         is_forced: bool = False,
-        chars: EnvCharsData = EnvChars.CURRENT,
+        chars: EnvCharsData = EnvChars.Current,
     ) -> str:
         """
         Enclose input in quotes. Neither leading, nor trailing whitespaces
@@ -1243,7 +1238,7 @@ class Env:
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvCharsData = EnvChars.CURRENT,
+        chars: EnvCharsData = EnvChars.Current,
     ) -> list[str]:
         """
         Split input into tokens following platform-independent command-line
@@ -1277,7 +1272,7 @@ class Env:
             args: list[str] | None = None,
             vars: MutableMapping[str, str] | None = None,
             flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-            chars: EnvCharsData = EnvChars.CURRENT,
+            chars: EnvCharsData = EnvChars.Current,
         ) -> bool:
             tokstr = "".join(token)
             token.clear()
@@ -1380,7 +1375,7 @@ class Env:
 
     @staticmethod
     def unescape(
-        input: str, strip_blanks: bool = False, chars: EnvCharsData = EnvChars.CURRENT
+        input: str, strip_blanks: bool = False, chars: EnvCharsData = EnvChars.Current
     ) -> str:
         """
         Unescape '\\t', '\\n', '\\u0022' etc.
@@ -1479,10 +1474,10 @@ class Env:
 
     @staticmethod
     def unquote(
-        input: str,
+        input: str | None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvCharsData = EnvChars.CURRENT,
-    ) -> tuple[str, EnvQuoteType]:
+        chars: EnvCharsData = EnvChars.Current,
+    ) -> tuple[str | None, EnvQuoteType]:
         """
         Remove enclosing quotes from a string ignoring everything beyond the
         closing quote ignoring escaped quotes. Raise ValueError if a dangling
@@ -1511,7 +1506,7 @@ class Env:
         if not input:
             return (input, EnvQuoteType.NONE)
 
-        strip_spaces: bool = flags & EnvExpandFlags.STRIP_SPACES
+        strip_spaces: bool = (flags & EnvExpandFlags.STRIP_SPACES) != 0
         result: str = input.strip() if (strip_spaces) else input
 
         if not result:

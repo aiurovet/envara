@@ -7,17 +7,17 @@ Execute prompts in test_env_chars.py and ensure that:
 - VMS has expand="'", windup="'", escape="^", cutter="!", hard_quote="", normal_quote='"'
 
 ## TestEnvCharsSelect
-- select sets DEFAULT based on platform (IS_POSIX, IS_RISCOS, IS_VMS, IS_WINDOWS)
-- select with "# test" sets CURRENT to POSIX (expand="$")
-- select with "|test" sets CURRENT to RISCOS (expand="<")
-- select with "!test" sets CURRENT to VMS (expand="'")
-- select with "::test" sets CURRENT to WINDOWS (expand="%")
-- select with empty string sets CURRENT to DEFAULT
-- select copies constants (DEFAULT and CURRENT are not the same object as the ClassVars)
+- select sets Default based on platform (IS_POSIX, IS_RISCOS, IS_VMS, IS_WINDOWS)
+- select with "# test" sets Current to POSIX (expand="$")
+- select with "|test" sets Current to RISCOS (expand="<")
+- select with "!test" sets Current to VMS (expand="'")
+- select with "::test" sets Current to WINDOWS (expand="%")
+- select with empty string sets Current to Default
+- select copies constants (Default and Current are not the same object as the ClassVars)
 
 ## TestEnvCharsMethods
-- EnvChars.__init__ sets CURRENT and DEFAULT
-- init with existing default skips init (DEFAULT is not None after first init)
+- EnvChars.__init__ sets Current and Default
+- init with existing default skips init (Default is not None after first init)
 - select returns EnvCharsData
 
 ## TestEnvCharsDataAttrs

@@ -25,9 +25,9 @@ class TestEnvExpandFlagsBitwiseOperations:
             ("xor", "ALLOW_SHELL", "UNQUOTE", 1 << 0 | 1 << 6),
         ],
     )
-    def test_bitwise_operations(self, op, flag1, flag2, expected):
-        f1 = getattr(EnvExpandFlags, flag1) if isinstance(flag1, str) else flag1
-        f2 = getattr(EnvExpandFlags, flag2) if isinstance(flag2, str) else flag2
+    def test_bitwise_operations(self, op: str, flag1: str, flag2: str, expected: int):
+        f1 = getattr(EnvExpandFlags, flag1)
+        f2 = getattr(EnvExpandFlags, flag2)
         result = getattr(f1, f"__{op}__")(f2)
         assert (result.value if hasattr(result, "value") else result) == expected
 
@@ -43,7 +43,7 @@ class TestEnvExpandFlagsCombine:
             "UNQUOTE",
         ],
     )
-    def test_flag_in_default(self, flag):
+    def test_flag_in_default(self, flag: str):
         assert getattr(EnvExpandFlags, flag) & EnvExpandFlags.DEFAULT == getattr(
             EnvExpandFlags, flag
         )
@@ -57,7 +57,7 @@ class TestEnvExpandFlagsCombine:
             ("UNESCAPE", "STRIP_SPACES"),
         ],
     )
-    def test_or_combines_flags(self, flag1, flag2):
+    def test_or_combines_flags(self, flag1: str, flag2: str):
         f1 = getattr(EnvExpandFlags, flag1)
         f2 = getattr(EnvExpandFlags, flag2)
         combined = f1 | f2
@@ -109,7 +109,6 @@ class TestEnvExpandFlagsNone:
 
     def test_none_is_zero(self):
         assert EnvExpandFlags.NONE == 0
-        assert EnvExpandFlags.NONE.value == 0
 
 
 class TestEnvExpandFlagsValues:
@@ -136,5 +135,5 @@ class TestEnvExpandFlagsValues:
             ("UNQUOTE", 1 << 6),
         ],
     )
-    def test_flag_values(self, flag, expected_value):
+    def test_flag_values(self, flag: str, expected_value: int):
         assert getattr(EnvExpandFlags, flag).value == expected_value

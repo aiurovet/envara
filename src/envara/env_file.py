@@ -39,10 +39,10 @@ class EnvFile:
     )
     """Default flags to expand environment variables at every line in the file"""
 
-    RE_KEY_VALUE: Final[re.Pattern] = re.compile(r"\s*=\s*")
+    RE_KEY_VALUE: Final[re.Pattern[str]] = re.compile(r"\s*=\s*")
     """Regex to split a string into key and value"""
 
-    _loaded: list[str] = []
+    __loaded: list[str] = []
     """Internal list of files that were loaded already"""
 
     ###########################################################################
@@ -177,7 +177,7 @@ class EnvFile:
 
         """
 
-        files: list[Path] = EnvFile.get_files(dir, indicator, file_flags, filters)
+        files: list[Path] = EnvFile.get_files(dir, indicator, file_flags, *filters)
         content: str = EnvFile.read_text(files, file_flags)
 
         EnvFile.load_from_str(content, args=args, expand_flags=expand_flags)
@@ -211,7 +211,7 @@ class EnvFile:
         if data is None:
             return
 
-        chars: EnvCharsData = None
+        chars: EnvCharsData = EnvChars.Current
 
         for line in data.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
             # Skip amy empty line
@@ -226,20 +226,27 @@ class EnvFile:
 
             # Break into key and value and skip if can't do that
 
-            parts = EnvFile.RE_KEY_VALUE.split(line, maxsplit=1)
+            parts: list[str] = EnvFile.RE_KEY_VALUE.split(line, maxsplit=1)
+
+            if len(parts) < 2:
+                continue
 
             if len(parts) < 2:
                 continue
 
             key, val = parts
 
-            # Expand the value and add to the dict of enviroment variables
+            if not key:
+                continue
+
+            # Expand the value and add to the dict of environment variables
 
             if val:
-                environ[key] = Env.expand(
+                expanded = Env.expand(
                     val, args=args, flags=expand_flags, chars=chars
                 )
-            elif key and key in environ:
+                environ[key] = str(expanded)
+            elif key in environ:
                 del environ[key]
 
     ###########################################################################
@@ -267,7 +274,7 @@ class EnvFile:
         # If required, discard information about the files already loaded
 
         if flags & EnvFileFlags.RESET_ACCUMULATED:
-            EnvFile._loaded = []
+            EnvFile.__loaded = []
 
         # Accumulate the content
 
@@ -276,12 +283,12 @@ class EnvFile:
 
             # If the file of that path was loaded aready, skip it
 
-            if file_str in EnvFile._loaded:
+            if file_str in EnvFile.__loaded:
                 continue
 
             # Avoid multiple loads of the same file
 
-            EnvFile._loaded.append(file_str)
+            EnvFile.__loaded.append(file_str)
 
             # Read the file content ignoring any issue
 

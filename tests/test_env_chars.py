@@ -1,14 +1,17 @@
+from typing import Any
+
 import pytest
-from tests.conftest import env_chars_mod, env_chars_data_mod, envara_mod
+from pytest_mock import MockerFixture
+from tests.conftest import env_chars_mod, env_chars_data_mod
 
 
-def _get_envchars(is_posix=False, is_riscos=False, is_vms=False, is_windows=False):
+def _get_envchars(is_posix: bool = False, is_riscos: bool = False, is_vms: bool = False, is_windows: bool = False):
     x = env_chars_mod.EnvChars
     x.IS_POSIX = is_posix
     x.IS_RISCOS = is_riscos
     x.IS_VMS = is_vms
     x.IS_WINDOWS = is_windows
-    x.DEFAULT = x.init_default()
+    x.Default = x.init_default()
     return x
 
 
@@ -66,7 +69,7 @@ class TestEnvCharsConstants:
             ),
         ],
     )
-    def test_platform_is_envcharsdata(self, name, expected_attrs):
+    def test_platform_is_envcharsdata(self, name: str, expected_attrs: Any):
         EnvChars = _get_envchars()
         platform = getattr(EnvChars, name)
         assert platform is not None
@@ -84,46 +87,46 @@ class TestEnvCharsDataAttrs:
             ("WINDOWS", "%"),
         ],
     )
-    def test_platform_expand(self, platform, expected_expand):
+    def test_platform_expand(self, platform: str, expected_expand: str):
         EnvChars = _get_envchars()
         assert getattr(EnvChars, platform).expand == expected_expand
 
     def test_select_init_default_when_not_set(self):
         EnvChars = env_chars_mod.EnvChars
-        EnvChars.DEFAULT = None
-        EnvChars.CURRENT = None
+        EnvChars.Default = EnvChars.POSIX
+        EnvChars.Current = EnvChars.Default
         result = EnvChars.select("test")
         assert result is not None
-        assert EnvChars.DEFAULT is not None
+        assert EnvChars.Default is not None
 
 
 class TestEnvCharsMethods:
     def test_init_sets_default(self):
         EnvChars = _get_envchars()
-        assert EnvChars.CURRENT is not None
-        assert EnvChars.DEFAULT is not None
+        assert EnvChars.Current is not None
+        assert EnvChars.Default is not None
 
     def test_init_with_existing_default_skips_init(self):
         EnvChars = _get_envchars()
         EnvChars.select("")
-        assert EnvChars.DEFAULT is not None
-        original = EnvChars.DEFAULT
-        assert EnvChars.DEFAULT is original
+        assert EnvChars.Default is not None
+        original = EnvChars.Default
+        assert EnvChars.Default is original
 
     def test_select_with_riscos_cutter(self):
         EnvChars = _get_envchars()
         EnvChars.select("|test")
-        assert EnvChars.CURRENT.expand == "<"
+        assert EnvChars.Current.expand == "<"
 
     def test_select_with_vms_cutter(self):
         EnvChars = _get_envchars()
         EnvChars.select("!test")
-        assert EnvChars.CURRENT.expand == "'"
+        assert EnvChars.Current.expand == "'"
 
     def test_select_with_windows_cutter(self):
         EnvChars = _get_envchars()
         EnvChars.select("::test")
-        assert EnvChars.CURRENT.expand == "%"
+        assert EnvChars.Current.expand == "%"
 
 
 class TestEnvCharsSelect:
@@ -135,18 +138,18 @@ class TestEnvCharsSelect:
         EnvChars = _get_envchars(is_posix=True)
         EnvChars.select("test")
 
-        assert EnvChars.DEFAULT is not EnvChars.POSIX
-        assert EnvChars.CURRENT is not EnvChars.POSIX
+        assert EnvChars.Default is not EnvChars.POSIX
+        assert EnvChars.Current is not EnvChars.POSIX
 
     @pytest.mark.xfail(
         reason="Source bug: startswith gets EnvCharsData instead of string"
     )
-    def test_select_sets_current_based_on_comment(self, mocker):
+    def test_select_sets_current_based_on_comment(self, mocker: MockerFixture):
         EnvChars = _get_envchars(is_posix=True)
         EnvChars.select("# test")
 
-        assert EnvChars.CURRENT is not None
-        assert EnvChars.CURRENT.expand == "$"
+        assert EnvChars.Current is not None
+        assert EnvChars.Current.expand == "$"
 
     @pytest.mark.parametrize(
         "is_posix,is_riscos,is_vms,is_windows,expected_expand",
@@ -158,13 +161,13 @@ class TestEnvCharsSelect:
         ],
     )
     def test_select_sets_default_based_on_platform(
-        self, mocker, is_posix, is_riscos, is_vms, is_windows, expected_expand
+        self, mocker: MockerFixture, is_posix: bool, is_riscos: bool, is_vms: bool, is_windows: bool, expected_expand: str
     ):
         EnvChars = _get_envchars(is_posix, is_riscos, is_vms, is_windows)
         EnvChars.select("test")
 
-        assert EnvChars.DEFAULT is not None
-        assert EnvChars.DEFAULT.expand == expected_expand
+        assert EnvChars.Default is not None
+        assert EnvChars.Default.expand == expected_expand
 
     @pytest.mark.xfail(
         reason="Source bug: startswith gets EnvCharsData instead of string"
@@ -173,5 +176,5 @@ class TestEnvCharsSelect:
         EnvChars = _get_envchars(is_posix=True)
         EnvChars.select("")
 
-        assert EnvChars.CURRENT is not None
-        assert EnvChars.CURRENT.expand == "$"
+        assert EnvChars.Current is not None
+        assert EnvChars.Current.expand == "$"

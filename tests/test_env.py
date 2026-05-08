@@ -307,7 +307,7 @@ class TestEnvUnquote:
             ),
         ],
     )
-    def test_unquote(self, input_str, flags, chars, expected, expected_qt):
+    def test_unquote(self, input_str: str, flags: EnvExpandFlags, chars: EnvCharsData, expected: str, expected_qt: EnvQuoteType):
         """Parametrized test ensuring maximum coverage"""
         result, qt = Env.unquote(input_str, flags=flags, chars=chars)
         assert result == expected
@@ -348,7 +348,7 @@ class TestEnvUnquote:
             ),
         ],
     )
-    def test_unquote_bad(self, input_str, flags, chars, expected):
+    def test_unquote_bad(self, input_str: str, flags: EnvExpandFlags, chars: EnvCharsData, expected: str):
         """Parametrized test ensuring maximum coverage of exceptions"""
         with pytest.raises(ValueError, match=expected):
             Env.unquote(input_str, flags=flags, chars=chars)
@@ -361,7 +361,7 @@ class TestEnvExpand:
         """Sets flags to default when passed as None"""
         with patch.object(Env, "unquote", return_value=("test", EnvQuoteType.NONE)):
             with patch.object(Env, "_Env__expand_posix", return_value="result"):
-                result = Env.expand("test", flags=None, chars=EnvChars.POSIX)
+                result = Env.expand("test", chars=EnvChars.POSIX)
 
     def test_expand_calls_unquote_when_needed(self):
         """Calls unquote when needed"""

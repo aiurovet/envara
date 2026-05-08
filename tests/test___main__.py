@@ -1,13 +1,16 @@
+from typing import Any
+
 import pytest
+from pytest import CaptureFixture
 from pathlib import Path
 
 
-def get_main_output():
+def get_main_output() -> Any:
     project_dir = Path(__file__).parent.parent
     src_dir = project_dir / "src"
     main_file = src_dir / "envara" / "__main__.py"
 
-    local_vars = {}
+    local_vars: dict[str, Any] = {}
     with open(main_file) as f:
         code = compile(f.read(), "__main__.py", "exec")
         exec(code, local_vars)
@@ -17,20 +20,20 @@ def get_main_output():
 
 class TestEnvaraMain:
 
-    def test_main_prints_class_list(self, capsys):
+    def test_main_prints_class_list(self, capsys: CaptureFixture[str]):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
         assert "class Env:" in captured.out
         assert "class EnvFile:" in captured.out
 
-    def test_main_prints_copyright_year(self, capsys):
+    def test_main_prints_copyright_year(self, capsys: CaptureFixture[str]):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
         assert "2026" in captured.out
 
-    def test_main_prints_env_methods(self, capsys):
+    def test_main_prints_env_methods(self, capsys: CaptureFixture[str]):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
@@ -43,14 +46,14 @@ class TestEnvaraMain:
         assert ".unescape()" in captured.out
         assert ".unquote()" in captured.out
 
-    def test_main_prints_envara_header(self, capsys):
+    def test_main_prints_envara_header(self, capsys: CaptureFixture[str]):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
         assert "envara" in captured.out.lower()
         assert "Alexander Iurovetski" in captured.out
 
-    def test_main_prints_envfile_methods(self, capsys):
+    def test_main_prints_envfile_methods(self, capsys: CaptureFixture[str]):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
@@ -58,7 +61,7 @@ class TestEnvaraMain:
         assert ".load_from_str()" in captured.out
         assert ".read_text()" in captured.out
 
-    def test_main_prints_platform_info(self, capsys):
+    def test_main_prints_platform_info(self, capsys: CaptureFixture[str]):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
@@ -73,19 +76,19 @@ class TestEnvaraMain:
 
 class TestEnvaraMainContent:
 
-    def test_prints_examples_section(self, capsys):
+    def test_prints_examples_section(self, capsys: CaptureFixture[str]):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
         assert "filter" in captured.out.lower() or "example" in captured.out.lower()
 
-    def test_prints_file_patterns(self, capsys):
+    def test_prints_file_patterns(self, capsys: CaptureFixture[str]):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
         assert ".env" in captured.out
 
-    def test_prints_library_description(self, capsys):
+    def test_prints_library_description(self, capsys: CaptureFixture[str]):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
@@ -102,7 +105,7 @@ class TestEnvaraMainEdgeCases:
         except Exception as e:
             pytest.fail(f"main() raised an exception: {e}")
 
-    def test_main_output_is_multiline(self, capsys):
+    def test_main_output_is_multiline(self, capsys: CaptureFixture[str]):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
@@ -112,7 +115,7 @@ class TestEnvaraMainEdgeCases:
 
 class TestEnvaraMainIntegration:
 
-    def test_main_callable_twice(self, capsys):
+    def test_main_callable_twice(self, capsys: CaptureFixture[str]):
         main = get_main_output()
         result1 = main()
         result2 = main()
@@ -124,7 +127,7 @@ class TestEnvaraMainIntegration:
         "expected_count",
         [100, 200, 500],
     )
-    def test_main_output_length(self, expected_count, capsys):
+    def test_main_output_length(self, expected_count: int, capsys: CaptureFixture[str]):
         main = get_main_output()
         main()
         captured = capsys.readouterr()
@@ -143,7 +146,7 @@ class TestEnvaraMainOutput:
             ".env",
         ],
     )
-    def test_main_contains_expected_output(self, expected_string, capsys):
+    def test_main_contains_expected_output(self, expected_string: str, capsys: CaptureFixture[str]):
         main = get_main_output()
         main()
         captured = capsys.readouterr()

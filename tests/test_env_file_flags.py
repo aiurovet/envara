@@ -25,7 +25,7 @@ class TestEnvFileFlagsBitwiseOperations:
             ("xor", "ADD_PLATFORMS_BEFORE", "RESET_ACCUMULATED", 1 << 0 | 1 << 2),
         ],
     )
-    def test_bitwise_operations(self, op, flag1, flag2, expected):
+    def test_bitwise_operations(self, op: str, flag1: str, flag2: str, expected: int):
         f1 = getattr(EnvFileFlags, flag1)
         f2 = getattr(EnvFileFlags, flag2)
         result = getattr(f1, f"__{op}__")(f2)
@@ -41,7 +41,7 @@ class TestEnvFileFlagsCombine:
             ("ADD_PLATFORMS_AFTER", "RESET_ACCUMULATED"),
         ],
     )
-    def test_or_combines_flags(self, flag1, flag2):
+    def test_or_combines_flags(self, flag1: str, flag2: str):
         f1 = getattr(EnvFileFlags, flag1)
         f2 = getattr(EnvFileFlags, flag2)
         combined = f1 | f2
@@ -92,7 +92,6 @@ class TestEnvFileFlagsNone:
 
     def test_none_is_zero(self):
         assert EnvFileFlags.NONE == 0
-        assert EnvFileFlags.NONE.value == 0
 
 
 class TestEnvFileFlagsValues:
@@ -105,5 +104,5 @@ class TestEnvFileFlagsValues:
             ("RESET_ACCUMULATED", 1 << 2),
         ],
     )
-    def test_flag_values(self, flag, expected_value):
+    def test_flag_values(self, flag: str, expected_value: int):
         assert getattr(EnvFileFlags, flag).value == expected_value

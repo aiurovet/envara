@@ -18,7 +18,6 @@ Please note that version `0.4.0` brings breaking changes: mainly, a switch from 
 - [Simple Expansions for Windows, OpenVMS, and RiscOS](#simple-expansions-for-windows-openvms-and-riscos)
 - [Dot-env File Lookup](#dot-env-file-lookup)
 - [What Kind of Expansion to Choose in Dot-Env Files?](#what-kind-of-expansion-to-choose-in-dot-env-files)
-- [Good Luck!](#good-luck)
 
 ---
 
@@ -188,7 +187,7 @@ Implemented via `Env.expand()` which calls private method `_Env__expand_posix()`
   newline, carriage-return, horizontal tab, vertical tab
 - All other characters, preceded by the escape one, convert to themselves
 
-**Command substitution:**
+**Command substitution:**s
 - `$(...)` and backtick commands are supported
 - Inner content is first expanded before execution
 - The executed command's stdout (with trailing newline removed) is inserted into the result

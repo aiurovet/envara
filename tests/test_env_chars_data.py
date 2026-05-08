@@ -1,8 +1,10 @@
+from typing import Any
+
 import pytest
 from tests.conftest import env_chars_data_mod
 
 
-def _make_envcharsdata(**kwargs):
+def _make_envcharsdata(**kwargs: dict[str, str]):
     kwargs.setdefault("normal_quote", "")
     return env_chars_data_mod.EnvCharsData(**kwargs)
 
@@ -18,7 +20,7 @@ class TestEnvCharsDataAttributes:
         ],
     )
     def test_all_quotes_combinations(
-        self, hard_quote, normal_quote, expected_all_quotes, expected_len
+        self, hard_quote: str, normal_quote: str, expected_all_quotes: str, expected_len: int
     ):
         info = _make_envcharsdata(hard_quote=hard_quote, normal_quote=normal_quote)
         assert info.all_quotes == expected_all_quotes
@@ -38,7 +40,7 @@ class TestEnvCharsDataConstructor:
             ("normal_quote", '"'),
         ],
     )
-    def test_constructor_all_fields(self, field, value):
+    def test_constructor_all_fields(self, field: str, value: Any):
         info = _make_envcharsdata(**{field: value})
         assert getattr(info, field) == value
 
@@ -68,7 +70,7 @@ class TestEnvCharsDataConstructor:
             ("normal_quote", '"', 1),
         ],
     )
-    def test_constructor_lengths_set(self, field, value, expected_len):
+    def test_constructor_lengths_set(self, field: str, value: str, expected_len: int):
         info = _make_envcharsdata(**{field: value})
         assert getattr(info, f"{field}_len") == expected_len
 
@@ -76,7 +78,7 @@ class TestEnvCharsDataConstructor:
         "field",
         ["expand", "windup", "escape", "cutter", "hard_quote", "normal_quote"],
     )
-    def test_constructor_lengths_zero_for_empty(self, field):
+    def test_constructor_lengths_zero_for_empty(self, field: str):
         info = _make_envcharsdata()
         assert getattr(info, f"{field}_len") == 0
 

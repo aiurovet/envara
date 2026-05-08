@@ -13,7 +13,7 @@ class EnvCharsData:
 
     ###########################################################################
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         """
         Deep equality checker
 
@@ -100,7 +100,7 @@ class EnvCharsData:
         self.hard_quote: str = hard_quote or ""
         self.hard_quote_len: int = 1 if self.hard_quote else 0
 
-        self.normal_quote: str = normal_quote
+        self.normal_quote: str = normal_quote or ""
         self.normal_quote_len: int = 1 if self.normal_quote else 0
 
         self.all_quotes: str = self.hard_quote + self.normal_quote
