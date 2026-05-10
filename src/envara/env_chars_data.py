@@ -27,6 +27,7 @@ class EnvCharsData:
 
         return (
             (other.is_posix == self.is_posix)
+            and (other.is_windows == self.is_windows)
             and (other.expand == self.expand)
             and (other.windup == self.windup)
             and (other.escape == self.escape)
@@ -41,6 +42,7 @@ class EnvCharsData:
     def __init__(
         self,
         is_posix: bool | None = False,
+        is_windows: bool | None = False,
         expand: str | None = None,
         windup: str | None = None,
         escape: str | None = None,
@@ -56,6 +58,11 @@ class EnvCharsData:
         :param is_posix: True if need to expand environment variables and
             command-line arguments in POSIX (more precisely, bash) style
         :type is_posix: bool
+
+        :param is_windows: True if need to expand environment variables and
+            command-line arguments in Windows (more precisely, DOS batch)
+            style
+        :type is_windows: bool
 
         :param expand: String that denotes the start of an environment
             variable token
@@ -87,6 +94,7 @@ class EnvCharsData:
         self.expand_len: int = len(self.expand)
 
         self.is_posix: bool = True if is_posix else False
+        self.is_windows: bool = True if is_windows else False
 
         self.windup: str = windup or ""
         self.windup_len: int = len(self.windup)
@@ -111,6 +119,7 @@ class EnvCharsData:
     def copy_with(
         self,
         is_posix: bool | None = None,
+        is_windows: bool | None = None,
         expand: str | None = None,
         windup: str | None = None,
         escape: str | None = None,
@@ -128,6 +137,7 @@ class EnvCharsData:
 
         return EnvCharsData(
             is_posix=(is_posix if is_posix is not None else self.is_posix),
+            is_windows=(is_windows if is_windows is not None else self.is_windows),
             expand=(expand if expand is not None else self.expand),
             windup=(windup if windup is not None else self.windup),
             escape=(escape if escape is not None else self.escape),

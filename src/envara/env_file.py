@@ -18,8 +18,8 @@ import pathlib
 import re
 from typing import ClassVar, Final
 
-from env_chars import EnvChars
-from env_chars_data import EnvCharsData
+from envara.env_chars import EnvChars
+from envara.env_chars_data import EnvCharsData
 from envara.env_file_flags import EnvFileFlags
 from envara.env_filter import EnvFilter
 from envara.env import Env

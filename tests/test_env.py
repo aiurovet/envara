@@ -3564,15 +3564,15 @@ class TestExpandSimpleRemainingCoverage:
         result = Env._Env__expand_simple("%UNKNOWN%", vars={}, chars=EnvChars.WINDOWS)
         assert result == "%UNKNOWN%"
 
-    def test_riscos_not_flexible(self):
-        """RISC OS not flexible (lines 724-726)"""
+    def test_riscos_not_windows(self):
+        """RISC OS not windows (lines 724-726)"""
         result = Env._Env__expand_simple(
             "<VAR>", vars={"VAR": "value"}, chars=EnvChars.RISCOS
         )
         assert result == "value"
 
-    def test_vms_not_flexible(self):
-        """VMS not flexible (lines 724-726)"""
+    def test_vms_not_windows(self):
+        """VMS not windows (lines 724-726)"""
         result = Env._Env__expand_simple(
             "'VAR'", vars={"VAR": "value"}, chars=EnvChars.VMS
         )
@@ -4088,10 +4088,10 @@ class TestExpandSimpleDigitWindup:
 
 
 class TestExpandSimpleLine871:
-    """Cover line 871: not is_flexible"""
+    """Cover line 871: not is_windows"""
 
-    def test_riscos_not_flexible(self):
-        """Line 871: RISC OS is not flexible"""
+    def test_riscos_not_windows(self):
+        """Line 871: RISC OS is not windows"""
         result = Env._Env__expand_simple("<~n", vars={}, chars=EnvChars.RISCOS)
         assert isinstance(result, str)
 
@@ -5033,3 +5033,94 @@ class TestEnvFinalCoverage:
                 "${foo/bar/baz}", args=[], vars={"foo": "qux"}, flags=EnvExpandFlags.NONE, chars=EnvChars.POSIX
             )
             assert isinstance(result, str)
+
+    # --- is_windows=True coverage (Windows-specific expansion paths) ---
+
+    WINDOWS_IS_WINDOWS = EnvCharsData(
+        is_windows=True, expand="%", windup="%", escape="^",
+        cutter="::", hard_quote="", normal_quote='"',
+    )
+
+    @pytest.mark.parametrize(
+        "input_str,args,vars,expected",
+        [
+            ("%~d1", ["C:\\path\\file.txt"], {}, ""),
+            ("%~p1", ["/home/user/test/file.txt"], {}, "/home/user/test/"),
+            ("%~n1", ["/home/user/test/file.txt"], {}, "file"),
+            ("%~x1", ["/home/user/test/file.txt"], {}, ".txt"),
+            pytest.param(
+                "%~f1", ["/home/user/file.txt"], {}, None,
+                marks=pytest.mark.skipif(
+                    not os.path.isabs("/home/user/file.txt"),
+                    reason="abspath depends on CWD",
+                ),
+            ),
+            ("%~1", ["hello"], {}, ""),
+            ("%~z1", ["hello"], {}, ""),
+            ("%~5", ["a"], {}, "%~5"),
+            ("%~5%", ["a"], {}, "%~5%%"),
+            ("%~d%", ["a"], {}, "%~d%"),
+        ],
+    )
+    def test_windows_tilde_modifiers(self, input_str, args, vars, expected):
+        result = Env._Env__expand_simple(
+            input_str, args=args, vars=vars, chars=self.WINDOWS_IS_WINDOWS
+        )
+        if expected is None:
+            assert isinstance(result, str)
+        else:
+            assert result == expected
+
+    @pytest.mark.parametrize(
+        "input_str,args,vars,expected",
+        [
+            ("%1", ["hello"], {}, "hello"),
+            ("%1%", ["hello"], {}, "hello"),
+            ("%1", None, {}, "%1"),
+            ("%1%", None, {}, "%1%"),
+            ("%0", ["a"], {}, "%0"),
+            ("%0%", ["a"], {}, "%0%"),
+            ("%99", ["a"], {}, "%99"),
+            ("%99%", ["a"], {}, "%99%"),
+        ],
+    )
+    def test_windows_digit_args(self, input_str, args, vars, expected):
+        result = Env._Env__expand_simple(
+            input_str, args=args, vars=vars, chars=self.WINDOWS_IS_WINDOWS
+        )
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        "input_str,args,vars,expected",
+        [
+            ("%*", ["a", "b"], {}, "a b"),
+            ("%*%", ["a", "b"], {}, "a b"),
+            ("%*", None, {}, "%*"),
+            ("%*%", None, {}, "%*"),
+        ],
+    )
+    def test_windows_star_args(self, input_str, args, vars, expected):
+        result = Env._Env__expand_simple(
+            input_str, args=args, vars=vars, chars=self.WINDOWS_IS_WINDOWS
+        )
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        "input_str,vars,expected",
+        [
+            ("%MYVAR:~0,3%", {"MYVAR": "hello"}, "hel"),
+            ("%MYVAR:~2%", {"MYVAR": "hello"}, "llo"),
+            ("%MYVAR:~-2,2%", {"MYVAR": "hello"}, "lo"),
+            ("%MYVAR:~20,2%", {"MYVAR": "hello"}, ""),
+            ("%MYVAR:~0,-1%", {"MYVAR": "hello"}, ""),
+            ("%:~0,3%", {}, "%:~0,3%"),
+            ("%INVALID:~abc%", {}, "%INVALID:~abc%"),
+            ("%NOVAR:~0,3%", {}, "%NOVAR:~0,3%"),
+            ("%VAR:~-20,2%", {"VAR": "hello"}, "he"),
+        ],
+    )
+    def test_windows_tilde_range(self, input_str, vars, expected):
+        result = Env._Env__expand_simple(
+            input_str, args=None, vars=vars, chars=self.WINDOWS_IS_WINDOWS
+        )
+        assert result == expected

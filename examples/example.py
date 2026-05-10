@@ -13,10 +13,14 @@
 import os
 from pathlib import Path
 import sys
+
+# Remove this and the line below if the envara package is installed
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+
 from envara.env import Env
 from envara.env_file import EnvFile
 
-################################################~###############################
+###############################################################################
 
 
 def main():

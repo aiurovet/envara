@@ -21,11 +21,11 @@ import shlex
 from collections.abc import MutableMapping
 from typing import ClassVar
 
-from env_chars_data import EnvCharsData
+from envara.env_chars import EnvChars
+from envara.env_chars_data import EnvCharsData
 from envara.env_expand_flags import EnvExpandFlags
 from envara.env_platform_flags import EnvPlatformFlags
 from envara.env_quote_type import EnvQuoteType
-from env_chars import EnvChars
 
 ###############################################################################
 
@@ -102,8 +102,9 @@ class Env:
         Unquote the input if required via flags, remove trailing line comment
         if required via flags, expand the result with the arguments if
         required via flags, expand the result with the environment variables'
-        values. The method follows POSIX (in fact, bash) and DOS/Windows/
-        OpenVMS/RiscOS expansion conventions depending on chars.is_posix
+        values. The method follows POSIX (in fact, bash) and Windows/OpenVMS/
+        RiscOS expansion conventions depending on chars.is_posix and
+        chars.is_windows
 
         :param input: String to expand
         :type input: str | None
@@ -828,13 +829,10 @@ class Env:
         if vars is None:
             vars = os.environ
 
-        expand_char: str = chars.expand
-        windup_char: str = chars.windup
-        escape_char: str = chars.escape
-
-        is_flexible = (
-            expand_char != EnvChars.RISCOS.expand and expand_char != EnvChars.VMS.expand
-        )
+        expand_char = chars.expand
+        windup_char = chars.windup
+        escape_char = chars.escape
+        is_windows = chars.is_windows
 
         s = str(input) if is_path else input
         i = 0
@@ -888,7 +886,7 @@ class Env:
 
             j = i + 1
 
-            if is_flexible:
+            if is_windows:
                 if j < ln and s[j] == "~":
                     k = j + 1
                     mods: list[str] = []
@@ -997,7 +995,7 @@ class Env:
                 i = k + 1
                 continue
 
-            if is_flexible and (":~" in token):
+            if is_windows and (":~" in token):
                 base, suff = token.split(":~", 1)
                 if not base:
                     out.append(expand_char + token + windup_char)

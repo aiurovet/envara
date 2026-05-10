@@ -6,7 +6,7 @@
 
 from typing import ClassVar
 
-from env_chars_data import EnvCharsData
+from envara.env_chars_data import EnvCharsData
 import os
 
 ###############################################################################
@@ -32,6 +32,7 @@ class EnvChars:
 
     POSIX: ClassVar[EnvCharsData] = EnvCharsData(
         is_posix=True,
+        is_windows=False,
         expand="$",
         windup="",
         escape="\\",
@@ -43,6 +44,7 @@ class EnvChars:
 
     RISCOS: ClassVar = EnvCharsData(
         is_posix=False,
+        is_windows=False,
         expand="<",
         windup=">",
         escape="\\",
@@ -54,6 +56,7 @@ class EnvChars:
 
     VMS: ClassVar = EnvCharsData(
         is_posix=False,
+        is_windows=False,
         expand="'",
         windup="'",
         escape="^",
@@ -65,6 +68,7 @@ class EnvChars:
 
     WINDOWS: ClassVar = EnvCharsData(
         is_posix=False,
+        is_windows=True,
         expand="%",
         windup="%",
         escape="^",

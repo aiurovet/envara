@@ -6,7 +6,7 @@ A library to expand environment variables, application arguments and escape sequ
 
 Does not depend on any special Python package.
 
-Please note that version `0.4.0` brings breaking changes: mainly, a switch from multiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line. Last but not least, public methods `Env.expand_posix()` and `Env.expand_simple()` have been moved to the private scope, so stop using those directly in favour of `Env.expand()`.
+Please note that version `0.4.0` brings breaking changes: mainly, a switch from multiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line. Last but not least, public methods `Env.expand_posix(...)` and `Env.expand_simple(...)` have been moved to the private scope, so stop using those directly in favour of `Env.expand(...)`.
 
 ---
 
@@ -28,7 +28,13 @@ Please note that version `0.4.0` brings breaking changes: mainly, a switch from 
 2. Create a _.py_ file with the following content, then run it with 3 arbitrary arguments:
 
 ```python
+#!/usr/bin/env python3
+
 ###############################################################################
+# envara (C) Alexander Iurovetski 2026
+#
+# An example of how to use the envara package
+#
 # Run it with 3 arguments like:
 #
 # python[3] [dir/]example.py v1 23 4
@@ -37,10 +43,14 @@ Please note that version `0.4.0` brings breaking changes: mainly, a switch from 
 import os
 from pathlib import Path
 import sys
+
+# envara must be installed
+
 from envara.env import Env
 from envara.env_file import EnvFile
 
 ###############################################################################
+
 
 def main():
     """
@@ -75,7 +85,7 @@ def main():
     # Make a copy of the old environment variables
     old_env = os.environ.copy()
 
-    # Place some env files into directory below
+    # Place some .env files into directory below
     EnvFile.load(inp_dir, args=args)
 
     # Show new environment variables
@@ -85,6 +95,7 @@ def main():
             print(f"{key} => {val}")
 
     return 0
+
 
 ###############################################################################
 
@@ -111,7 +122,7 @@ Class for string expansions. Provides static methods to:
 - Detect and work with multiple platforms (POSIX, Windows, RiscOS, VMS, etc.)
 
 Key class variables:
-- `IS_POSIX` - `True` if running under Linux, UNIX, BSD, macOS or similar
+- `IS_POSIX` - `True` if running under Linux, UNIX, BSD/macOS or similar
 - `IS_RISCOS` - `True` if running under Risc OS
 - `IS_VMS` - `True` if running under OpenVMS or similar
 - `IS_WINDOWS` - `True` if running under Windows or OS/2
@@ -135,7 +146,7 @@ Environment-related filtering, mainly for use with `EnvFile`. Allows filtering e
 
 ## POSIX-style Expansions
 
-Implemented via `Env.expand()` which calls private method `_Env__expand_posix()`.
+In fact, these are bash rules, but it makes sense to apply them to the environment variable expansions on any Linux/BSD/UNIX platform. It is implemented via `Env.expand(...)` which eventually calls private method `__expand_posix(...)`.
 
 ### Supported constructs
 
@@ -198,7 +209,7 @@ Implemented via `Env.expand()` which calls private method `_Env__expand_posix()`
 The following parameters control execution of command substitutions:
 - `flags`: `EnvExpandFlags` controls expansion
   - `ALLOW_SHELL` - command substitutions executed with `shell=True` (less safe, more flexible)
-  - `ALLOW_SUBPROC` - executed with `shell=False` using `shlex.split()` (safer)
+  - `ALLOW_SUBPROC` - executed with `shell=False` using `shlex.split(...)` (safer)
 
 ---
 
@@ -207,13 +218,15 @@ The following parameters control execution of command substitutions:
 This method of expansion supports:
 - Windows-style `%NAME%`, `%1`, `%*`, `%%`, and simple `%~` modifiers (e.g., `%~dp1`) for extracting path components on Windows-like inputs.
 - A substring form for named variables using the syntax `%NAME:~start[,length]%` - negative `start` counts from the end.
-- Similarly supports OpenVMS-like variables expansion `'NAME'` as well as RiscOS-like `<NAME>`.
+- Even more limited OpenVMS-like variables expansion `'NAME'` as well as the RiscOS-like `<NAME>`.
+
+It is implemented via `Env.expand(...)` which eventually calls private method `__expand_simple(...)`.
 
 ---
 
 ## Env File Lookup
 
-The `EnvFile.load()` method looks for the following files. The leading dot is optional; `<sys.platform>` is lowercased; each file is loaded at most once (unless the internal cache is dropped via `EnvFileFlags.RESET_ACCUMULATED`).
+The `EnvFile.load(...)` method looks for the following files. The leading dot is optional; `<sys.platform>` is lowercased; each file is loaded at most once (unless the internal cache is dropped via `EnvFileFlags.RESET_ACCUMULATED`).
 
 **For any filter:**
 ```
@@ -263,7 +276,7 @@ CMD_CHROME = "chrome $BROWSER_ARGS"
 
 ## What Kind of Expansion to Choose in the Env Files?
 
-By default, the expansion that is specific to the current platform will be chosen. You can override that by having the first non-empty line representing a line comment for the desired platform's rules. For instance, if the first non-empty line in a env file starts with `#`, it will force to use POSIX rules. If with `::`, then Windows, if `!`, then OpenVMS, and if `|`, then RiscOS rules will apply. It is always a good idea to start such file with a meaningful comment anyway, so you can kill two birds with one stone.
+By default, the expansion that is specific to the current platform will be chosen. You can override that by having the first non-empty line representing a line comment for the desired platform's rules. For instance, if the first non-empty line in a env file starts with `#`, it will force `Env.expand(...)` to use POSIX (in fact, bash) rules. If it starts with `::`, then Windows, if with `!`, then OpenVMS, and if with `|`, then RiscOS rules will apply. This resembles the shebang `#!` sequence for Linux/BSD/UNIX shell scripts. And it is always a good idea to start such file with a meaningful comment anyway, so you can kill two birds with one stone.
 
 ---
 
