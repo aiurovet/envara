@@ -35,7 +35,7 @@ class EnvFile:
 
 See README.md for more details about these calls
           
-Here is an incomplete list of dot-env files the latter method will look for
+Here is an incomplete list of env files the latter method will look for
 
 Note that the leading dot is optional, except for .env, <sys.platform> gets
 lowercased, each file loaded once, unless internal cache is dropped:

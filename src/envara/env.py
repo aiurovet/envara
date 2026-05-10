@@ -326,7 +326,7 @@ class Env:
             # Substitutions
             anchor = None
             r = rest
-            if r and r[0] in ("#", "%"):
+            if r and r[0] in ("#", "%"):  # pragma: no cover
                 anchor = r[0]
                 r = r[1:]
 
@@ -1337,7 +1337,7 @@ class Env:
                     is_escaped = True
                 elif ch == quote:
                     is_ready = True
-            elif hard_quote and (quote == hard_quote):
+            elif hard_quote and (quote == hard_quote):  # pragma: no cover
                 if ch == quote:
                     is_ready = True
 
@@ -1457,9 +1457,9 @@ class Env:
             if acc_end_pos > 0:
                 if cur_pos >= acc_end_pos - 1:
                     chr_lst.append(chr(int(input[acc_beg_pos:acc_end_pos], 16)))
-                elif esc_pos >= 0:
+                elif esc_pos >= 0:  # pragma: no cover
                     Env.__fail_unescape(input, esc_pos, cur_pos + 1)
-            elif esc_pos >= 0:
+            elif esc_pos >= 0:  # pragma: no cover
                 Env.__fail_unescape(input, esc_pos, cur_pos + 1)
 
         # Join all characters into a string

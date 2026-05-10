@@ -4868,3 +4868,168 @@ class TestEnvExpandPath:
         with patch.dict(os.environ, vars_dict, clear=True):
             result = Env.expand_path(Path(path), vars=vars_dict, chars=chars)
             assert expected in str(result)
+
+
+class TestEnvFinalCoverage:
+    """Final tests to push env.py coverage to 100%"""
+
+    # --- expand_posix eval_braced coverage ---
+
+    def test_colon_equals_assignment_exception(self):
+        class ReadOnlyDict(dict):
+            def __setitem__(self, key, value):
+                raise Exception("read-only")
+
+        result = Env._Env__expand_posix(
+            "${UNSET:=newval}",
+            vars=ReadOnlyDict(),
+            flags=EnvExpandFlags.NONE,
+            chars=EnvChars.POSIX,
+        )
+        assert result == "newval"
+
+    def test_rest_contains_slash_no_prefix(self):
+        result = Env._Env__expand_posix(
+            "${VAR.foo/bar}",
+            vars={"VAR": ".foo test"},
+            flags=EnvExpandFlags.NONE,
+            chars=EnvChars.POSIX,
+        )
+        assert isinstance(result, str)
+
+    def test_anchor_hash_all_no_change_same_text(self):
+        result = Env._Env__expand_posix(
+            "${VAR//#t/t}",
+            vars={"VAR": "test"},
+            flags=EnvExpandFlags.NONE,
+            chars=EnvChars.POSIX,
+        )
+        assert result == "test"
+
+    def test_anchor_percent_all_no_change_same_text(self):
+        result = Env._Env__expand_posix(
+            "${VAR//%t/t}",
+            vars={"VAR": "test"},
+            flags=EnvExpandFlags.NONE,
+            chars=EnvChars.POSIX,
+        )
+        assert result == "test"
+
+    def test_dash_operator_set_var(self):
+        result = Env._Env__expand_posix(
+            "${VAR-word}",
+            vars={"VAR": "value"},
+            flags=EnvExpandFlags.NONE,
+            chars=EnvChars.POSIX,
+        )
+        assert result == "value"
+
+    def test_double_slash_no_replacement(self):
+        result = Env._Env__expand_posix(
+            "${VAR//pattern}",
+            vars={"VAR": "value"},
+            flags=EnvExpandFlags.NONE,
+            chars=EnvChars.POSIX,
+        )
+        assert result == "value"
+
+    # --- expand_simple coverage ---
+
+    def test_escape_expand_digit(self):
+        result = Env._Env__expand_simple(
+            "^%1", args=["a", "b"], vars={}, chars=EnvChars.WINDOWS
+        )
+        assert result == "%1"
+
+    def test_escape_expand_no_windup(self):
+        result = Env._Env__expand_simple(
+            "^%", vars={}, chars=EnvChars.WINDOWS
+        )
+        assert result == "%"
+
+    def test_escape_at_end_posix(self):
+        result = Env._Env__expand_simple("test\\", vars={}, chars=EnvChars.POSIX)
+        assert result == "test\\"
+
+    def test_tilde_modifier_with_windup(self):
+        result = Env._Env__expand_simple(
+            "%~d1%", args=["C:\\test"], vars={}, chars=EnvChars.WINDOWS
+        )
+        assert isinstance(result, str)
+
+    def test_tilde_unknown_modifier(self):
+        result = Env._Env__expand_simple(
+            "%~z1", args=["test"], vars={}, chars=EnvChars.WINDOWS
+        )
+        assert result == ""
+
+    def test_tilde_arg_out_of_range(self):
+        result = Env._Env__expand_simple(
+            "%~d99", args=["a"], vars={}, chars=EnvChars.WINDOWS
+        )
+        assert isinstance(result, str)
+
+    def test_tilde_arg_out_of_range_with_windup(self):
+        result = Env._Env__expand_simple(
+            "%~d99%", args=["a"], vars={}, chars=EnvChars.WINDOWS
+        )
+        assert isinstance(result, str)
+
+    def test_digit_arg_out_of_range_with_windup(self):
+        result = Env._Env__expand_simple(
+            "%99%", args=["a"], vars={}, chars=EnvChars.WINDOWS
+        )
+        assert isinstance(result, str)
+
+    def test_star_with_no_args(self):
+        result = Env._Env__expand_simple(
+            "%*", args=None, vars={}, chars=EnvChars.WINDOWS
+        )
+        assert isinstance(result, str)
+
+    def test_tilde_range_var_not_set(self):
+        result = Env._Env__expand_simple(
+            "%UNKNOWN:~0,3%", vars={}, chars=EnvChars.WINDOWS
+        )
+        assert isinstance(result, str)
+
+    def test_tilde_range_negative_offset_clamped(self):
+        result = Env._Env__expand_simple(
+            "%VAR:~-20,2%", vars={"VAR": "hello"}, chars=EnvChars.WINDOWS
+        )
+        assert result == "he"
+
+    def test_tilde_p_modifier_multi_level(self):
+        result = Env._Env__expand_simple(
+            "%~p1", args=["/home/user/test/file.txt"], vars={}, chars=EnvChars.WINDOWS
+        )
+        assert isinstance(result, str)
+
+    # --- split coverage ---
+
+    def test_split_escape_inside_normal_quote(self):
+        result = Env.split(
+            '"hello\\"world"', flags=EnvExpandFlags.NONE, chars=EnvChars.POSIX
+        )
+        assert "hello" in result[0]
+
+    def test_split_unterminated_escape(self):
+        with pytest.raises(ValueError, match="Unterminated escape"):
+            Env.split("hello\\", flags=EnvExpandFlags.NONE, chars=EnvChars.POSIX)
+
+    def test_split_unterminated_hard_quote(self):
+        with pytest.raises(ValueError, match="Unterminated"):
+            Env.split("'hello", flags=EnvExpandFlags.NONE, chars=EnvChars.POSIX)
+
+    def test_split_unterminated_normal_quote(self):
+        with pytest.raises(ValueError, match="Unterminated"):
+            Env.split('"hello', flags=EnvExpandFlags.NONE, chars=EnvChars.POSIX)
+
+    # --- fnmatch.translate custom (non-standard) return ---
+
+    def test_fnmatch_translate_custom(self):
+        with patch("envara.env.fnmatch.translate", return_value="custom"):
+            result = Env._Env__expand_posix(
+                "${foo/bar/baz}", args=[], vars={"foo": "qux"}, flags=EnvExpandFlags.NONE, chars=EnvChars.POSIX
+            )
+            assert isinstance(result, str)

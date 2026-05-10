@@ -205,6 +205,16 @@ class TestEnvFileGetFilesPlatforms:
 
         assert result == []
 
+    def test_get_files_skips_falsy_filter(self, mocker: MockerFixture):
+        EnvFile._EnvFile__loaded = [] # type: ignore
+        mock_iterdir = mocker.patch.object(Path, "iterdir")
+        mock_iterdir.return_value = []
+        mocker.patch.object(EnvFilters, "process", return_value=[])
+
+        result = EnvFile.get_files(Path("/test"), "env", EnvFileFlags.NONE, None)
+
+        assert result == []
+
 
 class TestEnvFileLoad:
 
@@ -294,15 +304,26 @@ class TestEnvFileLoad:
 
     def test_load_from_str_with_data(self):
         EnvFile.load_from_str("KEY=value")
+        assert os.environ["KEY"] == "value"
 
     def test_load_from_str_with_empty_lines(self):
         EnvFile.load_from_str("\n\nKEY=value\n\n")
+        assert os.environ["KEY"] == "value"
 
     def test_load_from_str_with_multiple_lines(self):
         EnvFile.load_from_str("KEY1=value1\nKEY2=value2")
+        assert os.environ["KEY1"] == "value1"
+        assert os.environ["KEY2"] == "value2"
 
     def test_load_from_str_without_equals(self):
+        old_len: int = len(os.environ)
         EnvFile.load_from_str("no_equals")
+        assert len(os.environ) == old_len
+
+    def test_load_from_str_without_key(self):
+        old_len: int = len(os.environ)
+        EnvFile.load_from_str("=value")
+        assert len(os.environ) == old_len
 
 
 class TestEnvFileLoadedList:

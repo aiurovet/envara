@@ -18,7 +18,7 @@ class EnvFilter:
     """Default regex flags to compile with"""
 
     DEFAULT_INDICATOR: ClassVar[str] = "env"
-    """Default dot-env file type without leading extension separator"""
+    """Default env file type without leading extension separator"""
 
     DEFAULT_STRIP_RE: ClassVar[re.Pattern[str]] = re.compile(r"^\s+|\s*(,)\s*|\s+$")
     """Regex to strip all unnecessary blanks around every delimited field"""

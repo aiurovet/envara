@@ -106,7 +106,7 @@ class EnvFile:
             elif filter:
                 filters_ex.append(filter)
 
-        # Add the platforms filter after the other ones (if required)
+        # Add the platforms filter  after the other ones (if required)
 
         if flags & EnvFileFlags.ADD_PLATFORMS_AFTER:
             filters_ex.append(
@@ -219,17 +219,9 @@ class EnvFile:
             if not line:
                 continue
 
-            # Select environment chars based on the first non-empty line
-
-            if not chars:
-                chars = EnvChars.select(based_on=line)
-
             # Break into key and value and skip if can't do that
 
             parts: list[str] = EnvFile.RE_KEY_VALUE.split(line, maxsplit=1)
-
-            if len(parts) < 2:
-                continue
 
             if len(parts) < 2:
                 continue

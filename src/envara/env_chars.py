@@ -110,9 +110,6 @@ class EnvChars:
         :type based_on: str
         """
 
-        if not EnvChars.Default:
-            EnvChars.init_default()
-
         if not based_on:
             EnvChars.Current = EnvChars.Default.copy_with()
         elif EnvChars.POSIX.cutter and based_on.startswith(EnvChars.POSIX.cutter):

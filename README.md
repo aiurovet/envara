@@ -6,7 +6,7 @@ A library to expand environment variables, application arguments and escape sequ
 
 Does not depend on any special Python package.
 
-Please note that version `0.4.0` brings breaking changes: mainly, a switch from multiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in dot-env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line.
+Please note that version `0.4.0` brings breaking changes: mainly, a switch from multiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line. Last but not least, public methods `Env.expand_posix()` and `Env.expand_simple()` have been moved to the private scope, so stop using those directly in favour of `Env.expand()`.
 
 ---
 
@@ -16,8 +16,8 @@ Please note that version `0.4.0` brings breaking changes: mainly, a switch from 
 - [Library Overview](#library-overview)
 - [POSIX-style Expansions](#posix-style-expansions)
 - [Simple Expansions for Windows, OpenVMS, and RiscOS](#simple-expansions-for-windows-openvms-and-riscos)
-- [Dot-env File Lookup](#dot-env-file-lookup)
-- [What Kind of Expansion to Choose in Dot-Env Files?](#what-kind-of-expansion-to-choose-in-dot-env-files)
+- [Env File Lookup](#env-file-lookup)
+- [What Kind of Expansion to Choose in Dot-Env Files?](#what-kind-of-expansion-to-choose-in-env-files)
 
 ---
 
@@ -75,7 +75,7 @@ def main():
     # Make a copy of the old environment variables
     old_env = os.environ.copy()
 
-    # Place some .env files into directory below
+    # Place some env files into directory below
     EnvFile.load(inp_dir, args=args)
 
     # Show new environment variables
@@ -122,7 +122,7 @@ Reads series of `key=value` lines from env files, removes line comments, expands
 ### `EnvFilter` and `EnvFilters`
 Environment-related filtering, mainly for use with `EnvFile`. Allows filtering env files based on:
 - A necessary part of the filename (indicator)
-- Current runtime values (e.g., "dev", "prod")
+- Current runtime values (e.g., `dev`, `prod`)
 - All possible values for the runtime environment
 
 ### Enumerations
@@ -211,7 +211,7 @@ This method of expansion supports:
 
 ---
 
-## Dot-env File Lookup
+## Env File Lookup
 
 The `EnvFile.load()` method looks for the following files. The leading dot is optional; `<sys.platform>` is lowercased; each file is loaded at most once (unless the internal cache is dropped via `EnvFileFlags.RESET_ACCUMULATED`).
 
@@ -225,7 +225,7 @@ The `EnvFile.load()` method looks for the following files. The leading dot is op
 | Platform | Files (not limited to) |
 |---|---|
 | Any platform | `.env`, `-env`, `_env`, `env`, `env-`, `env_`, `.env-`, `.env_`, `-env.`, `-env_`, `_env.`, `_env-` |
-| Any POSIX platform | `.env.posix`, `[.]posix.env`, `abc.posix-def_env` (has `env` and `posix` parts) |
+| Any POSIX platform | `.env.posix`, `[.]posix.env`, `abc.posix-def_env` (have `env` and `posix` parts) |
 | Linux, Android | POSIX + `.env.linux`, `[.]linux.env`, `abc.linux-def_env` |
 | BSD-like | POSIX + `.env.bsd`, `[.]bsd.env`, `bsd_abc.def-env.ghi` |
 | iOS, iPadOS, macOS | BSD + `.env.darwin`, `[.]darwin.env` |
@@ -261,9 +261,9 @@ CMD_CHROME = "chrome $BROWSER_ARGS"
 
 ---
 
-## What Kind of Expansion to Choose in Dot-Env Files?
+## What Kind of Expansion to Choose in the Env Files?
 
-By default, the expansion specific to the current platform will be chosen. But you can override that by having the first non-empty line representing a line comment for the desired platform. For instance, if the first non-empty line in a dot-env file starts with `#`, it will force to use POSIX rules. If with `::`, then DOS/Windows rules, if `!`, then OpenVMS, and if `|`, then RiscOS. It is always a good idea to start such file with a meaningful comment anyway, so you can kill two birds with one stone.
+By default, the expansion that is specific to the current platform will be chosen. You can override that by having the first non-empty line representing a line comment for the desired platform's rules. For instance, if the first non-empty line in a env file starts with `#`, it will force to use POSIX rules. If with `::`, then Windows, if `!`, then OpenVMS, and if `|`, then RiscOS rules will apply. It is always a good idea to start such file with a meaningful comment anyway, so you can kill two birds with one stone.
 
 ---
 
