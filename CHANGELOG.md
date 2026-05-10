@@ -1,7 +1,12 @@
+## 0.4.1
+
+Documentation corrected
+
 ## 0.4.0
 
 Added static method `split_command()` to `Env` that allows to split command into array of an executable and its arguments (OS-agnostic)
-Breaking change: using `EnvCharsData`-type parameter instead of multiple separate ones.
+
+Breaking changes: mainly, a switch from multiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line. Finally, public methods `Env.expand_posix(...)` and `Env.expand_simple(...)` have been moved to the private scope, so stop using those directly in favour of `Env.expand(...)`.
 
 ## 0.3.0
 

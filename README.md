@@ -214,11 +214,11 @@ In fact, these are bash rules, but it makes sense to apply them to the environme
   newline, carriage-return, horizontal tab, vertical tab
 - All other characters, preceded by the escape one, convert to themselves
 
-**Command substitution:**s
+**Sub-command substitution:**
 
-- `$(...)` and backtick commands are supported
+- `$(...)` and `` `...` `` are supported
 - Inner content is first expanded before execution
-- The executed command's stdout (with trailing newline removed) is inserted into the result
+- The executed sub-command's stdout (with trailing newline removed) is inserted into the result
 - Timeouts and non-zero exit codes raise `ValueError`
 
 ### Safety and Configuration
