@@ -5,28 +5,19 @@ from unittest.mock import patch
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "envara"))
 
 import envara
-import env_chars
-import env_chars_data
-import env_filter
-import env_filters
-import env_file
-import env_file_flags
-import env_expand_flags
+import envara.env_chars as env_chars_mod
+import envara.env_chars_data as env_chars_data_mod
+import envara.env_filter as env_filter_mod  # type: ignore
+import envara.env_filters as env_filters_mod  # type: ignore
+import envara.env_file as env_file_mod  # type: ignore
+import envara.env_file_flags as env_file_flags_mod  # type: ignore
+import envara.env_expand_flags as env_expand_flags_mod  # type: ignore
 
-envara.Env = type("Env", (), {})() # type: ignore
-envara.EnvChars = env_chars.EnvChars # type: ignore
-envara.EnvCharsData = env_chars_data.EnvCharsData # type: ignore
-
-env_chars_mod = env_chars
-env_chars_data_mod = env_chars_data
-env_filter_mod = env_filter
-env_filters_mod = env_filters
-env_file_mod = env_file
-env_file_flags_mod = env_file_flags
-env_expand_flags_mod = env_expand_flags
+envara.Env = type("Env", (), {})()  # type: ignore
+envara.EnvChars = env_chars_mod.EnvChars  # type: ignore
+envara.EnvCharsData = env_chars_data_mod.EnvCharsData  # type: ignore
 envara_mod = envara
 
 os.chdir(str(Path(__file__).parent.parent))

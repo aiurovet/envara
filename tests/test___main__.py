@@ -2,20 +2,12 @@ from typing import Any
 
 import pytest
 from pytest import CaptureFixture
-from pathlib import Path
+
+import envara.__main__ as envara_main_module
 
 
 def get_main_output() -> Any:
-    project_dir = Path(__file__).parent.parent
-    src_dir = project_dir / "src"
-    main_file = src_dir / "envara" / "__main__.py"
-
-    local_vars: dict[str, Any] = {}
-    with open(main_file) as f:
-        code = compile(f.read(), "__main__.py", "exec")
-        exec(code, local_vars)
-
-    return local_vars.get("main")
+    return envara_main_module.main
 
 
 class TestEnvaraMain:
@@ -37,14 +29,14 @@ class TestEnvaraMain:
         main = get_main_output()
         main()
         captured = capsys.readouterr()
-        assert ".expand()" in captured.out
-        assert ".expand_posix()" in captured.out
-        assert ".expand_simple()" in captured.out
-        assert ".get_all_platforms()" in captured.out
-        assert ".get_cur_platforms()" in captured.out
-        assert ".quote()" in captured.out
-        assert ".unescape()" in captured.out
-        assert ".unquote()" in captured.out
+        assert ".expand(...)" in captured.out
+        assert ".expand_path(...)" in captured.out
+        assert ".get_all_platforms(...)" in captured.out
+        assert ".get_cur_platforms(...)" in captured.out
+        assert ".quote(...)" in captured.out
+        assert ".split(...)" in captured.out
+        assert ".unescape(...)" in captured.out
+        assert ".unquote(...)" in captured.out
 
     def test_main_prints_envara_header(self, capsys: CaptureFixture[str]):
         main = get_main_output()
@@ -57,9 +49,9 @@ class TestEnvaraMain:
         main = get_main_output()
         main()
         captured = capsys.readouterr()
-        assert ".load()" in captured.out
-        assert ".load_from_str()" in captured.out
-        assert ".read_text()" in captured.out
+        assert ".load(...)" in captured.out
+        assert ".load_from_str(...)" in captured.out
+        assert ".read_text(...)" in captured.out
 
     def test_main_prints_platform_info(self, capsys: CaptureFixture[str]):
         main = get_main_output()
@@ -142,11 +134,13 @@ class TestEnvaraMainOutput:
             "Alexander Iurovetski",
             "class Env:",
             "class EnvFile:",
-            ".expand()",
+            ".expand(...)",
             ".env",
         ],
     )
-    def test_main_contains_expected_output(self, expected_string: str, capsys: CaptureFixture[str]):
+    def test_main_contains_expected_output(
+        self, expected_string: str, capsys: CaptureFixture[str]
+    ):
         main = get_main_output()
         main()
         captured = capsys.readouterr()

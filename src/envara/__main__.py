@@ -19,19 +19,19 @@ unquote and and expand values as above (if the input was unquoted or enclosed in
 single quotes), execute sub-commands, and finally, extend the environment.
 
 class Env:
-    .expand()
-    .expand_posix()
-    .expand_simple() # Windows-like
-    .get_all_platforms()
-    .get_cur_platforms()
-    .quote()
-    .unescape()
-    .unquote()
+    .expand(...)
+    .expand_path(...)
+    .get_all_platforms(...)
+    .get_cur_platforms(...)
+    .quote(...)
+    .split(...)
+    .unescape(...)
+    .unquote(...)
           
 class EnvFile:
-    .load()
-    .load_from_str()
-    .read_text()
+    .load(...)
+    .load_from_str(...)
+    .read_text(...)
 
 See README.md for more details about these calls
           

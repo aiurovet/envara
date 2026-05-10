@@ -20,7 +20,11 @@ class TestEnvCharsDataAttributes:
         ],
     )
     def test_all_quotes_combinations(
-        self, hard_quote: str, normal_quote: str, expected_all_quotes: str, expected_len: int
+        self,
+        hard_quote: str,
+        normal_quote: str,
+        expected_all_quotes: str,
+        expected_len: int,
     ):
         info = _make_envcharsdata(hard_quote=hard_quote, normal_quote=normal_quote)
         assert info.all_quotes == expected_all_quotes

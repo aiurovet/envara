@@ -635,14 +635,17 @@ class Env:
                         f"Unterminated backtick command substitution in: {input}"
                     )
                 inner = s[i + 1 : j]
-                cmd = Env.__expand_posix(
-                    inner,
-                    args=args,
-                    vars=vars,
-                    flags=flags,
-                    chars=chars,
-                    subprocess_timeout=subprocess_timeout,
-                ) or ""
+                cmd = (
+                    Env.__expand_posix(
+                        inner,
+                        args=args,
+                        vars=vars,
+                        flags=flags,
+                        chars=chars,
+                        subprocess_timeout=subprocess_timeout,
+                    )
+                    or ""
+                )
                 if not allow_subprocess:
                     res.append(s[i : j + 1])
                     i = j + 1
@@ -709,14 +712,17 @@ class Env:
                 if j >= inp_len:
                     raise ValueError(f"Unterminated command substitution in: {input}")
                 inner = s[i + 2 : j]
-                cmd = Env.__expand_posix(
-                    inner,
-                    args=args,
-                    vars=vars,
-                    flags=flags,
-                    chars=chars,
-                    subprocess_timeout=subprocess_timeout,
-                ) or ""
+                cmd = (
+                    Env.__expand_posix(
+                        inner,
+                        args=args,
+                        vars=vars,
+                        flags=flags,
+                        chars=chars,
+                        subprocess_timeout=subprocess_timeout,
+                    )
+                    or ""
+                )
                 if not allow_subprocess:
                     res.append(s[i : j + 1])
                     i = j + 1

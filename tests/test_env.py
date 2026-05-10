@@ -5,7 +5,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from envara.env import Env, EnvChars, EnvExpandFlags, EnvPlatformFlags, EnvQuoteType
-from env_chars_data import EnvCharsData
+from envara.env_chars_data import EnvCharsData
 
 
 class TestEnvUnquote:
@@ -307,7 +307,14 @@ class TestEnvUnquote:
             ),
         ],
     )
-    def test_unquote(self, input_str: str, flags: EnvExpandFlags, chars: EnvCharsData, expected: str, expected_qt: EnvQuoteType):
+    def test_unquote(
+        self,
+        input_str: str,
+        flags: EnvExpandFlags,
+        chars: EnvCharsData,
+        expected: str,
+        expected_qt: EnvQuoteType,
+    ):
         """Parametrized test ensuring maximum coverage"""
         result, qt = Env.unquote(input_str, flags=flags, chars=chars)
         assert result == expected
@@ -348,7 +355,9 @@ class TestEnvUnquote:
             ),
         ],
     )
-    def test_unquote_bad(self, input_str: str, flags: EnvExpandFlags, chars: EnvCharsData, expected: str):
+    def test_unquote_bad(
+        self, input_str: str, flags: EnvExpandFlags, chars: EnvCharsData, expected: str
+    ):
         """Parametrized test ensuring maximum coverage of exceptions"""
         with pytest.raises(ValueError, match=expected):
             Env.unquote(input_str, flags=flags, chars=chars)
@@ -4942,9 +4951,7 @@ class TestEnvFinalCoverage:
         assert result == "%1"
 
     def test_escape_expand_no_windup(self):
-        result = Env._Env__expand_simple(
-            "^%", vars={}, chars=EnvChars.WINDOWS
-        )
+        result = Env._Env__expand_simple("^%", vars={}, chars=EnvChars.WINDOWS)
         assert result == "%"
 
     def test_escape_at_end_posix(self):
@@ -5030,15 +5037,24 @@ class TestEnvFinalCoverage:
     def test_fnmatch_translate_custom(self):
         with patch("envara.env.fnmatch.translate", return_value="custom"):
             result = Env._Env__expand_posix(
-                "${foo/bar/baz}", args=[], vars={"foo": "qux"}, flags=EnvExpandFlags.NONE, chars=EnvChars.POSIX
+                "${foo/bar/baz}",
+                args=[],
+                vars={"foo": "qux"},
+                flags=EnvExpandFlags.NONE,
+                chars=EnvChars.POSIX,
             )
             assert isinstance(result, str)
 
     # --- is_windows=True coverage (Windows-specific expansion paths) ---
 
     WINDOWS_IS_WINDOWS = EnvCharsData(
-        is_windows=True, expand="%", windup="%", escape="^",
-        cutter="::", hard_quote="", normal_quote='"',
+        is_windows=True,
+        expand="%",
+        windup="%",
+        escape="^",
+        cutter="::",
+        hard_quote="",
+        normal_quote='"',
     )
 
     @pytest.mark.parametrize(
@@ -5049,7 +5065,10 @@ class TestEnvFinalCoverage:
             ("%~n1", ["/home/user/test/file.txt"], {}, "file"),
             ("%~x1", ["/home/user/test/file.txt"], {}, ".txt"),
             pytest.param(
-                "%~f1", ["/home/user/file.txt"], {}, None,
+                "%~f1",
+                ["/home/user/file.txt"],
+                {},
+                None,
                 marks=pytest.mark.skipif(
                     not os.path.isabs("/home/user/file.txt"),
                     reason="abspath depends on CWD",

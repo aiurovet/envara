@@ -106,7 +106,9 @@ class TestEnvFilterHasValue:
             ("env", None, False, False),
         ],
     )
-    def test_has_value(self, input_str: str, value: str, expected_found: bool, expected_equal: bool):
+    def test_has_value(
+        self, input_str: str, value: str, expected_found: bool, expected_equal: bool
+    ):
         found, equal = EnvFilter.has_value(input_str, value)
         assert found == expected_found
         assert equal == expected_equal
@@ -166,7 +168,13 @@ class TestEnvFilterSearch:
             ("env", ["dev"], "", -1),
         ],
     )
-    def test_search(self, indicator: str, cur_values: list[str] | None, input_str: str, expected: int):
+    def test_search(
+        self,
+        indicator: str,
+        cur_values: list[str] | None,
+        input_str: str,
+        expected: int,
+    ):
         f = EnvFilter(indicator=indicator, cur_values=cur_values)
         result = f.search(input_str)
         assert result == expected

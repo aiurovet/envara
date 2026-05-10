@@ -5,7 +5,12 @@ from pytest_mock import MockerFixture
 from tests.conftest import env_chars_mod, env_chars_data_mod
 
 
-def _get_envchars(is_posix: bool = False, is_riscos: bool = False, is_vms: bool = False, is_windows: bool = False):
+def _get_envchars(
+    is_posix: bool = False,
+    is_riscos: bool = False,
+    is_vms: bool = False,
+    is_windows: bool = False,
+):
     x = env_chars_mod.EnvChars
     x.IS_POSIX = is_posix
     x.IS_RISCOS = is_riscos
@@ -23,6 +28,7 @@ class TestEnvCharsConstants:
                 "POSIX",
                 {
                     "is_posix": True,
+                    "is_windows": False,
                     "expand": "$",
                     "windup": "",
                     "escape": "\\",
@@ -35,6 +41,7 @@ class TestEnvCharsConstants:
                 "WINDOWS",
                 {
                     "is_posix": False,
+                    "is_windows": True,
                     "expand": "%",
                     "windup": "%",
                     "escape": "^",
@@ -47,6 +54,7 @@ class TestEnvCharsConstants:
                 "RISCOS",
                 {
                     "is_posix": False,
+                    "is_windows": False,
                     "expand": "<",
                     "windup": ">",
                     "escape": "\\",
@@ -59,6 +67,7 @@ class TestEnvCharsConstants:
                 "VMS",
                 {
                     "is_posix": False,
+                    "is_windows": False,
                     "expand": "'",
                     "windup": "'",
                     "escape": "^",
@@ -73,7 +82,7 @@ class TestEnvCharsConstants:
         EnvChars = _get_envchars()
         platform = getattr(EnvChars, name)
         assert platform is not None
-        assert isinstance(platform, env_chars_data_mod.EnvCharsData)
+        assert isinstance(platform, env_chars_data_mod.EnvCharsData)  # type: ignore[attr-defined]
         for attr, expected_value in expected_attrs.items():
             assert getattr(platform, attr) == expected_value
 
@@ -161,7 +170,13 @@ class TestEnvCharsSelect:
         ],
     )
     def test_select_sets_default_based_on_platform(
-        self, mocker: MockerFixture, is_posix: bool, is_riscos: bool, is_vms: bool, is_windows: bool, expected_expand: str
+        self,
+        mocker: MockerFixture,
+        is_posix: bool,
+        is_riscos: bool,
+        is_vms: bool,
+        is_windows: bool,
+        expected_expand: str,
     ):
         EnvChars = _get_envchars(is_posix, is_riscos, is_vms, is_windows)
         EnvChars.select("test")

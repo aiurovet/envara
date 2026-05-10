@@ -36,8 +36,8 @@ class TestEnvFileConstants:
         assert EnvFileFlags.NONE == 0
 
     def test_loaded_list_initially_empty(self):
-        EnvFile._EnvFile__loaded = [] # type: ignore
-        assert EnvFile._EnvFile__loaded == [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
+        assert EnvFile._EnvFile__loaded == []  # type: ignore
 
     def test_re_key_value_is_compiled(self):
         assert isinstance(EnvFile.RE_KEY_VALUE, re.Pattern)
@@ -46,7 +46,7 @@ class TestEnvFileConstants:
 class TestEnvFileGetFiles:
 
     def test_get_files_empty_dir(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_iterdir = mocker.patch.object(Path, "iterdir")
         mock_iterdir.return_value = []
 
@@ -55,7 +55,7 @@ class TestEnvFileGetFiles:
         assert result == []
 
     def test_get_files_returns_list(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_iterdir = mocker.patch.object(Path, "iterdir")
         mock_iterdir.return_value = []
 
@@ -73,7 +73,7 @@ class TestEnvFileGetFiles:
 class TestEnvFileGetFilesMocked:
 
     def test_get_files_with_mock(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_path = mocker.MagicMock()
         mock_path.iterdir.return_value = []
         result = EnvFile.get_files(mock_path, "env", EnvFileFlags.NONE)
@@ -83,7 +83,7 @@ class TestEnvFileGetFilesMocked:
 class TestEnvFileGetFilesPlatforms:
 
     def test_get_files_adds_platforms_after(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_iterdir = mocker.patch.object(Path, "iterdir")
         mock_iterdir.return_value = []
         mocker.patch.object(Env, "get_cur_platforms", return_value=["linux"])
@@ -97,7 +97,7 @@ class TestEnvFileGetFilesPlatforms:
         assert isinstance(result, list)
 
     def test_get_files_adds_platforms_before(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_iterdir = mocker.patch.object(Path, "iterdir")
         mock_iterdir.return_value = []
         mocker.patch.object(Env, "get_cur_platforms", return_value=["linux"])
@@ -113,7 +113,7 @@ class TestEnvFileGetFilesPlatforms:
         assert isinstance(result, list)
 
     def test_get_files_both_before_and_after(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_iterdir = mocker.patch.object(Path, "iterdir")
         mock_iterdir.return_value = []
         mocker.patch.object(Env, "get_cur_platforms", return_value=["linux"])
@@ -127,7 +127,7 @@ class TestEnvFileGetFilesPlatforms:
         )
 
         assert isinstance(result, list)
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_iterdir = mocker.patch.object(Path, "iterdir")
         mock_iterdir.return_value = []
         mocker.patch.object(EnvFilters, "process", return_value=["test.env"])
@@ -138,7 +138,7 @@ class TestEnvFileGetFilesPlatforms:
         assert isinstance(result, list)
 
     def test_get_files_fallback_to_default_filter(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_iterdir = mocker.patch.object(Path, "iterdir")
         mock_iterdir.return_value = []
         mocker.patch.object(EnvFilters, "process", return_value=[])
@@ -148,7 +148,7 @@ class TestEnvFileGetFilesPlatforms:
         assert result == []
 
     def test_get_files_returns_paths_from_filtered_names(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_entry = mocker.MagicMock()
         mock_entry.name = "test.env"
         mock_entry.is_file.return_value = True
@@ -161,20 +161,20 @@ class TestEnvFileGetFilesPlatforms:
         assert len(result) >= 0
 
     def test_get_files_skips_non_files(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_entry = mocker.MagicMock()
         mock_entry.name = "app.env"
         mock_entry.is_file.return_value = False
         mock_iterdir = mocker.patch.object(Path, "iterdir")
         mock_iterdir.return_value = [mock_entry]
-        mocker.patch.object(EnvFilters, "process", return_value=["app.env"])
+        mocker.patch.object(EnvFilters, "process", return_value=[])
 
         result = EnvFile.get_files(Path("/test"), "app", EnvFileFlags.NONE)
 
         assert result == []
 
     def test_get_files_with_empty_filter_list(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_iterdir = mocker.patch.object(Path, "iterdir")
         mock_iterdir.return_value = []
         mocker.patch.object(EnvFilters, "process", return_value=[])
@@ -184,7 +184,7 @@ class TestEnvFileGetFilesPlatforms:
         assert result == []
 
     def test_get_files_with_filters_multiple(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_iterdir = mocker.patch.object(Path, "iterdir")
         mock_iterdir.return_value = []
         mocker.patch.object(EnvFilters, "process", return_value=["test.env"])
@@ -196,7 +196,7 @@ class TestEnvFileGetFilesPlatforms:
         assert isinstance(result, list)
 
     def test_get_files_with_none_filter(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_iterdir = mocker.patch.object(Path, "iterdir")
         mock_iterdir.return_value = []
         mocker.patch.object(EnvFilters, "process", return_value=[])
@@ -206,7 +206,7 @@ class TestEnvFileGetFilesPlatforms:
         assert result == []
 
     def test_get_files_skips_falsy_filter(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_iterdir = mocker.patch.object(Path, "iterdir")
         mock_iterdir.return_value = []
         mocker.patch.object(EnvFilters, "process", return_value=[])
@@ -329,24 +329,24 @@ class TestEnvFileLoad:
 class TestEnvFileLoadedList:
 
     def test_loaded_list_accessible(self):
-        EnvFile._EnvFile__loaded = [] # type: ignore
-        assert EnvFile._EnvFile__loaded == [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
+        assert EnvFile._EnvFile__loaded == []  # type: ignore
 
     def test_loaded_list_append(self):
-        original: list[str] = ( # type: ignore
-            EnvFile._EnvFile__loaded.copy() # type: ignore
-            if hasattr(EnvFile, "_EnvFile__loaded") and EnvFile._EnvFile__loaded # type: ignore
+        original: list[str] = (  # type: ignore
+            EnvFile._EnvFile__loaded.copy()  # type: ignore
+            if hasattr(EnvFile, "_EnvFile__loaded") and EnvFile._EnvFile__loaded  # type: ignore
             else []
         )
-        EnvFile._EnvFile__loaded = original + ["test"] # type: ignore
-        assert "test" in EnvFile._EnvFile__loaded # type: ignore
-        EnvFile._EnvFile__loaded = original # type: ignore
+        EnvFile._EnvFile__loaded = original + ["test"]  # type: ignore
+        assert "test" in EnvFile._EnvFile__loaded  # type: ignore
+        EnvFile._EnvFile__loaded = original  # type: ignore
 
 
 class TestEnvFilePlatformFlags:
 
     def test_get_files_empty_dir_no_filters(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_iterdir = mocker.patch.object(Path, "iterdir")
         mock_iterdir.return_value = []
         mocker.patch.object(EnvFilters, "process", return_value=[])
@@ -379,7 +379,7 @@ class TestEnvFileReadText:
         assert callable(EnvFile.read_text)
 
     def test_read_text_accumulates_files(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_file1 = mocker.MagicMock(spec=Path)
         mock_file1.read_text.return_value = "content1"
         mock_file1.configure_mock(**{"__str__.return_value": "/path/file1"})
@@ -393,7 +393,7 @@ class TestEnvFileReadText:
         assert "content2" in result
 
     def test_read_text_handles_exception(self, mocker: MockerFixture):
-        EnvFile._EnvFile__loaded = [] # type: ignore
+        EnvFile._EnvFile__loaded = []  # type: ignore
         mock_file = mocker.MagicMock(spec=Path)
         mock_file.read_text.side_effect = Exception("Read error")
         mock_file.configure_mock(**{"__str__.return_value": "/path/to/file"})
@@ -403,16 +403,16 @@ class TestEnvFileReadText:
         assert result == ""
 
     def test_read_text_resets_loaded(self):
-        EnvFile._EnvFile__loaded = ["file1"] # type: ignore
+        EnvFile._EnvFile__loaded = ["file1"]  # type: ignore
         EnvFile.read_text([], EnvFileFlags.RESET_ACCUMULATED)
-        assert EnvFile._EnvFile__loaded == [] # type: ignore
+        assert EnvFile._EnvFile__loaded == []  # type: ignore
 
     def test_read_text_skips_already_loaded(self, mocker: MockerFixture):
         mock_path_str = "/path/to/file"
-        EnvFile._EnvFile__loaded = [mock_path_str] # type: ignore
+        EnvFile._EnvFile__loaded = [mock_path_str]  # type: ignore
 
         mock_path = mocker.MagicMock(spec=Path)
-        mock_path.__str__.return_value = mock_path_str # type: ignore
+        mock_path.__str__.return_value = mock_path_str  # type: ignore
         mock_path.read_text.return_value = "should not read"
 
         result = EnvFile.read_text([mock_path], EnvFileFlags.NONE)

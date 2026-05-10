@@ -52,7 +52,7 @@ class EnvFile:
         dir: Path | None = None,
         indicator: str | None = None,
         flags: EnvFileFlags = EnvFileFlags.ADD_PLATFORMS_BEFORE,
-        *filters: list[EnvFilter] | EnvFilter,
+        *filters: list[EnvFilter] | EnvFilter | None,
     ) -> list[Path]:
         """
         Get list of eligible files. Adds a list of platform names if
@@ -100,11 +100,12 @@ class EnvFile:
 
         # Append the filters passed as separate arguments
 
-        for filter in filters:
-            if isinstance(filter, list):
-                filters_ex.extend(filter)
-            elif filter:
-                filters_ex.append(filter)
+        if filters:
+            for filter in filters:
+                if isinstance(filter, list):
+                    filters_ex.extend(filter)
+                elif filter:
+                    filters_ex.append(filter)
 
         # Add the platforms filter  after the other ones (if required)
 
@@ -234,9 +235,7 @@ class EnvFile:
             # Expand the value and add to the dict of environment variables
 
             if val:
-                expanded = Env.expand(
-                    val, args=args, flags=expand_flags, chars=chars
-                )
+                expanded = Env.expand(val, args=args, flags=expand_flags, chars=chars)
                 environ[key] = str(expanded)
             elif key in environ:
                 del environ[key]

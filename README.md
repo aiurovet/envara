@@ -6,7 +6,7 @@ A library to expand environment variables, application arguments and escape sequ
 
 Does not depend on any special Python package.
 
-Please note that version `0.4.0` brings breaking changes: mainly, a switch from multiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line. Last but not least, public methods `Env.expand_posix(...)` and `Env.expand_simple(...)` have been moved to the private scope, so stop using those directly in favour of `Env.expand(...)`.
+Please note that version `0.4.0` brings breaking changes: mainly, a switch from multiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line. Finally, public methods `Env.expand_posix(...)` and `Env.expand_simple(...)` have been moved to the private scope, so stop using those directly in favour of `Env.expand(...)`.
 
 ---
 
@@ -17,7 +17,8 @@ Please note that version `0.4.0` brings breaking changes: mainly, a switch from 
 - [POSIX-style Expansions](#posix-style-expansions)
 - [Simple Expansions for Windows, OpenVMS, and RiscOS](#simple-expansions-for-windows-openvms-and-riscos)
 - [Env File Lookup](#env-file-lookup)
-- [What Kind of Expansion to Choose in Dot-Env Files?](#what-kind-of-expansion-to-choose-in-env-files)
+- [What Kind of Expansion to Choose in the Env Files?](#what-kind-of-expansion-to-choose-in-the-env-files)
+- [Good Luck!](#good-luck)
 
 ---
 
@@ -112,7 +113,9 @@ if __name__ == "__main__":
 The _envara_ library provides the following main components:
 
 ### `Env` class
-Class for string expansions. Provides static methods to:
+
+Provides string expansions via static methods to:
+
 - Expand environment variables and command-line arguments in strings as well as execute sub-commands
 - Unquote strings (remove enclosing quotes)
 - Unescape special characters (`\t`, `\n`, `\u0022`, etc.)
@@ -122,21 +125,26 @@ Class for string expansions. Provides static methods to:
 - Detect and work with multiple platforms (POSIX, Windows, RiscOS, VMS, etc.)
 
 Key class variables:
+
 - `IS_POSIX` - `True` if running under Linux, UNIX, BSD/macOS or similar
 - `IS_RISCOS` - `True` if running under Risc OS
 - `IS_VMS` - `True` if running under OpenVMS or similar
 - `IS_WINDOWS` - `True` if running under Windows or OS/2
 
 ### `EnvFile` class
+
 Reads series of `key=value` lines from env files, removes line comments, expands environment values and arguments, expands escaped characters, and sets or updates those as environment variables. Also allows hierarchical OS-specific stacking of such files.
 
 ### `EnvFilter` and `EnvFilters`
+
 Environment-related filtering, mainly for use with `EnvFile`. Allows filtering env files based on:
+
 - A necessary part of the filename (indicator)
 - Current runtime values (e.g., `dev`, `prod`)
 - All possible values for the runtime environment
 
 ### Enumerations
+
 - `EnvExpandFlags` - Controls expansion behavior (allow shell commands, subprocess execution, skip hard-quoted strings, strip comments/spaces, unescape, unquote)
 - `EnvFileFlags` - Controls file loading behavior (add platforms before/after filters, reset accumulated files)
 - `EnvPlatformFlags` - Controls platform listing (add empty string for any platform)
@@ -151,35 +159,42 @@ In fact, these are bash rules, but it makes sense to apply them to the environme
 ### Supported constructs
 
 **Basic variable expansion:**
+
 - `$NAME` and `${NAME}` - expand variable from the provided mapping (defaults to `os.environ`)
-- Positional arguments: `$1`, `$2`, ... (1-based indices supplied via `args`) - out-of-bounds indices leave the pattern unchanged
+- Positional arguments: `$1`, `$2`, … (1-based indices supplied via `args`) - out-of-bounds indices leave the pattern unchanged
 - `$$` expands to the current process ID
 
 **Length and substrings:**
+
 - `${#NAME}` returns the length of `NAME`'s value
 - `${NAME:offset[:length]}` extracts a substring; negative `offset` counts from the end
 
 **Defaulting and alternatives:**
+
 - `${NAME:-word}` - use `word` if `NAME` is unset or null
 - `${NAME-word}` - use `word` if `NAME` is unset
 - `${NAME:+word}` - use `word` if `NAME` is set and non-empty
 - `${NAME:?message}` and `${NAME?message}` - raise `ValueError` with `message` if variable is not set (or null for `:?`)
 
 **Assignment:**
+
 - `${NAME:=word}` - set `NAME` to the expansion of `word` if `NAME` is unset or null
 - Assignment writes to the `vars` mapping you pass (if any)
 
 **Pattern removals:**
+
 - `${NAME#pattern}` and `${NAME##pattern}` - remove shortest/longest matching prefix using glob-style patterns
 - `${NAME%pattern}` and `${NAME%%pattern}` - remove shortest/longest matching suffix
 
 **Substitution:**
+
 - `${NAME/pat/repl}` - replace first match of glob `pat` with `repl` (replacement is recursively expanded)
 - `${NAME//pat/repl}` - replace all matches
 - Anchored forms: `${NAME/#pat/repl}` replaces matching prefix, `${NAME/%pat/repl}` replaces matching suffix
 - Global anchored forms iteratively apply the anchored substitution
 
 **Case modification (NEW):**
+
 - `${var^}` - uppercase first character
 - `${var^^}` - uppercase all characters
 - `${var,}` - lowercase first character
@@ -190,6 +205,7 @@ In fact, these are bash rules, but it makes sense to apply them to the environme
 - When variable is unset, the expression is returned unchanged; when null (empty), the empty string is returned
 
 **Unescaping:**
+
 - An escape character before `$` prevents expansion
 - Pairs of backslashes reduce appropriately
 - An escape character followed by `xNN` converts into an ASCII character with the hexadecimal code `NN`
@@ -199,6 +215,7 @@ In fact, these are bash rules, but it makes sense to apply them to the environme
 - All other characters, preceded by the escape one, convert to themselves
 
 **Command substitution:**s
+
 - `$(...)` and backtick commands are supported
 - Inner content is first expanded before execution
 - The executed command's stdout (with trailing newline removed) is inserted into the result
@@ -207,15 +224,17 @@ In fact, these are bash rules, but it makes sense to apply them to the environme
 ### Safety and Configuration
 
 The following parameters control execution of command substitutions:
+
 - `flags`: `EnvExpandFlags` controls expansion
-  - `ALLOW_SHELL` - command substitutions executed with `shell=True` (less safe, more flexible)
-  - `ALLOW_SUBPROC` - executed with `shell=False` using `shlex.split(...)` (safer)
+- `ALLOW_SHELL` - command substitutions executed with `shell=True` (less safe, more flexible)
+- `ALLOW_SUBPROC` - executed with `shell=False` using `shlex.split(...)` (safer)
 
 ---
 
 ## Simple Expansions for Windows, OpenVMS, and RiscOS
 
 This method of expansion supports:
+
 - Windows-style `%NAME%`, `%1`, `%*`, `%%`, and simple `%~` modifiers (e.g., `%~dp1`) for extracting path components on Windows-like inputs.
 - A substring form for named variables using the syntax `%NAME:~start[,length]%` - negative `start` counts from the end.
 - Even more limited OpenVMS-like variables expansion `'NAME'` as well as the RiscOS-like `<NAME>`.
@@ -229,28 +248,30 @@ It is implemented via `Env.expand(...)` which eventually calls private method `_
 The `EnvFile.load(...)` method looks for the following files. The leading dot is optional; `<sys.platform>` is lowercased; each file is loaded at most once (unless the internal cache is dropped via `EnvFileFlags.RESET_ACCUMULATED`).
 
 **For any filter:**
+
 ```
 [.-_]env[.-_]
 ```
 
 **Platforms** (added to the list of filters by default):
 
-| Platform | Files (not limited to) |
-|---|---|
-| Any platform | `.env`, `-env`, `_env`, `env`, `env-`, `env_`, `.env-`, `.env_`, `-env.`, `-env_`, `_env.`, `_env-` |
-| Any POSIX platform | `.env.posix`, `[.]posix.env`, `abc.posix-def_env` (have `env` and `posix` parts) |
-| Linux, Android | POSIX + `.env.linux`, `[.]linux.env`, `abc.linux-def_env` |
-| BSD-like | POSIX + `.env.bsd`, `[.]bsd.env`, `bsd_abc.def-env.ghi` |
-| iOS, iPadOS, macOS | BSD + `.env.darwin`, `[.]darwin.env` |
-| Windows | `.env.windows`, `[.]windows.env` |
-| VMS | `.env.vms`, `[.]vms.env` |
-| Java | POSIX or Windows |
+| Platform           | Files (not limited to)                                                                              |
+|--------------------|-----------------------------------------------------------------------------------------------------|
+| Any platform       | `.env`, `-env`, `_env`, `env`, `env-`, `env_`, `.env-`, `.env_`, `-env.`, `-env_`, `_env.`, `_env-` |
+| Any POSIX platform | `.env.posix`, `[.]posix.env`, `abc.posix-def_env` (have `env` and `posix` parts)                    |
+| Linux, Android     | POSIX + `.env.linux`, `[.]linux.env`, `abc.linux-def_env`                                           |
+| BSD-like           | POSIX + `.env.bsd`, `[.]bsd.env`, `bsd_abc.def-env.ghi`                                             |
+| iOS, iPadOS, macOS | BSD + `.env.darwin`, `[.]darwin.env`                                                                |
+| Windows            | `.env.windows`, `[.]windows.env`                                                                    |
+| VMS                | `.env.vms`, `[.]vms.env`                                                                            |
+| Java               | POSIX or Windows                                                                                    |
 
 If a platform is not listed explicitly, it falls into the last category. None of these files is required - a file is only loaded if found **and** verified to be relevant to the platform you are running under.
 
 **Extra filters** can also be passed - things like `"dev"` (runtime environment) or `"es"` (current language), as well as lists of all expected environments and languages.
 
 **Example** (portable Chrome launcher):
+
 ```
 # .env (or .env.any)
 APP_NAME = $0
@@ -276,10 +297,10 @@ CMD_CHROME = "chrome $BROWSER_ARGS"
 
 ## What Kind of Expansion to Choose in the Env Files?
 
-By default, the expansion that is specific to the current platform will be chosen. You can override that by having the first non-empty line representing a line comment for the desired platform's rules. For instance, if the first non-empty line in a env file starts with `#`, it will force `Env.expand(...)` to use POSIX (in fact, bash) rules. If it starts with `::`, then Windows, if with `!`, then OpenVMS, and if with `|`, then RiscOS rules will apply. This resembles the shebang `#!` sequence for Linux/BSD/UNIX shell scripts. And it is always a good idea to start such file with a meaningful comment anyway, so you can kill two birds with one stone.
+By default, the expansion that is specific to the current platform will be chosen. You can override that by having the first non-empty line representing a line comment for the desired platform's rules. For instance, if the first non-empty line in an env file starts with `#`, it will force `Env.expand(...)` to use POSIX (in fact, bash) rules. If it starts with `::`, then Windows, if with `!`, then OpenVMS, and if with `|`, then RiscOS rules will apply. This resembles the shebang `#!` sequence for Linux/BSD/UNIX shell scripts. And it is always a good idea to start such a file with a meaningful comment anyway, so you can address both needs at once.
 
 ---
 
-## Good Luck!
+## Good Luck&#33;
 
 [Back to top](#table-of-contents)
