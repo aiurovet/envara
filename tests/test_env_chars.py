@@ -140,9 +140,6 @@ class TestEnvCharsMethods:
 
 class TestEnvCharsSelect:
 
-    @pytest.mark.xfail(
-        reason="Source bug: startswith gets EnvCharsData instead of string"
-    )
     def test_select_copies_constants(self):
         EnvChars = _get_envchars(is_posix=True)
         EnvChars.select("test")
@@ -150,9 +147,6 @@ class TestEnvCharsSelect:
         assert EnvChars.Default is not EnvChars.POSIX
         assert EnvChars.Current is not EnvChars.POSIX
 
-    @pytest.mark.xfail(
-        reason="Source bug: startswith gets EnvCharsData instead of string"
-    )
     def test_select_sets_current_based_on_comment(self, mocker: MockerFixture):
         EnvChars = _get_envchars(is_posix=True)
         EnvChars.select("# test")
@@ -184,9 +178,6 @@ class TestEnvCharsSelect:
         assert EnvChars.Default is not None
         assert EnvChars.Default.expand == expected_expand
 
-    @pytest.mark.xfail(
-        reason="Source bug: startswith gets EnvCharsData instead of string"
-    )
     def test_select_with_empty_string(self):
         EnvChars = _get_envchars(is_posix=True)
         EnvChars.select("")

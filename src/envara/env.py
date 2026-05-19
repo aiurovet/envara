@@ -175,7 +175,7 @@ class Env:
         if not path:
             return path
 
-        result: str = Env.expand(
+        result = Env.expand(
             input=str(path), args=args, vars=vars, flags=flags, chars=chars
         )
 
@@ -205,9 +205,9 @@ class Env:
         if vars is None:
             vars = os.environ
 
-        allow_shell: bool = (flags & EnvExpandFlags.ALLOW_SHELL) != 0
+        allow_shell = (flags & EnvExpandFlags.ALLOW_SHELL) != 0
 
-        allow_subprocess: bool = allow_shell or (
+        allow_subprocess = allow_shell or (
             (flags & EnvExpandFlags.ALLOW_SUBPROC) != 0
         )
 
@@ -258,7 +258,7 @@ class Env:
                 length = int(sm.group(2)) if sm.group(2) is not None else None
                 if not is_set:
                     return f"{expand_char}{{{inner}}}"
-                text: str = val
+                text = val
                 if offset < 0:
                     offset = len(text) + offset
                     if offset < 0:
@@ -1200,16 +1200,16 @@ class Env:
 
         # Initialise
 
-        result: str = input
-        length: int = len(result)
+        result = input
+        length = len(result)
 
-        beg_chr: str = result[0]
-        end_chr: str = result[length - 1]
+        beg_chr = result[0]
+        end_chr = result[length - 1]
 
         # Get the escape and hard-quote characters to use
 
-        esc: str = chars.escape
-        hard_quote: str = chars.hard_quote
+        esc = chars.escape
+        hard_quote = chars.hard_quote
 
         # If quoting is not forced, and hard or normal quote is around already,
         # or no space found, return as is
@@ -1281,9 +1281,10 @@ class Env:
             tokstr = "".join(token)
             token.clear()
             if chars.cutter and tokstr.startswith(chars.cutter):
-                return
+                return False
             tokstr = Env.expand(tokstr, args=args, vars=vars, flags=flags, chars=chars)
-            result.append(tokstr)
+            if tokstr:
+                result.append(tokstr)
             return True
 
         # Define cumulative lists
@@ -1413,15 +1414,15 @@ class Env:
         # Loop through the input and accumulate valid characters in chr_lst
 
         chr_lst: list[str] = []
-        cur_pos: int = -1
-        esc_pos: int = -1
-        is_escaped: bool = False
+        cur_pos = -1
+        esc_pos = -1
+        is_escaped = False
 
         # Start and end of a substring to accumulate for the code-to-string
         # conversion
 
-        acc_beg_pos: int = -1
-        acc_end_pos: int = -1
+        acc_beg_pos = -1
+        acc_end_pos = -1
 
         for cur_char in input:
             cur_pos = cur_pos + 1
@@ -1510,19 +1511,19 @@ class Env:
         if not input:
             return (input, EnvQuoteType.NONE)
 
-        strip_spaces: bool = (flags & EnvExpandFlags.STRIP_SPACES) != 0
-        result: str = input.strip() if (strip_spaces) else input
+        strip_spaces = (flags & EnvExpandFlags.STRIP_SPACES) != 0
+        result = input.strip() if (strip_spaces) else input
 
         if not result:
             return (result, EnvQuoteType.NONE)
 
-        escape: str = chars.escape
-        quote: str = chars.hard_quote
+        escape = chars.escape
+        quote = chars.hard_quote
 
         if quote and result.startswith(quote):
             result = result[len(quote) :]
-            end_pos: int = -1
-            i: int = 0
+            end_pos = -1
+            i = 0
             orig_len: int = len(result)
             while i < orig_len:
                 if result[i] == escape and i + 1 < orig_len:
@@ -1536,13 +1537,13 @@ class Env:
                 raise ValueError(f"Unterminated hard-quoted string: {input}")
             return (result[0:end_pos], EnvQuoteType.HARD)
 
-        escape: str = chars.escape
-        quote: str = chars.normal_quote
+        escape = chars.escape
+        quote = chars.normal_quote
 
         if quote and result.startswith(quote):
             result = result[len(quote) :]
-            end_pos: int = -1
-            i: int = 0
+            end_pos = -1
+            i = 0
             orig_len: int = len(result)
             while i < orig_len:
                 if result[i] == escape and i + 1 < orig_len:
@@ -1556,10 +1557,10 @@ class Env:
                 raise ValueError(f"Unterminated quoted string: {input}")
             return (result[0:end_pos], EnvQuoteType.NORMAL)
 
-        cutter: str = chars.cutter
+        cutter = chars.cutter
 
         if cutter:
-            i: int = 0
+            i = 0
             orig_len: int = len(result)
             cutter_len: int = len(cutter)
             while i < orig_len:
@@ -1605,7 +1606,7 @@ class Env:
         :rtype: None
         """
 
-        dtl: str = input[beg_pos:end_pos]
+        dtl = input[beg_pos:end_pos]
 
         raise ValueError(
             f'Incomplete escape sequence from [{beg_pos}]: "{dtl}" in "{input}"'

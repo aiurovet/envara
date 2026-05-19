@@ -115,9 +115,9 @@ class EnvFilter:
 
         # Initialize loop variables
 
-        curr_pos: int = -1
-        last_pos: int = inp_len - 1
-        next_pos: int = curr_pos + 1
+        curr_pos = -1
+        last_pos = inp_len - 1
+        next_pos = curr_pos + 1
 
         # Loop through every occurrence of value, and when it is
         # surrounded with separators or edges, then found
@@ -180,8 +180,8 @@ class EnvFilter:
         # Initialize cur_values count as well as index related to position
         # in the cur_values list
 
-        cur_index: int = 0
-        found_index: int = -1
+        cur_index = 0
+        found_index = -1
 
         # Find the first matching value
 

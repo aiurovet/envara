@@ -4657,6 +4657,16 @@ class TestEnvSplit:
             assert result == ["expanded", "expanded"]
             assert mock_expand.call_count == 2
 
+    def test_split_expand_empty_token_skipped(self):
+        """Test that tokens expanding to empty are omitted from result."""
+        result = Env.split(
+            "${VAR:+alt}",
+            vars={},
+            flags=EnvExpandFlags.NONE,
+            chars=EnvChars.POSIX,
+        )
+        assert result == []
+
     # Test with custom chars using copy_with
     @pytest.mark.parametrize(
         "input_str,chars,expected",

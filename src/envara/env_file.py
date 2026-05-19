@@ -19,7 +19,6 @@ import re
 from typing import ClassVar, Final
 
 from envara.env_chars import EnvChars
-from envara.env_chars_data import EnvCharsData
 from envara.env_file_flags import EnvFileFlags
 from envara.env_filter import EnvFilter
 from envara.env import Env
@@ -126,7 +125,7 @@ class EnvFile:
 
         # Grab filenames of all files in the given directory
 
-        file_names: list[str] = [
+        file_names = [
             entry.name for entry in dir.iterdir() if entry.is_file()
         ]
 
@@ -212,7 +211,7 @@ class EnvFile:
         if data is None:
             return
 
-        chars: EnvCharsData = EnvChars.Current
+        chars = EnvChars.Current
 
         for line in data.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
             # Skip amy empty line

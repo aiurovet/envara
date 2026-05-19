@@ -48,7 +48,7 @@ class EnvFilters:
         # Accumulate indices of all relevant items from the input
 
         for item in input:
-            is_match: bool = True
+            is_match = True
             item_indices: list[int] = []
 
             for filter in filters:
