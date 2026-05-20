@@ -14,7 +14,6 @@ from envara.env_filter import EnvFilter
 
 
 class EnvFilters:
-
     @staticmethod
     def process(
         input: list[str],

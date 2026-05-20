@@ -50,7 +50,6 @@ class TestEnvFileFlagsCombine:
 
 
 class TestEnvFileFlagsIdentity:
-
     def test_combined_flags_are_singleton(self):
         result1 = EnvFileFlags.ADD_PLATFORMS_BEFORE | EnvFileFlags.RESET_ACCUMULATED
         result2 = EnvFileFlags.ADD_PLATFORMS_BEFORE | EnvFileFlags.RESET_ACCUMULATED
@@ -63,13 +62,11 @@ class TestEnvFileFlagsIdentity:
 
 
 class TestEnvFileFlagsIsIntFlag:
-
     def test_is_intflag(self):
         assert issubclass(EnvFileFlags, IntFlag)
 
 
 class TestEnvFileFlagsMutuallyExclusive:
-
     def test_platform_flags_are_exclusive(self):
         assert not (
             EnvFileFlags.ADD_PLATFORMS_BEFORE & EnvFileFlags.ADD_PLATFORMS_AFTER
@@ -81,7 +78,6 @@ class TestEnvFileFlagsMutuallyExclusive:
 
 
 class TestEnvFileFlagsNone:
-
     def test_none_combines_with_and(self):
         result = EnvFileFlags.ADD_PLATFORMS_BEFORE & EnvFileFlags.NONE
         assert result == EnvFileFlags.NONE

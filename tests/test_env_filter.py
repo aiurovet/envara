@@ -7,7 +7,6 @@ EnvFilter = EnvFilterModule.EnvFilter
 
 
 class TestEnvFilterConstants:
-
     def test_default_indicator_is_env(self):
         assert EnvFilter.DEFAULT_INDICATOR == "env"
 
@@ -135,7 +134,6 @@ class TestEnvFilterHasValue:
 
 
 class TestEnvFilterIntegration:
-
     def test_complex_matching(self):
         f = EnvFilter(indicator="app", cur_values=["v1"])
         found, _ = f.has_value("v1.0.0", "v1")

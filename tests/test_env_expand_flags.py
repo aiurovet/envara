@@ -66,7 +66,6 @@ class TestEnvExpandFlagsCombine:
 
 
 class TestEnvExpandFlagsDefault:
-
     def test_default_contains_expected_flags(self):
         expected = {
             EnvExpandFlags.ALLOW_SHELL,
@@ -84,7 +83,6 @@ class TestEnvExpandFlagsDefault:
 
 
 class TestEnvExpandFlagsIdentity:
-
     def test_combined_flags_are_singleton(self):
         result1 = EnvExpandFlags.ALLOW_SHELL | EnvExpandFlags.UNQUOTE
         result2 = EnvExpandFlags.ALLOW_SHELL | EnvExpandFlags.UNQUOTE
@@ -92,13 +90,11 @@ class TestEnvExpandFlagsIdentity:
 
 
 class TestEnvExpandFlagsIsIntFlag:
-
     def test_is_intflag(self):
         assert issubclass(EnvExpandFlags, IntFlag)
 
 
 class TestEnvExpandFlagsNone:
-
     def test_none_combines_with_and(self):
         result = EnvExpandFlags.ALLOW_SHELL & EnvExpandFlags.NONE
         assert result == EnvExpandFlags.NONE
@@ -112,7 +108,6 @@ class TestEnvExpandFlagsNone:
 
 
 class TestEnvExpandFlagsValues:
-
     def test_default_value(self):
         assert EnvExpandFlags.DEFAULT.value == (
             EnvExpandFlags.ALLOW_SHELL

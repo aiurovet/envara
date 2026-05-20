@@ -43,15 +43,15 @@ def main():
 
     # List of all platforms
     print(f"\n*** All platforms ***\n")
-    print(f'"{"\", \"".join(Env.get_all_platforms())}"')
+    print(f'"{'", "'.join(Env.get_all_platforms())}"')
 
     # List of current platforms
     print(f"\n*** Current platforms ***\n")
-    print(f'"{"\", \"".join(Env.get_cur_platforms())}"')
+    print(f'"{'", "'.join(Env.get_cur_platforms())}"')
 
     # List files related to the current platform stack
     print(f"\n*** Env file stack ***\n")
-    print(f'"{"\", \"".join([x.name for x in EnvFile.get_files(inp_dir)])}"')
+    print(f'"{'", "'.join([x.name for x in EnvFile.get_files(inp_dir)])}"')
 
     # Make a copy of the old environment variables
     old_env = os.environ.copy()

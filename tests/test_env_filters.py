@@ -6,7 +6,6 @@ EnvFilters = env_filters_mod.EnvFilters
 
 
 class TestEnvFiltersIntegration:
-
     def test_process_empty_result(self):
         result = EnvFilters.process(
             ["file.txt", "data.json"], [EnvFilter(indicator="env")]
@@ -29,7 +28,6 @@ class TestEnvFiltersIntegration:
 
 
 class TestEnvFiltersProcess:
-
     def test_process_different_lengths(self):
         files = ["dev.env", ".env"]
         filters = [

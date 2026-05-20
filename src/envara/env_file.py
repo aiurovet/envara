@@ -32,7 +32,6 @@ from envara.env_platform_flags import EnvPlatformFlags
 
 
 class EnvFile:
-
     DEFAULT_EXPAND_FLAGS: ClassVar[EnvExpandFlags] = (
         EnvExpandFlags.DEFAULT | EnvExpandFlags.STRIP_COMMENT
     )
@@ -125,9 +124,7 @@ class EnvFile:
 
         # Grab filenames of all files in the given directory
 
-        file_names = [
-            entry.name for entry in dir.iterdir() if entry.is_file()
-        ]
+        file_names = [entry.name for entry in dir.iterdir() if entry.is_file()]
 
         # Filter and sort filenames
 

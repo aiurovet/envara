@@ -11,7 +11,6 @@ def get_main_output() -> Any:
 
 
 class TestEnvaraMain:
-
     def test_main_prints_class_list(self, capsys: CaptureFixture[str]):
         main = get_main_output()
         main()
@@ -67,7 +66,6 @@ class TestEnvaraMain:
 
 
 class TestEnvaraMainContent:
-
     def test_prints_examples_section(self, capsys: CaptureFixture[str]):
         main = get_main_output()
         main()
@@ -89,7 +87,6 @@ class TestEnvaraMainContent:
 
 
 class TestEnvaraMainEdgeCases:
-
     def test_main_does_not_raise_exception(self):
         main = get_main_output()
         try:
@@ -106,7 +103,6 @@ class TestEnvaraMainEdgeCases:
 
 
 class TestEnvaraMainIntegration:
-
     def test_main_callable_twice(self, capsys: CaptureFixture[str]):
         main = get_main_output()
         result1 = main()

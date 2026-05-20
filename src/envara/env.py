@@ -125,7 +125,7 @@ class Env:
             variables, etc.
         :type chars: EnvCharsData
 
-        :return: Expanded string or Path object
+        :return: Expanded string
         :rtype: str | None
         """
 
@@ -207,9 +207,7 @@ class Env:
 
         allow_shell = (flags & EnvExpandFlags.ALLOW_SHELL) != 0
 
-        allow_subprocess = allow_shell or (
-            (flags & EnvExpandFlags.ALLOW_SUBPROC) != 0
-        )
+        allow_subprocess = allow_shell or ((flags & EnvExpandFlags.ALLOW_SUBPROC) != 0)
 
         s = input
         res: list[str] = []
@@ -1128,7 +1126,6 @@ class Env:
         re_flags = re.IGNORECASE | re.UNICODE
 
         for pattern, platforms in Env.SYS_PLATFORM_MAP.items():
-
             # If the platform doesn't match the running one, skip it
 
             if pattern:
@@ -1138,7 +1135,6 @@ class Env:
             # Append every platform from the current list if eligible
 
             for platform in platforms:
-
                 # Perform extra checks, platform is never empty or None
 
                 if platform == Env.PLATFORM_POSIX:
@@ -1173,8 +1169,8 @@ class Env:
         :param input: String being expanded
         :type input: str
 
-        :param type: Type of quotes to enclose in
-        :type type: EnvQuoteType
+        :param is_forced: If True, enclose in quotes even if already quoted
+        :type is_forced: bool
 
         :param chars: Platform-specific special environment characters to
             parse various tokens like escaped characters, environment
@@ -1250,6 +1246,17 @@ class Env:
 
         :param input: String to split
         :type input: str | None
+
+        :param args: List of arguments to expand $#, $1, $2, ...
+            pass [] or None to avoid expansion
+        :type args: list[str] | None
+
+        :param vars: Dictionary of pairs string => string;
+            if None, os.environ will be used; pass {} to avoid expansion
+        :type vars: MutableMapping[str, str] | None
+
+        :param flags: Flags controlling what/how to expand tokens
+        :type flags: EnvExpandFlags
 
         :param chars: Platform-specific special environment characters to
             parse various tokens like escaped characters, environment
@@ -1362,7 +1369,7 @@ class Env:
 
             if (quote is not None) and (ch != quote):
                 raise ValueError(
-                    f"Unterminated {"hard-" if quote == hard_quote else ""}quoted argument in: {input}"
+                    f"Unterminated {'hard-' if quote == hard_quote else ''}quoted argument in: {input}"
                 )
 
             add_token_and_reset(
@@ -1493,10 +1500,10 @@ class Env:
         characters.
 
         :param input: String to remove enclosing quotes from
-        :type input: str
+        :type input: str | None
 
         :param flags: Flags controlling what/how to unquote input. Essentially,
-            only two bits are considered: STRIP_SPACES and REMOVE_LINE_COMMENT
+            only two bits are considered: STRIP_SPACES and STRIP_COMMENT
         :type flags: EnvExpandFlags
 
         :param chars: Platform-specific special environment characters to
@@ -1505,7 +1512,7 @@ class Env:
         :type chars: EnvCharsData
 
         :return: Unquoted input and the type of surrounding quotes (see EnvQuoteType)
-        :rtype: tuple[str, EnvQuoteType]
+        :rtype: tuple[str | None, EnvQuoteType]
         """
 
         if not input:

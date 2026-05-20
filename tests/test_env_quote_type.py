@@ -27,13 +27,11 @@ class TestEnvQuoteTypeIdentity:
 
 
 class TestEnvQuoteTypeIsIntEnum:
-
     def test_is_intenum(self):
         assert issubclass(EnvQuoteType, IntEnum)
 
 
 class TestEnvQuoteTypeNone:
-
     def test_none_is_zero(self):
         assert EnvQuoteType.NONE == 0
 

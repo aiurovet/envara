@@ -32,7 +32,6 @@ class TestEnvPlatformFlagsBitwiseOperations:
 
 
 class TestEnvPlatformFlagsCombine:
-
     def test_and_with_self(self):
         combined = EnvPlatformFlags.ADD_EMPTY & EnvPlatformFlags.ADD_EMPTY
         assert combined == EnvPlatformFlags.ADD_EMPTY
@@ -61,13 +60,11 @@ class TestEnvPlatformFlagsIdentity:
 
 
 class TestEnvPlatformFlagsIsIntFlag:
-
     def test_is_intflag(self):
         assert issubclass(EnvPlatformFlags, IntFlag)
 
 
 class TestEnvPlatformFlagsNone:
-
     def test_none_combines_with_and(self):
         result = EnvPlatformFlags.ADD_EMPTY & EnvPlatformFlags.NONE
         assert result == EnvPlatformFlags.NONE

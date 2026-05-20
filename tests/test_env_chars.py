@@ -139,7 +139,6 @@ class TestEnvCharsMethods:
 
 
 class TestEnvCharsSelect:
-
     def test_select_copies_constants(self):
         EnvChars = _get_envchars(is_posix=True)
         EnvChars.select("test")

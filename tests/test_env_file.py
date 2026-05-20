@@ -28,7 +28,6 @@ EnvChars = env_chars_mod.EnvChars
 
 
 class TestEnvFileConstants:
-
     def test_default_expand_flags_has_remove_line_comment(self):
         assert EnvFile.DEFAULT_EXPAND_FLAGS & EnvExpandFlags.STRIP_COMMENT
 
@@ -44,7 +43,6 @@ class TestEnvFileConstants:
 
 
 class TestEnvFileGetFiles:
-
     def test_get_files_empty_dir(self, mocker: MockerFixture):
         EnvFile._EnvFile__loaded = []  # type: ignore
         mock_iterdir = mocker.patch.object(Path, "iterdir")
@@ -71,7 +69,6 @@ class TestEnvFileGetFiles:
 
 
 class TestEnvFileGetFilesMocked:
-
     def test_get_files_with_mock(self, mocker: MockerFixture):
         EnvFile._EnvFile__loaded = []  # type: ignore
         mock_path = mocker.MagicMock()
@@ -81,7 +78,6 @@ class TestEnvFileGetFilesMocked:
 
 
 class TestEnvFileGetFilesPlatforms:
-
     def test_get_files_adds_platforms_after(self, mocker: MockerFixture):
         EnvFile._EnvFile__loaded = []  # type: ignore
         mock_iterdir = mocker.patch.object(Path, "iterdir")
@@ -217,7 +213,6 @@ class TestEnvFileGetFilesPlatforms:
 
 
 class TestEnvFileLoad:
-
     def test_get_files_public_api(self):
         assert hasattr(EnvFile, "get_files")
         assert callable(EnvFile.get_files)
@@ -327,7 +322,6 @@ class TestEnvFileLoad:
 
 
 class TestEnvFileLoadedList:
-
     def test_loaded_list_accessible(self):
         EnvFile._EnvFile__loaded = []  # type: ignore
         assert EnvFile._EnvFile__loaded == []  # type: ignore
@@ -344,7 +338,6 @@ class TestEnvFileLoadedList:
 
 
 class TestEnvFilePlatformFlags:
-
     def test_get_files_empty_dir_no_filters(self, mocker: MockerFixture):
         EnvFile._EnvFile__loaded = []  # type: ignore
         mock_iterdir = mocker.patch.object(Path, "iterdir")
@@ -357,7 +350,6 @@ class TestEnvFilePlatformFlags:
 
 
 class TestEnvFileReadText:
-
     def test_read_text_empty(self, mocker: MockerFixture):
         mock_path = MagicMock()
         mock_path.read_text.return_value = ""
@@ -421,7 +413,6 @@ class TestEnvFileReadText:
 
 
 class TestEnvFileReadTextMocked:
-
     def test_read_text_with_mock(self, mocker: MockerFixture):
         mock_path = mocker.MagicMock()
         mock_path.read_text.return_value = "KEY=value"
