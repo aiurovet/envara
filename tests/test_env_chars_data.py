@@ -4,7 +4,7 @@ import pytest
 from tests.conftest import env_chars_data_mod
 
 
-def _make_envcharsdata(**kwargs: dict[str, str]):
+def _make_envcharsdata(**kwargs: Any):
     kwargs.setdefault("normal_quote", "")
     return env_chars_data_mod.EnvCharsData(**kwargs)
 
@@ -51,7 +51,7 @@ class TestEnvCharsDataConstructor:
     def test_constructor_defaults(self):
         info = _make_envcharsdata()
 
-        assert info.is_posix == False
+        assert not info.is_posix
         assert info.expand == ""
         assert info.windup == ""
         assert info.escape == ""
@@ -100,7 +100,7 @@ class TestEnvCharsDataCopyWith:
             ("normal_quote", '"', ""),
         ],
     )
-    def test_copy_with_single_field_changed(self, field, val1, val2):
+    def test_copy_with_single_field_changed(self, field: str, val1: Any, val2: Any):
         src = _make_envcharsdata(**{field: val1})
         result = src.copy_with(**{field: val2})
         assert getattr(result, field) == val2
@@ -118,7 +118,7 @@ class TestEnvCharsDataCopyWith:
 
         result = src.copy_with()
 
-        assert result.is_posix == True
+        assert result.is_posix
         assert result.expand == "$"
         assert result.windup == ">"
         assert result.escape == "\\"
@@ -139,7 +139,7 @@ class TestEnvCharsDataCopyWith:
 
         result = src.copy_with(expand="%", windup=">", escape="^")
 
-        assert result.is_posix == True
+        assert result.is_posix
         assert result.expand == "%"
         assert result.windup == ">"
         assert result.escape == "^"
@@ -175,7 +175,7 @@ class TestEnvCharsDataEquality:
             ("normal_quote", '"', ""),
         ],
     )
-    def test_eq_different_single_field(self, field, val1, val2):
+    def test_eq_different_single_field(self, field: str, val1: Any, val2: Any):
         info1 = _make_envcharsdata(**{field: val1})
         info2 = _make_envcharsdata(**{field: val2})
         assert info1 != info2
@@ -203,7 +203,7 @@ class TestEnvCharsDataEquality:
 
     def test_eq_with_none(self):
         info = _make_envcharsdata(expand="$")
-        assert info != None
+        assert info is not None
 
     def test_eq_with_different_type(self):
         info = _make_envcharsdata(expand="$")

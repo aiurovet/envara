@@ -1,3 +1,7 @@
+## 0.4.2
+
+Removed unnecessary type specifiers, fixed a few failing and xpassed tests
+
 ## 0.4.1
 
 Documentation corrected

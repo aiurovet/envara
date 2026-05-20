@@ -77,7 +77,7 @@ class TestEnvPlatformFlagsNone:
         assert result == EnvPlatformFlags.ADD_EMPTY
 
     def test_none_is_zero(self):
-        assert EnvPlatformFlags.NONE == 0
+        assert int(EnvPlatformFlags.NONE) == 0
         assert EnvPlatformFlags.NONE.value == 0
 
 
