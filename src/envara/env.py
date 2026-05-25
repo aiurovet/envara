@@ -97,6 +97,7 @@ class Env:
         vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
         chars: EnvCharsData = EnvChars.Current,
+        subprocess_timeout: float | None = None,
     ) -> str | None:
         """
         Unquote the input if required via flags, remove trailing line comment
@@ -125,6 +126,9 @@ class Env:
             variables, etc.
         :type chars: EnvCharsData
 
+        :param subprocess_timeout: Timeout in seconds for subprocess execution
+        :type subprocess_timeout: float | None
+
         :return: Expanded string
         :rtype: str | None
         """
@@ -143,7 +147,12 @@ class Env:
 
         if chars and chars.is_posix:
             result = Env.__expand_posix(
-                result, args=args, vars=vars, flags=flags, chars=chars
+                result,
+                args=args,
+                vars=vars,
+                flags=flags,
+                chars=chars,
+                subprocess_timeout=subprocess_timeout,
             )
         else:
             result = Env.__expand_simple(
@@ -170,13 +179,16 @@ class Env:
         chars: EnvCharsData = EnvChars.Current,
     ) -> Path | None:
         """
-        A wrapper around expand() for paths
+        A wrapper around expand() for paths. It also expands the current or
+        specific user's directory according to the current OS's rules
         """
         if not path:
             return path
 
+        input = str(path.expanduser())
+
         result = Env.expand(
-            input=str(path), args=args, vars=vars, flags=flags, chars=chars
+            input=input, args=args, vars=vars, flags=flags, chars=chars
         )
 
         return Path(result) if result else None
@@ -219,9 +231,6 @@ class Env:
         expand_char = chars.expand
         escape_char = chars.escape
 
-        # def get_var(name: str):
-        #     return vars.get(name) if vars is not None else os.environ.get(name)
-
         def eval_braced(inner: str) -> str:
             # Length: ${#NAME}
             if inner.startswith("#"):
@@ -235,19 +244,27 @@ class Env:
             m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)", inner)
             if not m:
                 # Support numeric positional parameters inside braces: ${1}, ${2}
-                md = re.match(r"^(\d+)$", inner)
+                md = re.match(r"^(\d+)", inner)
                 if md:
-                    idx = int(md.group(1)) - 1
+                    name = md.group(1)
+                    rest = inner[md.end():]
+                    idx = int(name) - 1
                     if args and 0 <= idx < len(args):
-                        return args[idx]
+                        val = args[idx]
+                        is_set = True
+                        is_null = (val == "")
+                    else:
+                        val = None
+                        is_set = False
+                        is_null = False
+                else:
                     return f"{expand_char}{{{inner}}}"
-                return f"{expand_char}{{{inner}}}"
-            name = m.group(1)
-            rest = inner[m.end() :]
-
-            val = vars.get(name)
-            is_set = val is not None
-            is_null = (val == "") if is_set else False
+            else:
+                name = m.group(1)
+                rest = inner[m.end():]
+                val = vars.get(name)
+                is_set = val is not None
+                is_null = (val == "") if is_set else False
 
             # Substring: :offset[:length]
             sm = re.match(r"^:(-?\d+)(?::(-?\d+))?$", rest)
@@ -256,7 +273,7 @@ class Env:
                 length = int(sm.group(2)) if sm.group(2) is not None else None
                 if not is_set:
                     return f"{expand_char}{{{inner}}}"
-                text = val
+                text = val or ""
                 if offset < 0:
                     offset = len(text) + offset
                     if offset < 0:
@@ -278,21 +295,26 @@ class Env:
                             flags=flags,
                             chars=chars,
                             subprocess_timeout=subprocess_timeout,
-                        )
+                        ) or ""
                     )
                     try:
                         vars[name] = new_val
                     except Exception:
                         pass
+                    if name.isdigit() and args is not None:
+                        arg_idx = int(name) - 1
+                        while len(args) <= arg_idx:
+                            args.append("")
+                        args[arg_idx] = new_val
                     return new_val
-                return val
+                return val or ""
 
             # Pattern removals: #, ## (prefix) and %, %% (suffix)
             if rest.startswith("##") or rest.startswith("#"):
                 pattern = rest[2:] if rest.startswith("##") else rest[1:]
                 if not is_set:
                     return f"{expand_char}{{{inner}}}"
-                text = val
+                text = val or ""
                 best_i = None
                 for i in range(0, len(text) + 1):
                     if fnmatch.fnmatchcase(text[0:i], pattern):
@@ -308,7 +330,7 @@ class Env:
                 pattern = rest[2:] if rest.startswith("%%") else rest[1:]
                 if not is_set:
                     return f"{expand_char}{{{inner}}}"
-                text = val
+                text = val or ""
                 best_i = None
                 for i in range(0, len(text) + 1):
                     sub = text[len(text) - i :]
@@ -371,7 +393,7 @@ class Env:
                 )
 
                 if anchor == "#":
-                    text = val
+                    text = val or ""
                     if is_all:
                         while True:
                             changed = False
@@ -391,10 +413,10 @@ class Env:
                         for i in range(1, len(text) + 1):
                             if fnmatch.fnmatchcase(text[:i], pat):
                                 return repl_eval + text[i:]
-                        return val
+                        return val or ""
 
                 if anchor == "%":
-                    text = val
+                    text = val or ""
                     if is_all:
                         while True:
                             changed = False
@@ -416,10 +438,11 @@ class Env:
                             sub = text[len(text) - i :]
                             if fnmatch.fnmatchcase(sub, pat):
                                 return text[: len(text) - i] + repl_eval
-                        return val
+                        return val or ""
 
                 pattern = core
                 prog = re.compile(pattern, re.DOTALL)
+                val = val or ""
                 if is_all:
                     return prog.sub(repl_eval, val)
                 else:
@@ -438,7 +461,7 @@ class Env:
                             subprocess_timeout=subprocess_timeout,
                         )
                     )
-                return val
+                return val or ""
             if rest.startswith("-"):
                 word = rest[1:]
                 if not is_set:
@@ -452,7 +475,7 @@ class Env:
                             subprocess_timeout=subprocess_timeout,
                         )
                     )
-                return val
+                return val or ""
             if rest.startswith(":+"):
                 word = rest[2:]
                 if is_set and not is_null:
@@ -497,7 +520,7 @@ class Env:
                         )
                         or f"{name}: parameter null or not set"
                     )
-                return val
+                return val or ""
             if rest.startswith("?"):
                 word = rest[1:]
                 if not is_set:
@@ -514,7 +537,7 @@ class Env:
                         )
                         or f"{name}: parameter not set"
                     )
-                return val
+                return val or ""
 
             # Case modification: ^, ^^, ,, ,, ~, ~~
             # ${var^} - uppercase first character
@@ -593,7 +616,7 @@ class Env:
                 return text
 
             if is_set:
-                return val
+                return val or ""
             return f"{expand_char}{{{inner}}}"
 
         while i < inp_len:
@@ -1367,7 +1390,7 @@ class Env:
             if is_escaped:
                 raise ValueError(f"Unterminated escape sequence in: {input}")
 
-            if (quote is not None) and (ch != quote):
+            if (quote is not None) and (input[-1] != quote):
                 raise ValueError(
                     f"Unterminated {'hard-' if quote == hard_quote else ''}quoted argument in: {input}"
                 )
