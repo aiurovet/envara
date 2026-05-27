@@ -5028,3 +5028,80 @@ class TestExpandPathTilde:
         mock_expanduser.return_value = Path("/home/user")
         result = Env.expand_path(None, vars={}, chars=EnvChars.POSIX)  # type: ignore[reportArgumentType]
         assert result is None
+
+    def test_expand_path_empty_result_returns_none(
+        self,
+        mock_expanduser: MagicMock,
+    ):
+        """Whitespace-only input after strip+expand returns None."""
+        result = Env.expand_path(
+            Path("   "),
+            vars={},
+            chars=EnvChars.POSIX,  # type: ignore[reportArgumentType]
+        )
+        assert result is None
+
+    def test_expand_path_hard_quote_skips_expanduser(
+        self,
+        mock_expanduser: MagicMock,
+    ):
+        """Hard-quoted path returns Path without calling expanduser."""
+        mock_expanduser.return_value = Path("/home/user")
+        result = Env.expand_path(
+            Path("'testing'"),
+            vars={},
+            chars=EnvChars.POSIX,  # type: ignore[reportArgumentType]
+        )
+        assert result is not None
+        assert str(result) == "testing"
+
+
+class TestStrip:
+    """Parametrised tests for Env.strip() across all defined platforms."""
+
+    @pytest.mark.parametrize(
+        "input_str,flags,chars,expected_result,expected_quote",
+        [
+            # --- None / empty / whitespace ---
+            (None, EnvExpandFlags.DEFAULT, EnvChars.POSIX, None, EnvQuoteType.NONE),
+            ("", EnvExpandFlags.DEFAULT, EnvChars.POSIX, "", EnvQuoteType.NONE),
+            ("   ", EnvExpandFlags.DEFAULT, EnvChars.POSIX, "", EnvQuoteType.NONE),
+            ("   ", EnvExpandFlags.NONE, EnvChars.POSIX, "   ", EnvQuoteType.NONE),
+            ("  foo  ", EnvExpandFlags.DEFAULT, EnvChars.POSIX, "foo", EnvQuoteType.NONE),
+            ("  foo  ", EnvExpandFlags.NONE, EnvChars.POSIX, "  foo  ", EnvQuoteType.NONE),
+            ("foo", EnvExpandFlags.DEFAULT, EnvChars.POSIX, "foo", EnvQuoteType.NONE),
+            # --- POSIX quotes (hard='  normal=") ---
+            ("'foo'", EnvExpandFlags.DEFAULT, EnvChars.POSIX, "'foo'", EnvQuoteType.HARD),
+            ('"foo"', EnvExpandFlags.DEFAULT, EnvChars.POSIX, '"foo"', EnvQuoteType.NORMAL),
+            (  # starts with hard quote but trailing whitespace stripped
+                "  'foo'",
+                EnvExpandFlags.DEFAULT,
+                EnvChars.POSIX,
+                "'foo'",
+                EnvQuoteType.HARD,
+            ),
+            # --- Windows quotes (hard=''  normal=") ---
+            ("'foo'", EnvExpandFlags.DEFAULT, EnvChars.WINDOWS, "'foo'", EnvQuoteType.NONE),
+            ('"foo"', EnvExpandFlags.DEFAULT, EnvChars.WINDOWS, '"foo"', EnvQuoteType.NORMAL),
+            ("foo", EnvExpandFlags.DEFAULT, EnvChars.WINDOWS, "foo", EnvQuoteType.NONE),
+            # --- VMS quotes (hard=''  normal=") ---
+            ("'foo'", EnvExpandFlags.DEFAULT, EnvChars.VMS, "'foo'", EnvQuoteType.NONE),
+            ('"foo"', EnvExpandFlags.DEFAULT, EnvChars.VMS, '"foo"', EnvQuoteType.NORMAL),
+            ("foo", EnvExpandFlags.DEFAULT, EnvChars.VMS, "foo", EnvQuoteType.NONE),
+            # --- RISCOS quotes (hard=''  normal=") ---
+            ("'foo'", EnvExpandFlags.DEFAULT, EnvChars.RISCOS, "'foo'", EnvQuoteType.NONE),
+            ('"foo"', EnvExpandFlags.DEFAULT, EnvChars.RISCOS, '"foo"', EnvQuoteType.NORMAL),
+            ("foo", EnvExpandFlags.DEFAULT, EnvChars.RISCOS, "foo", EnvQuoteType.NONE),
+        ],
+    )
+    def test_strip(
+        self,
+        input_str: str | None,
+        flags: EnvExpandFlags,
+        chars: EnvCharsData,
+        expected_result: str | None,
+        expected_quote: EnvQuoteType,
+    ):
+        result, quote = Env.strip(input_str, flags=flags, chars=chars)  # type: ignore[reportArgumentType]
+        assert result == expected_result
+        assert quote == expected_quote

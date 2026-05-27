@@ -1,3 +1,7 @@
+## 0.5.1
+
+Improved `Env.expand_path()` and added  `Env.strip()`
+
 ## 0.5.0
 
 Added expansion of a user-specific directory in `Env.expand_path()`, made expansion rules for the command-line arguments similar to the ones for the environment variables, fixed Pylance issues in test_env.py

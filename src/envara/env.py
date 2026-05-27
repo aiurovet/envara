@@ -185,13 +185,19 @@ class Env:
         if not path:
             return path
 
-        input = str(path.expanduser())
+        input, quote_type = Env.strip(str(path), flags=flags, chars=chars)
 
         result = Env.expand(
             input=input, args=args, vars=vars, flags=flags, chars=chars
         )
 
-        return Path(result) if result else None
+        if not result:
+            return None
+
+        if quote_type == EnvQuoteType.HARD:
+            return Path(result)
+
+        return Path(result).expanduser()
 
     ###########################################################################
     # This code was mainly generated using Copilot
@@ -1409,6 +1415,52 @@ class Env:
     ###########################################################################
 
     @staticmethod
+    def strip(
+        input: str | None,
+        flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
+        chars: EnvCharsData = EnvChars.Current,
+    ) -> tuple[str | None, EnvQuoteType]:
+        """
+        Remove leading and trailing spaces, then determine the quote type by
+        checking the first character.
+
+        :param input: String to remove enclosing quotes from
+        :type input: str | None
+
+        :param flags: Flags controlling what/how to unquote input. Essentially,
+            only two bits are considered: STRIP_SPACES and STRIP_COMMENT
+        :type flags: EnvExpandFlags
+
+        :param chars: Platform-specific special environment characters to
+            parse various tokens like escaped characters, environment
+            variables, etc.
+        :type chars: EnvCharsData
+
+        :return: input stripped off leading and trailing spaces and the type
+            of surrounding quotes if found
+        :rtype: tuple[str | None, EnvQuoteType]
+        """
+
+        if not input:
+            return (input, EnvQuoteType.NONE)
+
+        strip_spaces = (flags & EnvExpandFlags.STRIP_SPACES) != 0
+        result = input.strip() if (strip_spaces) else input
+
+        if not result:
+            return (result, EnvQuoteType.NONE)
+
+        if chars.hard_quote and result.startswith(chars.hard_quote):
+            return (result, EnvQuoteType.HARD)
+
+        if chars.normal_quote and result.startswith(chars.normal_quote):
+            return (result, EnvQuoteType.NORMAL)
+
+        return (result, EnvQuoteType.NONE)
+
+    ###########################################################################
+
+    @staticmethod
     def unescape(
         input: str, strip_blanks: bool = False, chars: EnvCharsData = EnvChars.Current
     ) -> str:
@@ -1541,16 +1593,15 @@ class Env:
         if not input:
             return (input, EnvQuoteType.NONE)
 
-        strip_spaces = (flags & EnvExpandFlags.STRIP_SPACES) != 0
-        result = input.strip() if (strip_spaces) else input
+        result, quote_type = Env.strip(input, flags=flags, chars=chars)
 
         if not result:
-            return (result, EnvQuoteType.NONE)
+            return (result, quote_type)
 
         escape = chars.escape
-        quote = chars.hard_quote
 
-        if quote and result.startswith(quote):
+        if quote_type == EnvQuoteType.HARD:
+            quote = chars.hard_quote
             result = result[len(quote) :]
             end_pos = -1
             i = 0
@@ -1567,10 +1618,8 @@ class Env:
                 raise ValueError(f"Unterminated hard-quoted string: {input}")
             return (result[0:end_pos], EnvQuoteType.HARD)
 
-        escape = chars.escape
-        quote = chars.normal_quote
-
-        if quote and result.startswith(quote):
+        if quote_type == EnvQuoteType.NORMAL:
+            quote = chars.normal_quote
             result = result[len(quote) :]
             end_pos = -1
             i = 0
@@ -1591,8 +1640,9 @@ class Env:
 
         if cutter:
             i = 0
-            orig_len: int = len(result)
-            cutter_len: int = len(cutter)
+            orig_len = len(result)
+            cutter_len = len(cutter)
+            strip_spaces = (flags & EnvExpandFlags.STRIP_SPACES) != 0
             while i < orig_len:
                 if result[i] == escape and i + 1 < orig_len:
                     i += 2
