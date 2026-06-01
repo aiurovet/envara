@@ -9,6 +9,7 @@ __pycache__/
 *.pyc
 *.pyd
 *.pyo
+*.py.cover
 
 # Distributions and packaging
 .Python

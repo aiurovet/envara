@@ -1,3 +1,7 @@
+## 0.5.2
+
+Bugfix: ensure os.sep gets converted to os.altsep if chars.escape is the same as os.sep (mainly, for POSIX-style conversions on Windows)
+
 ## 0.5.1
 
 Improved `Env.expand_path()` and added  `Env.strip()`

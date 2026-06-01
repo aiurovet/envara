@@ -133,9 +133,12 @@ class Env:
         :rtype: str | None
         """
 
-        # Remove quotes if found
+        # Remove quotes if found and return if empty or None
 
         result, quote_type = Env.unquote(input, flags=flags, chars=chars)
+
+        if not result:
+            return result
 
         # SKIP_SINGLE_QUOTED prevents any expansion
 
@@ -143,7 +146,14 @@ class Env:
             if quote_type == EnvQuoteType.HARD:
                 return result
 
-        # Perform POSIX-style (in fact, bash) or Windows-style expansions
+        # If the escape character coincides with the OS's path separator,
+        # replace the path separator with the altwernative one like in
+        # POSIX-style expansion on Windows
+
+        if (chars.escape == os.sep) and os.altsep:
+            result = result.replace(chars.escape, os.altsep)
+
+        # Perform expansions depending on the chars's flags
 
         if chars and chars.is_posix:
             result = Env.__expand_posix(

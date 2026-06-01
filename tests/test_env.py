@@ -4973,6 +4973,49 @@ class TestEnvFinalCoverage:
         assert result == expected
 
 
+class TestExpandEscapeEqSepAltsep:
+    """Tests for replacing escape with altsep when escape == os.sep (line 154)."""
+
+    @staticmethod
+    def _chars(escape: str) -> EnvCharsData:
+        return EnvCharsData(
+            is_posix=True,
+            is_windows=False,
+            expand="$",
+            windup="",
+            escape=escape,
+            cutter="#",
+            hard_quote="'",
+            normal_quote='"',
+        )
+
+    @patch("envara.env.os.sep", "\\")
+    @patch("envara.env.os.altsep", "/")
+    def test_expand_altsep_replaces_escape_when_eq_sep(
+        self,
+    ):
+        """When escape==os.sep and os.altsep is set, escape chars are replaced."""
+        result = Env.expand(
+            "a\\b\\c",
+            vars={},
+            chars=self._chars("\\"),  # type: ignore[reportArgumentType]
+        )
+        assert result == "a/b/c"
+
+    @patch("envara.env.os.sep", "\\")
+    @patch("envara.env.os.altsep", "/")
+    def test_expand_altsep_no_replacement_when_escape_not_sep(
+        self,
+    ):
+        """When escape!=os.sep, no replacement happens even with altsep set."""
+        result = Env.expand(
+            "a\\b\\c",
+            vars={},
+            chars=self._chars("^"),  # type: ignore[reportArgumentType]
+        )
+        assert result == "a\\b\\c"
+
+
 @patch.object(Path, "expanduser")
 class TestExpandPathTilde:
     """Tests for leading tilde (`~`) home-directory expansion across all platforms."""
