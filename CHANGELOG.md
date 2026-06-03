@@ -1,6 +1,6 @@
 ## 0.5.2
 
-Bugfix: ensure os.sep gets converted to os.altsep if chars.escape is the same as os.sep (mainly, for POSIX-style conversions on Windows)
+Bugfix: in `Env.expand()`, convert `os.sep` to `os.altsep` or the other way round if one of those coincides with `chars.escape`, and set `chars.escape` to the OS-default one (mainly, for POSIX-style conversions on Windows)
 
 ## 0.5.1
 

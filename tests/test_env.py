@@ -4973,8 +4973,8 @@ class TestEnvFinalCoverage:
         assert result == expected
 
 
-class TestExpandEscapeEqSepAltsep:
-    """Tests for replacing escape with altsep when escape == os.sep (line 154)."""
+class TestExpandEscapeSepAltsep:
+    """Tests for the sep/altsep escape-char replacement + escape reset (lines 153-163)."""
 
     @staticmethod
     def _chars(escape: str) -> EnvCharsData:
@@ -5011,9 +5011,47 @@ class TestExpandEscapeEqSepAltsep:
         result = Env.expand(
             "a\\b\\c",
             vars={},
+            flags=EnvExpandFlags.ALLOW_SHELL,
             chars=self._chars("^"),  # type: ignore[reportArgumentType]
         )
         assert result == "a\\b\\c"
+
+    @patch("envara.env.os.sep", "/")
+    @patch("envara.env.os.altsep", "\\")
+    def test_expand_altsep_replaces_escape_when_eq_altsep(
+        self,
+    ):
+        """When escape==os.altsep, escape chars are replaced with os.sep."""
+        result = Env.expand(
+            "a\\b\\c",
+            vars={},
+            chars=self._chars("\\"),  # type: ignore[reportArgumentType]
+        )
+        assert result == "a/b/c"
+
+    @patch("envara.env.os.sep", "/")
+    @patch("envara.env.os.altsep", "\\")
+    def test_expand_altsep_no_match_skipped(
+        self,
+    ):
+        """When escape matches neither sep nor altsep, no replacement occurs."""
+        result = Env.expand(
+            "testing",
+            vars={},
+            chars=self._chars("-"),  # type: ignore[reportArgumentType]
+        )
+        assert result == "testing"
+
+    def test_expand_altsep_outer_condition_false(
+        self,
+    ):
+        """When os.altsep is None (Linux), altsep replacement block is skipped."""
+        result = Env.expand(
+            "testing",
+            vars={},
+            chars=self._chars("/"),  # type: ignore[reportArgumentType]
+        )
+        assert result == "testing"
 
 
 @patch.object(Path, "expanduser")
