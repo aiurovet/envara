@@ -158,9 +158,6 @@ class Env:
                 result = result.replace(chars.escape, os.altsep)
             elif (chars.escape == os.altsep):
                 result = result.replace(chars.escape, os.sep)
-            os_escape = EnvChars.Default.escape
-            if chars.escape != os_escape:
-                chars = chars.copy_with(escape=os_escape)
 
         # Perform expansions depending on the chars's flags
 
