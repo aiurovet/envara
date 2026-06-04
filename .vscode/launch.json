@@ -28,9 +28,9 @@
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/examples",
       "args": [
-        "1",
-        "2",
-        "3"
+        "a1",
+        "a2",
+        "a3"
       ],
       "env": {
         "PYTHONPATH": "${workspaceFolder}/examples"

@@ -4973,85 +4973,59 @@ class TestEnvFinalCoverage:
         assert result == expected
 
 
-class TestExpandEscapeSepAltsep:
-    """Tests for the sep/altsep escape-char replacement + escape reset (lines 153-163)."""
+class TestPosixWindows:
+    """Tests for EnvChars.POSIX_WINDOWS — POSIX-style expansion with ^ escape char."""
 
-    @staticmethod
-    def _chars(escape: str) -> EnvCharsData:
-        return EnvCharsData(
-            is_posix=True,
-            is_windows=False,
-            expand="$",
-            windup="",
-            escape=escape,
-            cutter="#",
-            hard_quote="'",
-            normal_quote='"',
-        )
-
-    @patch("envara.env.os.sep", "\\")
-    @patch("envara.env.os.altsep", "/")
-    def test_expand_altsep_replaces_escape_when_eq_sep(
-        self,
-    ):
-        """When escape==os.sep and os.altsep is set, escape chars are replaced."""
+    @pytest.mark.parametrize(
+        "input_str,vars,expected",
+        [
+            # env var expansion (same as POSIX)
+            ("${VAR}", {"VAR": "val"}, "val"),
+            ("$VAR", {"VAR": "val"}, "val"),
+            ("${VAR:-default}", {}, "default"),
+            ("${VAR:+set}", {"VAR": "x"}, "set"),
+            ("${VAR}", {}, "${VAR}"),
+            # unescape with ^
+            ("hello^nworld", {}, "hello\nworld"),
+            ("hello^tworld", {}, "hello\tworld"),
+            ("hello^rworld", {}, "hello\rworld"),
+            ("hello^aworld", {}, "hello\x07world"),
+            ("hello^bworld", {}, "hello\x08world"),
+            ("hello^fworld", {}, "hello\x0cworld"),
+            ("hello^vworld", {}, "hello\x0bworld"),
+            # escaped caret
+            ("hello^^world", {}, "hello^world"),
+            # hex unicode
+            ("hello^x41world", {}, "helloAworld"),
+            # backslash is literal (not escape)
+            ("hello\\nworld", {}, "hello\\nworld"),
+            ("hello\\tworld", {}, "hello\\tworld"),
+            # no special chars
+            ("hello world", {}, "hello world"),
+        ],
+    )
+    def test_expand_posix_windows(self, input_str: str, vars: dict[str, str], expected: str):
         result = Env.expand(
-            "a\\b\\c",
-            vars={},
-            chars=self._chars("\\"),  # type: ignore[reportArgumentType]
+            input_str,
+            vars=vars,
+            chars=EnvChars.POSIX_WINDOWS,  # type: ignore[reportArgumentType]
         )
-        assert result == "a/b/c"
+        assert result == expected
 
-    @patch("envara.env.os.sep", "\\")
-    @patch("envara.env.os.altsep", "/")
-    def test_expand_altsep_no_replacement_when_escape_not_sep(
-        self,
-    ):
-        """When escape!=os.sep, no replacement happens even with altsep set."""
-        result = Env.expand(
-            "a\\b\\c",
-            vars={},
-            flags=EnvExpandFlags.ALLOW_SHELL,
-            chars=self._chars("^"),  # type: ignore[reportArgumentType]
-        )
-        assert result == "a\\b\\c"
-
-    @patch("envara.env.os.sep", "/")
-    @patch("envara.env.os.altsep", "\\")
-    def test_expand_altsep_replaces_escape_when_eq_altsep(
-        self,
-    ):
-        """When escape==os.altsep, escape chars are replaced with os.sep."""
-        result = Env.expand(
-            "a\\b\\c",
-            vars={},
-            chars=self._chars("\\"),  # type: ignore[reportArgumentType]
-        )
-        assert result == "a/b/c"
-
-    @patch("envara.env.os.sep", "/")
-    @patch("envara.env.os.altsep", "\\")
-    def test_expand_altsep_no_match_skipped(
-        self,
-    ):
-        """When escape matches neither sep nor altsep, no replacement occurs."""
-        result = Env.expand(
-            "testing",
-            vars={},
-            chars=self._chars("-"),  # type: ignore[reportArgumentType]
-        )
-        assert result == "testing"
-
-    def test_expand_altsep_outer_condition_false(
-        self,
-    ):
-        """When os.altsep is None (Linux), altsep replacement block is skipped."""
-        result = Env.expand(
-            "testing",
-            vars={},
-            chars=self._chars("/"),  # type: ignore[reportArgumentType]
-        )
-        assert result == "testing"
+    @pytest.mark.parametrize(
+        "input_str,vars,expected",
+        [
+            # simple word
+            ("testing", {}, "testing"),
+            # starts with hard quote → HARD
+            ("'testing'", {}, "'testing'"),
+            # starts with normal quote → NORMAL
+            ('"testing"', {}, '"testing"'),
+        ],
+    )
+    def test_strip_posix_windows(self, input_str: str, vars: dict[str, str], expected: str):
+        result, quote_type = Env.strip(input_str, chars=EnvChars.POSIX_WINDOWS)  # type: ignore[reportArgumentType]
+        assert result == expected
 
 
 @patch.object(Path, "expanduser")

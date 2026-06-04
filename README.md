@@ -45,8 +45,10 @@ import os
 from pathlib import Path
 import sys
 
-# envara must be installed
+# Remove this and the line below if the envara package is installed
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from envara.env_chars import EnvChars
 from envara.env import Env
 from envara.env_file import EnvFile
 
@@ -58,30 +60,31 @@ def main():
     Sample program showing the usage of the `envara` library
     """
 
-    # Get the application arguments and convert the executable file's path
-    # into a simple name: without directory and extension, then replace the
-    # 0th argument with that in the command-line arguments
-    args = [Path(sys.argv[0]).stem]
-    args.extend(sys.argv[1:])
+    # Get the application arguments without the executable (see launch settings)
+    args = sys.argv[1:]
+
+    # Make expansions portable betwen POSIX and Windows
+    chars = EnvChars.POSIX_WINDOWS if Env.IS_WINDOWS else EnvChars.POSIX
+    esc = chars.escape
 
     # Expand inline and print the result
-    input: str = r"Home ${HOME:-$USERPROFILE}, arg \#1: $1 # Line comment"
-    print(f"\n*** Expanded string ***\n\n{Env.expand(input, args)}")
+    input = f"Home ${{HOME:-$USERPROFILE}}, arg {esc}#1: $1 # Line comment"
+    print(f"\n*** Expanded string ***\n\n{Env.expand(input, args, chars=chars)}")
 
     # Define directory that contains all env-like files
-    inp_dir: Path = Path("config")
+    inp_dir = Path("config")
 
     # List of all platforms
     print(f"\n*** All platforms ***\n")
-    print(f'"{"\", \"".join(Env.get_all_platforms())}"')
+    print(f'"{'", "'.join(Env.get_all_platforms())}"')
 
     # List of current platforms
     print(f"\n*** Current platforms ***\n")
-    print(f'"{"\", \"".join(Env.get_cur_platforms())}"')
+    print(f'"{'", "'.join(Env.get_cur_platforms())}"')
 
     # List files related to the current platform stack
     print(f"\n*** Env file stack ***\n")
-    print(f'"{"\", \"".join([x.name for x in EnvFile.get_files(inp_dir)])}"')
+    print(f'"{'", "'.join([x.name for x in EnvFile.get_files(inp_dir)])}"')
 
     # Make a copy of the old environment variables
     old_env = os.environ.copy()
@@ -130,6 +133,24 @@ Key class variables:
 - `IS_RISCOS` - `True` if running under Risc OS
 - `IS_VMS` - `True` if running under OpenVMS or similar
 - `IS_WINDOWS` - `True` if running under Windows or OS/2
+
+Platform-specific character sets (`EnvChars`):
+
+- `EnvChars.POSIX` — `$` expansion, `\` escape, `'` hard quote, `"` normal quote
+- `EnvChars.POSIX_WINDOWS` — Same as `POSIX` but with `^` escape (compatible with Windows paths)
+- `EnvChars.WINDOWS` — `%NAME%` expansion, `^` escape, `"` normal quote
+- `EnvChars.VMS` — `'NAME'` expansion, `^` escape, `"` normal quote
+- `EnvChars.RISCOS` — `<NAME>` expansion, `\` escape, `"` normal quote
+
+Key static methods:
+
+- `Env.expand(input, ...)` — expand environment variables, arguments, escape sequences, and sub-commands
+- `Env.expand_path(path, ...)` — expand a `Path`, with tilde (`~`) home-directory expansion via `Path.expanduser()`
+- `Env.strip(input, ...)` — strip leading/trailing spaces and detect surrounding quote type
+- `Env.unquote(input, ...)` — remove enclosing quotes (single or double)
+- `Env.unescape(input, ...)` — process escape sequences (`\n`, `\t`, `\u0022`, etc.)
+- `Env.quote(input, ...)` — enclose in quotes with proper escape handling
+- `Env.split(input, ...)` — split into command-line arguments
 
 ### `EnvFile` class
 
@@ -240,6 +261,10 @@ This method of expansion supports:
 - Even more limited OpenVMS-like variables expansion `'NAME'` as well as the RiscOS-like `<NAME>`.
 
 It is implemented via `Env.expand(...)` which eventually calls private method `__expand_simple(...)`.
+
+### POSIX-style on Windows
+
+`EnvChars.POSIX_WINDOWS` provides POSIX-style (`$`-based) expansion with the Windows caret (`^`) as the escape character. This avoids ambiguity between backslash path separators and the POSIX escape character when expanding paths on Windows. 
 
 ---
 

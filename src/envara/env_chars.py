@@ -42,6 +42,9 @@ class EnvChars:
     )
     """POSIX-specific set of environment-related characters"""
 
+    POSIX_WINDOWS: ClassVar[EnvCharsData] = POSIX.copy_with(escape="^")
+    """POSIX-specific set of environment-related characters with Windows-style escape to allow POSIX-like expansions on Windows"""
+
     RISCOS: ClassVar = EnvCharsData(
         is_posix=False,
         is_windows=False,

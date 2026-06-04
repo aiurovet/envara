@@ -1,3 +1,11 @@
+## 0.5.4
+
+Updated README.md, improved example and tests
+
+## 0.5.3
+
+Adding EnvChars.POSIX_WINDOWS to make POSIX-style expansions available on Windows
+
 ## 0.5.2
 
 Bugfix: in `Env.expand()`, convert `os.sep` to `os.altsep` or the other way round if one of those coincides with `chars.escape` (mainly, for POSIX-style conversions on Windows)

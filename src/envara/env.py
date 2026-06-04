@@ -146,19 +146,6 @@ class Env:
             if quote_type == EnvQuoteType.HARD:
                 return result
 
-        # If the escape character coincides with the OS's path separator
-        # or alt separator, replace one with another to avoid ambiguity.
-        # Also change chars to have default (current OS-specific) escape
-        # if it differs from the one passed under chars.
-        # This is useful for POSIX-style expansions on Windows when the
-        # input string might include paths or just backslashes
-
-        if os.sep and os.altsep and (os.sep != os.altsep):
-            if (chars.escape == os.sep):
-                result = result.replace(chars.escape, os.altsep)
-            elif (chars.escape == os.altsep):
-                result = result.replace(chars.escape, os.sep)
-
         # Perform expansions depending on the chars's flags
 
         if chars and chars.is_posix:
