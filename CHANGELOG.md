@@ -1,3 +1,7 @@
+## 0.5.5
+
+Bugfix: every variable in each env file should be expanded according to the rules defined by a line starting with a cutter char
+
 ## 0.5.4
 
 Updated README.md, improved example and tests

@@ -18,7 +18,7 @@ import pathlib
 import re
 from typing import ClassVar, Final
 
-from envara.env_chars import EnvChars
+from envara.env_chars import EnvChars, EnvCharsData
 from envara.env_file_flags import EnvFileFlags
 from envara.env_filter import EnvFilter
 from envara.env import Env
@@ -211,14 +211,25 @@ class EnvFile:
         chars = EnvChars.Current
 
         for line in data.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+            # Remove all leading and trailing whitespaces
+
+            line = line.strip()
+
             # Skip amy empty line
 
             if not line:
                 continue
 
+            # If a line starts with any of the known cutters, switch EnvCharsData
+
+            chars, is_found = EnvFile.select_chars(line, chars)
+
+            if is_found:
+                continue
+
             # Break into key and value and skip if can't do that
 
-            parts: list[str] = EnvFile.RE_KEY_VALUE.split(line, maxsplit=1)
+            parts = EnvFile.RE_KEY_VALUE.split(line, maxsplit=1)
 
             if len(parts) < 2:
                 continue
@@ -288,5 +299,43 @@ class EnvFile:
 
         return "\n".join(result)
 
+    ###########################################################################
+
+    @staticmethod
+    def select_chars(
+        input: str | None,
+        chars: EnvCharsData = EnvChars.Current
+    ) -> tuple[EnvCharsData, bool]:
+        """
+        Choose new environment-specific chars based on input starting with one of
+        the known cutters (line comment starters)
+
+        :param input: Input string
+        :type input: str
+
+        :param chars: Currently selected chars
+        :type chars: EnvCharsData
+
+        :return: Chars to use and a boolean (True if the input starts with a cutter)
+        :rtype: tuple[EnvCharsData, bool]
+        """
+        inp = input.lstrip()
+
+        if not inp or (chars.cutter and inp.startswith(chars.cutter)):
+            return [chars, True]
+
+        if inp.startswith(EnvChars.POSIX.cutter):
+            return [EnvChars.POSIX, True]
+
+        if inp.startswith(EnvChars.RISCOS.cutter):
+            return [EnvChars.RISCOS, True]
+
+        if inp.startswith(EnvChars.VMS.cutter):
+            return [EnvChars.VMS, True]
+
+        if inp.startswith(EnvChars.WINDOWS.cutter):
+            return [EnvChars.WINDOWS, True]
+
+        return [chars, False]
 
 ###############################################################################

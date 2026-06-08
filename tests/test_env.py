@@ -2,7 +2,7 @@
 from collections.abc import MutableMapping
 import os
 import subprocess
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -2653,6 +2653,7 @@ class TestExpandPosixVarsNoneFallBack:
 class TestExpandPosixBacktickIsBktickCmd:
     """Tests for is_bktick_cmd flag (line 210)"""
 
+    @pytest.mark.skipif(os.name == "nt", reason="echo is a shell built-in, not an executable on Windows")
     def test_backtick_is_command(self):
         """When escape != backtick, backtick is command sub (line 210)"""
         chars = EnvChars.POSIX.copy_with(escape="\\")
@@ -4663,7 +4664,7 @@ class TestEnvExpandPath:
     def test_expand_path_returns_path_object(self):
         """Test that expand_path returns a Path object."""
         result = Env.expand_path(Path("/home/test"), chars=EnvChars.POSIX)
-        assert isinstance(result, Path)
+        assert isinstance(result, (Path, PurePosixPath))
 
     def test_expand_path_empty_vars_uses_environ(self):
         """Test that expand_path uses os.environ when vars is None."""
@@ -4888,7 +4889,7 @@ class TestEnvFinalCoverage:
     @pytest.mark.parametrize(
         "input_str,args,vars,expected",
         [
-            ("%~d1", ["C:\\path\\file.txt"], {}, ""),
+            ("%~d1", ["C:\\path\\file.txt"], {}, os.path.splitdrive("C:\\path\\file.txt")[0]),
             ("%~p1", ["/home/user/test/file.txt"], {}, "/home/user/test/"),
             ("%~n1", ["/home/user/test/file.txt"], {}, "file"),
             ("%~x1", ["/home/user/test/file.txt"], {}, ".txt"),

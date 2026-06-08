@@ -11,7 +11,7 @@
 ###############################################################################
 
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import string
 import sys
@@ -96,7 +96,7 @@ class Env:
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvCharsData = EnvChars.Current,
+        chars: EnvCharsData | None = None,
         subprocess_timeout: float | None = None,
     ) -> str | None:
         """
@@ -132,6 +132,9 @@ class Env:
         :return: Expanded string
         :rtype: str | None
         """
+
+        if chars is None:
+            chars = EnvChars.Current
 
         # Remove quotes if found and return if empty or None
 
@@ -179,16 +182,23 @@ class Env:
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvCharsData = EnvChars.Current,
+        chars: EnvCharsData | None = None,
     ) -> Path | None:
         """
         A wrapper around expand() for paths. It also expands the current or
         specific user's directory according to the current OS's rules
         """
+        if chars is None:
+            chars = EnvChars.Current
+
         if not path:
             return path
 
-        input, quote_type = Env.strip(str(path), flags=flags, chars=chars)
+        input, quote_type = Env.strip(
+            Env._path_to_posix(str(path)) if chars.is_posix else str(path),
+            flags=flags,
+            chars=chars,
+        )
 
         result = Env.expand(
             input=input, args=args, vars=vars, flags=flags, chars=chars
@@ -198,9 +208,35 @@ class Env:
             return None
 
         if quote_type == EnvQuoteType.HARD:
-            return Path(result)
+            p = Path(result)
+        else:
+            p = Path(result).expanduser()
 
-        return Path(result).expanduser()
+        if chars.is_posix:
+            return PurePosixPath(p.as_posix())
+
+        return p
+
+    ###########################################################################
+
+    @staticmethod
+    def _path_to_posix(path_str: str) -> str:
+        ESCAPE_CHARS = frozenset("ntrxu")
+        result = []
+        i = 0
+        while i < len(path_str):
+            c = path_str[i]
+            if c == "\\" and i + 1 < len(path_str) and path_str[i + 1] in ESCAPE_CHARS:
+                result.append(c)
+                result.append(path_str[i + 1])
+                i += 2
+            elif c == "\\":
+                result.append("/")
+                i += 1
+            else:
+                result.append(c)
+                i += 1
+        return "".join(result)
 
     ###########################################################################
     # This code was mainly generated using Copilot
@@ -212,7 +248,7 @@ class Env:
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvCharsData = EnvChars.Current,
+        chars: EnvCharsData | None = None,
         subprocess_timeout: float | None = None,
     ) -> str | None:
         """
@@ -220,6 +256,9 @@ class Env:
         POSIX (in fact, bash) rules: like ${ABC:-${DEF:-$(uname -a)}. See the
         description of arguments under the main method expand(...)
         """
+        if chars is None:
+            chars = EnvChars.Current
+
         if input is None:
             return input
 
@@ -387,8 +426,9 @@ class Env:
                     return f"{expand_char}{{{inner}}}"
 
                 core = fnmatch.translate(pat)
-                if core.startswith("(?s:") and core.endswith(")\\Z"):
-                    core = core[4:-3]
+                if core.startswith("(?s:"):
+                    if core.endswith(")\\Z") or core.endswith(")\\z"):
+                        core = core[4:-3]
 
                 repl_eval = str(
                     Env.__expand_posix(
@@ -850,13 +890,16 @@ class Env:
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvCharsData = EnvChars.Current,
+        chars: EnvCharsData | None = None,
     ) -> str | None:
         """
         Expand environment variables and sub-processes according to simple
         rules and symmetric expand characters: like %ABC% in Windows. See
         the description of arguments under the main method expand(...)
         """
+        if chars is None:
+            chars = EnvChars.Current
+
         if input is None:
             return input
 
@@ -1191,7 +1234,7 @@ class Env:
     def quote(
         input: str,
         is_forced: bool = False,
-        chars: EnvCharsData = EnvChars.Current,
+        chars: EnvCharsData | None = None,
     ) -> str:
         """
         Enclose input in quotes. Neither leading, nor trailing whitespaces
@@ -1213,6 +1256,9 @@ class Env:
                  the inside being escaped
         :rtype: str
         """
+
+        if chars is None:
+            chars = EnvChars.Current
 
         # Check empty
 
@@ -1270,7 +1316,7 @@ class Env:
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvCharsData = EnvChars.Current,
+        chars: EnvCharsData | None = None,
     ) -> list[str]:
         """
         Split input into tokens following platform-independent command-line
@@ -1298,6 +1344,9 @@ class Env:
         :return: List of tokens
         :rtype: list[str]
         """
+        if chars is None:
+            chars = EnvChars.Current
+
         # If the input is empty or None, return empty list
 
         if not input:
@@ -1315,8 +1364,10 @@ class Env:
             args: list[str] | None = None,
             vars: MutableMapping[str, str] | None = None,
             flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-            chars: EnvCharsData = EnvChars.Current,
+            chars: EnvCharsData | None = None,
         ) -> bool:
+            if chars is None:
+                chars = EnvChars.Current
             tokstr = "".join(token)
             token.clear()
             if chars.cutter and tokstr.startswith(chars.cutter):
@@ -1421,7 +1472,7 @@ class Env:
     def strip(
         input: str | None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvCharsData = EnvChars.Current,
+        chars: EnvCharsData | None = None,
     ) -> tuple[str | None, EnvQuoteType]:
         """
         Remove leading and trailing spaces, then determine the quote type by
@@ -1444,6 +1495,9 @@ class Env:
         :rtype: tuple[str | None, EnvQuoteType]
         """
 
+        if chars is None:
+            chars = EnvChars.Current
+
         if not input:
             return (input, EnvQuoteType.NONE)
 
@@ -1465,7 +1519,7 @@ class Env:
 
     @staticmethod
     def unescape(
-        input: str, strip_blanks: bool = False, chars: EnvCharsData = EnvChars.Current
+        input: str, strip_blanks: bool = False, chars: EnvCharsData | None = None
     ) -> str:
         """
         Unescape '\\t', '\\n', '\\u0022' etc.
@@ -1484,6 +1538,9 @@ class Env:
         :return: Unescaped string, optionally, stripped of blanks
         :rtype: str
         """
+
+        if chars is None:
+            chars = EnvChars.Current
 
         # If input is void, return empty string
 
@@ -1566,7 +1623,7 @@ class Env:
     def unquote(
         input: str | None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-        chars: EnvCharsData = EnvChars.Current,
+        chars: EnvCharsData | None = None,
     ) -> tuple[str | None, EnvQuoteType]:
         """
         Remove enclosing quotes from a string ignoring everything beyond the
@@ -1592,6 +1649,9 @@ class Env:
         :return: Unquoted input and the type of surrounding quotes (see EnvQuoteType)
         :rtype: tuple[str | None, EnvQuoteType]
         """
+
+        if chars is None:
+            chars = EnvChars.Current
 
         if not input:
             return (input, EnvQuoteType.NONE)

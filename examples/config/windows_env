@@ -1,3 +1,5 @@
+:: Windows expansion
+
 USER_BIN=%LocalAppData%\\Programs
 
 CMD_CHROME="chrome $BROWSER_ARGS"
