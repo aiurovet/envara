@@ -11,7 +11,7 @@
 ###############################################################################
 
 import os
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import re
 import string
 import sys
@@ -207,15 +207,12 @@ class Env:
         if not result:
             return None
 
-        if quote_type == EnvQuoteType.HARD:
-            p = Path(result)
-        else:
-            p = Path(result).expanduser()
+        path = Path(result)
 
-        if chars.is_posix:
-            return PurePosixPath(p.as_posix())
+        if quote_type != EnvQuoteType.HARD:
+            path = path.expanduser()
 
-        return p
+        return path
 
     ###########################################################################
 

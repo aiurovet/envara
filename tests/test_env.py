@@ -2,7 +2,7 @@
 from collections.abc import MutableMapping
 import os
 import subprocess
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -4545,20 +4545,26 @@ class TestEnvExpandPath:
         "path,vars,args,chars,expected",
         [
             # POSIX paths
-            ("/home/$USER", {"USER": "test"}, None, EnvChars.POSIX, "/home/test"),
             (
-                "$HOME/docs",
-                {"HOME": "/home/test"},
+                str(Path("/home/$USER")),
+                {"USER": "test"},
                 None,
                 EnvChars.POSIX,
-                "/home/test/docs",
+                str(Path("/home/test"))
             ),
             (
-                "${HOME}/file.txt",
+                str(Path("$HOME/docs")),
                 {"HOME": "/home/test"},
                 None,
                 EnvChars.POSIX,
-                "/home/test/file.txt",
+                str(Path("/home/test/docs")),
+            ),
+            (
+                str(Path("$HOME/file.txt")),
+                {"HOME": "/home/test"},
+                None,
+                EnvChars.POSIX,
+                str(Path("/home/test/file.txt")),
             ),
             # Windows paths
             (
@@ -4594,12 +4600,14 @@ class TestEnvExpandPath:
         expected: str | None,
     ):
         """Parametrized test for expand_path across platforms."""
+        flags = EnvExpandFlags.DEFAULT & ~EnvExpandFlags.UNESCAPE
         with patch.dict(os.environ, vars, clear=True):
             result = Env.expand_path(
                 Path(path) if path else None,
                 args=args,
                 vars=vars if vars else None,
                 chars=chars,  # type: ignore[reportArgumentType]
+                flags=flags
             )
             if expected is None:
                 assert result is None
@@ -4623,10 +4631,10 @@ class TestEnvExpandPath:
             # UNQUOTE flag
             (
                 '"$HOME"',
-                {"HOME": "/home"},
+                {"HOME": str(Path("/home"))},
                 EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
-                "/home",
+                str(Path("/home")),
             ),
         ],
     )
@@ -4646,7 +4654,7 @@ class TestEnvExpandPath:
         "path,args,chars,expected",
         [
             # Argument expansion in paths
-            ("$1/config", ["arg1"], EnvChars.POSIX, "arg1/config"),
+            (str(Path("$1/config")), ["arg1"], EnvChars.POSIX, str(Path("arg1/config"))),
             ("%1%\\config", ["arg1"], EnvChars.WINDOWS, "arg1\\config"),
         ],
     )
@@ -4664,27 +4672,30 @@ class TestEnvExpandPath:
     def test_expand_path_returns_path_object(self):
         """Test that expand_path returns a Path object."""
         result = Env.expand_path(Path("/home/test"), chars=EnvChars.POSIX)
-        assert isinstance(result, (Path, PurePosixPath))
+        assert isinstance(result, Path)
 
     def test_expand_path_empty_vars_uses_environ(self):
         """Test that expand_path uses os.environ when vars is None."""
-        with patch.dict(os.environ, {"TEST_VAR": "/test/path"}, clear=True):
-            result = Env.expand_path(Path("$TEST_VAR"), vars=None, chars=EnvChars.POSIX)
-            assert str(result) == "/test/path"
+        expected = str(Path(f"/test/path"))
+        with patch.dict(os.environ, {"TEST_VAR": expected}, clear=True):
+            flags = EnvExpandFlags.DEFAULT & ~EnvExpandFlags.UNESCAPE
+            result = Env.expand_path(Path("$TEST_VAR"), vars=None, chars=EnvChars.POSIX, flags=flags)
+            assert str(result) == expected
 
     def test_expand_path_strip_spaces(self):
         """Test STRIP_SPACES flag with paths."""
         result = Env.expand_path(
             Path("/home/test"), flags=EnvExpandFlags.STRIP_SPACES, chars=EnvChars.POSIX
         )
-        assert str(result) == "/home/test"
+        assert str(result) == str(Path("/home/test"))
 
     @pytest.mark.parametrize(
         "chars,path,expected",
         [
-            (EnvChars.POSIX, "$HOME", "/home/test"),
+            (EnvChars.POSIX, "$HOME", str(Path("/home/test"))),
             (EnvChars.WINDOWS, "%HOME%", "C:\\Users\\test"),
             (EnvChars.RISCOS, "<HOME>", "$.test"),
+            (EnvChars.VMS, "'HOME'", "SYS$LOGIN"),
         ],
     )
     def test_expand_path_all_platforms(
@@ -4695,16 +4706,11 @@ class TestEnvExpandPath:
     ):
         """Test expand_path across all platforms with env vars set."""
         vars_dict = (
-            {"HOME": "/home/test"}
-            if chars == EnvChars.POSIX
-            else (
-                {"HOME": "C:\\Users\\test"}
-                if chars == EnvChars.WINDOWS
-                else {"HOME": "$.test"}
-            )
+            {"HOME": expected}
         )
         with patch.dict(os.environ, vars_dict, clear=True):
-            result = Env.expand_path(Path(path), vars=vars_dict, chars=chars)  # type: ignore[reportArgumentType]
+            flags = EnvExpandFlags.DEFAULT & ~ EnvExpandFlags.UNESCAPE
+            result = Env.expand_path(Path(path), vars=vars_dict, chars=chars, flags=flags)
             assert expected in str(result)
 
 
@@ -5037,12 +5043,12 @@ class TestExpandPathTilde:
         "path_args,vars,chars,expected",
         [
             # POSIX: ~ expands to /home/user
-            (("~",), {}, EnvChars.POSIX, "/home/user"),
-            (("~/docs",), {}, EnvChars.POSIX, "/home/user/docs"),
-            (("~/a/b/c",), {}, EnvChars.POSIX, "/home/user/a/b/c"),
+            (("~",), {}, EnvChars.POSIX, str(Path("/home/user"))),
+            ((str(Path("~/docs")),), {}, EnvChars.POSIX, str(Path("/home/user/docs"))),
+            ((str(Path("~/a/b/c")),), {}, EnvChars.POSIX, str(Path("/home/user/a/b/c"))),
             # POSIX with env var in expanded path
-            (("~/$FILE",), {"FILE": "test"}, EnvChars.POSIX, "/home/user/test"),
-            (("${HOME}/docs",), {"HOME": "/home/user"}, EnvChars.POSIX, "/home/user/docs"),
+            ((str(Path("~/$FILE")),), {"FILE": "test"}, EnvChars.POSIX, str(Path("/home/user/test"))),
+            ((str(Path("${HOME}/docs")),), {"HOME": "/home/user"}, EnvChars.POSIX, str(Path("/home/user/docs"))),
             # Windows: ~ expands to C:\Users\user
             (("~",), {}, EnvChars.WINDOWS, "C:\\Users\\user"),
             (("~\\docs",), {}, EnvChars.WINDOWS, "C:\\Users\\user\\docs"),

@@ -37,7 +37,10 @@ class EnvFile:
     )
     """Default flags to expand environment variables at every line in the file"""
 
-    RE_KEY_VALUE: Final[re.Pattern[str]] = re.compile(r"\s*=\s*")
+    EOF_CHAR: ClassVar[str] = "\x1A"
+    """Regex to split a string into key and value"""
+
+    RE_KEY_VALUE: ClassVar[re.Pattern[str]] = re.compile(r"\s*=\s*")
     """Regex to split a string into key and value"""
 
     __loaded: list[str] = []
@@ -209,20 +212,30 @@ class EnvFile:
             return
 
         chars = EnvChars.Current
+        is_eof = True
 
         for line in data.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
             # Remove all leading and trailing whitespaces
 
             line = line.strip()
 
-            # Skip amy empty line
+            # Skip an empty line
 
             if not line:
                 continue
 
-            # If a line starts with any of the known cutters, switch EnvCharsData
+            # Acknowledge beginning of the next file
 
-            chars, is_found = EnvFile.select_chars(line, chars)
+            if line[0] == EnvFile.EOF_CHAR:
+                is_eof = True
+                continue
+
+            # If the first line in a file starts with any of the known
+            # cutters, switch EnvCharsData
+
+            if is_eof:
+               is_eof = False
+               chars, is_found = EnvFile.select_chars(line, chars)
 
             if is_found:
                 continue
@@ -291,6 +304,8 @@ class EnvFile:
             # Read the file content ignoring any issue
 
             try:
+                if result:
+                    result.append(EnvFile.EOF_CHAR)
                 result.append(file.read_text())
             except Exception:
                 pass
