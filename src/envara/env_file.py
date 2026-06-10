@@ -236,9 +236,8 @@ class EnvFile:
             if is_eof:
                 is_eof = False
                 chars, is_found = EnvFile.select_chars(line, chars)
-
-            if is_found:
-                continue
+                if is_found:
+                    continue
 
             # Break into key and value and skip if can't do that
 
