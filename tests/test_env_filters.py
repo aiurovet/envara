@@ -1,6 +1,5 @@
 from tests.conftest import env_filter_mod, env_filters_mod
 
-
 EnvFilter = env_filter_mod.EnvFilter
 EnvFilters = env_filters_mod.EnvFilters
 

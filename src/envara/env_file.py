@@ -37,7 +37,7 @@ class EnvFile:
     )
     """Default flags to expand environment variables at every line in the file"""
 
-    EOF_CHAR: ClassVar[str] = "\x1A"
+    EOF_CHAR: ClassVar[str] = "\x1a"
     """Regex to split a string into key and value"""
 
     RE_KEY_VALUE: ClassVar[re.Pattern[str]] = re.compile(r"\s*=\s*")
@@ -234,8 +234,8 @@ class EnvFile:
             # cutters, switch EnvCharsData
 
             if is_eof:
-               is_eof = False
-               chars, is_found = EnvFile.select_chars(line, chars)
+                is_eof = False
+                chars, is_found = EnvFile.select_chars(line, chars)
 
             if is_found:
                 continue
@@ -318,8 +318,7 @@ class EnvFile:
 
     @staticmethod
     def select_chars(
-        input: str | None,
-        chars: EnvCharsData = EnvChars.Current
+        input: str | None, chars: EnvCharsData = EnvChars.Current
     ) -> tuple[EnvCharsData, bool]:
         """
         Choose new environment-specific chars based on input starting with one of
@@ -352,5 +351,6 @@ class EnvFile:
             return [EnvChars.WINDOWS, True]
 
         return [chars, False]
+
 
 ###############################################################################

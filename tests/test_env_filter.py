@@ -2,7 +2,6 @@ import pytest
 import re
 from tests.conftest import env_filter_mod as EnvFilterModule
 
-
 EnvFilter = EnvFilterModule.EnvFilter
 
 

@@ -194,15 +194,8 @@ class Env:
         if not path:
             return path
 
-        input, quote_type = Env.strip(
-            Env._path_to_posix(str(path)) if chars.is_posix else str(path),
-            flags=flags,
-            chars=chars,
-        )
-
-        result = Env.expand(
-            input=input, args=args, vars=vars, flags=flags, chars=chars
-        )
+        input, quote_type = Env.strip(str(path), flags=flags, chars=chars)
+        result = Env.expand(input=input, args=args, vars=vars, flags=flags, chars=chars)
 
         if not result:
             return None
@@ -213,27 +206,6 @@ class Env:
             path = path.expanduser()
 
         return path
-
-    ###########################################################################
-
-    @staticmethod
-    def _path_to_posix(path_str: str) -> str:
-        ESCAPE_CHARS = frozenset("ntrxu")
-        result = []
-        i = 0
-        while i < len(path_str):
-            c = path_str[i]
-            if c == "\\" and i + 1 < len(path_str) and path_str[i + 1] in ESCAPE_CHARS:
-                result.append(c)
-                result.append(path_str[i + 1])
-                i += 2
-            elif c == "\\":
-                result.append("/")
-                i += 1
-            else:
-                result.append(c)
-                i += 1
-        return "".join(result)
 
     ###########################################################################
     # This code was mainly generated using Copilot
@@ -292,12 +264,12 @@ class Env:
                 md = re.match(r"^(\d+)", inner)
                 if md:
                     name = md.group(1)
-                    rest = inner[md.end():]
+                    rest = inner[md.end() :]
                     idx = int(name) - 1
                     if args and 0 <= idx < len(args):
                         val = args[idx]
                         is_set = True
-                        is_null = (val == "")
+                        is_null = val == ""
                     else:
                         val = None
                         is_set = False
@@ -306,7 +278,7 @@ class Env:
                     return f"{expand_char}{{{inner}}}"
             else:
                 name = m.group(1)
-                rest = inner[m.end():]
+                rest = inner[m.end() :]
                 val = vars.get(name)
                 is_set = val is not None
                 is_null = (val == "") if is_set else False
@@ -340,7 +312,8 @@ class Env:
                             flags=flags,
                             chars=chars,
                             subprocess_timeout=subprocess_timeout,
-                        ) or ""
+                        )
+                        or ""
                     )
                     try:
                         vars[name] = new_val
@@ -1361,10 +1334,7 @@ class Env:
             args: list[str] | None = None,
             vars: MutableMapping[str, str] | None = None,
             flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
-            chars: EnvCharsData | None = None,
         ) -> bool:
-            if chars is None:
-                chars = EnvChars.Current
             tokstr = "".join(token)
             token.clear()
             if chars.cutter and tokstr.startswith(chars.cutter):
@@ -1403,7 +1373,6 @@ class Env:
                         args=args,
                         vars=vars,
                         flags=flags,
-                        chars=chars,
                     ):
                         break
 
@@ -1458,7 +1427,6 @@ class Env:
                 args=args,
                 vars=vars,
                 flags=flags,
-                chars=chars,
             )
 
         return result

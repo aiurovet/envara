@@ -93,6 +93,14 @@ class EnvChars:
 
     @staticmethod
     def init_default() -> EnvCharsData:
+        """
+        Clone the current OS-specific EnvCharsData and point `EnvChars.Default`
+        to that, then return it too
+
+        :return: EnvChars.Default pointing to a copy of the current OS-specific
+            data
+        :rtype: EnvCharsData
+        """
         EnvChars.Default = (
             EnvChars.RISCOS
             if EnvChars.IS_RISCOS

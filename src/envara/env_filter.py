@@ -27,6 +27,14 @@ class EnvFilter:
     """Any of these characters separates values in an input string"""
 
     def __eq__(self, other: object) -> bool:
+        """
+        Deep equality checker
+
+        :param self: The object
+
+        :param other: The object to compare to
+        """
+
         if not isinstance(other, EnvFilter):
             return False
         return (

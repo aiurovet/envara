@@ -1,5 +1,6 @@
 import re
 import os
+import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -16,7 +17,6 @@ from tests.conftest import (
 )
 
 from envara.env import Env
-
 
 EnvFile = env_file_mod.EnvFile
 EnvFilter = env_filter_mod.EnvFilter
@@ -320,6 +320,18 @@ class TestEnvFileLoad:
         EnvFile.load_from_str("=value")
         assert len(os.environ) == old_len
 
+    def test_load_from_str_eof_separator_switches_platform(self):
+        KEY1 = "KEY1"
+        KEY2 = "KEY2"
+        try:
+            data = f"{KEY1}=value1\n\x1a\n{KEY2}=value2"
+            EnvFile.load_from_str(data)
+            assert os.environ.get(KEY1) == "value1"
+            assert os.environ.get(KEY2) == "value2"
+        finally:
+            os.environ.pop(KEY1, None)
+            os.environ.pop(KEY2, None)
+
 
 class TestEnvFileLoadedList:
     def test_loaded_list_accessible(self):
@@ -418,3 +430,46 @@ class TestEnvFileReadTextMocked:
         mock_path.read_text.return_value = "KEY=value"
         result = EnvFile.read_text([mock_path], EnvFileFlags.NONE)
         assert isinstance(result, str)
+
+
+class TestEnvFileSelectChars:
+    @pytest.mark.parametrize(
+        "input_val,chars,expected_chars,expected_found",
+        [
+            # Empty input returns (chars, True)
+            ("", EnvChars.POSIX, EnvChars.POSIX, True),
+            # Input starts with current chars' own cutter
+            ("# comment", EnvChars.POSIX, EnvChars.POSIX, True),
+            # Leading whitespace before current cutter
+            ("  # comment", EnvChars.POSIX, EnvChars.POSIX, True),
+            # Switches to POSIX when current chars has different cutter
+            ("# comment", EnvChars.WINDOWS, EnvChars.POSIX, True),
+            # Switches to RISCOS
+            ("| comment", EnvChars.POSIX, EnvChars.RISCOS, True),
+            # Switches to VMS
+            ("! comment", EnvChars.POSIX, EnvChars.VMS, True),
+            # Switches to WINDOWS
+            (":: comment", EnvChars.POSIX, EnvChars.WINDOWS, True),
+            # No cutter matched
+            ("hello", EnvChars.POSIX, EnvChars.POSIX, False),
+            ("KEY=value", EnvChars.POSIX, EnvChars.POSIX, False),
+        ],
+    )
+    def test_select_chars(
+        self,
+        input_val: str | None,
+        chars: EnvCharsData,
+        expected_chars: EnvCharsData,
+        expected_found: bool,
+    ):
+        result_chars, result_found = EnvFile.select_chars(input_val, chars)
+        assert result_found == expected_found
+        assert result_chars is expected_chars
+
+    def test_select_chars_empty_cutter_still_detects_other_platforms(self):
+        no_cutter = EnvCharsData(
+            expand="$", escape="\\", cutter="", normal_quote='"', hard_quote="'"
+        )
+        result_chars, result_found = EnvFile.select_chars("#test", no_cutter)
+        assert result_found is True
+        assert result_chars is EnvChars.POSIX

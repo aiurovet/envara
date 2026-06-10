@@ -1,6 +1,6 @@
 ## 0.5.5
 
-Bugfix: every variable in each env file should be expanded according to the rules defined by a line starting with a cutter char
+Bugfix: every variable in each env file should be expanded according to the rules defined by the first line starting with a cutter char
 
 ## 0.5.4
 

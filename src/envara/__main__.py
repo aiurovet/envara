@@ -8,8 +8,11 @@
 
 
 def main():
-    print(
-        """
+    """
+    Execution entry point: displays the usage
+    """
+
+    print("""
 
 envara (c) Alexander Iurovetski 2026
 
@@ -128,8 +131,7 @@ to any runtime env, or having .env.test will imply it is applicable to any
 selected language when running in "test".
 
 The filterable elements can appear in a filename in any order
-"""
-    )
+""")
 
     return 0
 

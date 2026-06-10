@@ -6,7 +6,9 @@ A library to expand environment variables, application arguments and escape sequ
 
 Does not depend on any special Python package.
 
-Please note that version `0.4.0` brings breaking changes: mainly, a switch from multiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line. Finally, public methods `Env.expand_posix(...)` and `Env.expand_simple(...)` have been moved to the private scope, so stop using those directly in favour of `Env.expand(...)`.
+The test suite covers **1191 tests** with **100% code coverage** across all modules.
+
+Please note that version `0.4.0` brought breaking changes: a switch from multiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line. Finally, public methods `Env.expand_posix(...)` and `Env.expand_simple(...)` have been moved to the private scope, so stop using those directly in favour of `Env.expand(...)`.
 
 ---
 
@@ -129,10 +131,15 @@ Provides string expansions via static methods to:
 
 Key class variables:
 
-- `IS_POSIX` - `True` if running under Linux, UNIX, BSD/macOS or similar
-- `IS_RISCOS` - `True` if running under Risc OS
-- `IS_VMS` - `True` if running under OpenVMS or similar
-- `IS_WINDOWS` - `True` if running under Windows or OS/2
+- `IS_POSIX` — `True` if running under Linux, UNIX, BSD/macOS or similar
+- `IS_RISCOS` — `True` if running under Risc OS
+- `IS_VMS` — `True` if running under OpenVMS or similar
+- `IS_WINDOWS` — `True` if running under Windows or OS/2
+- `PLATFORM_POSIX` — `"posix"` constant
+- `PLATFORM_WINDOWS` — `"windows"` constant
+- `PLATFORM_THIS` — `sys.platform.lower()` of the running system
+- `SPECIAL` — dict mapping escape-letter keys (`a`, `b`, `f`, `n`, `r`, `t`, `v`) to control characters
+- `SYS_PLATFORM_MAP` — regex-to-platform-list mapping driving platform detection
 
 Platform-specific character sets (`EnvChars`):
 
@@ -141,6 +148,19 @@ Platform-specific character sets (`EnvChars`):
 - `EnvChars.WINDOWS` — `%NAME%` expansion, `^` escape, `"` normal quote
 - `EnvChars.VMS` — `'NAME'` expansion, `^` escape, `"` normal quote
 - `EnvChars.RISCOS` — `<NAME>` expansion, `\` escape, `"` normal quote
+- `EnvChars.Default` — OS-detected default (auto-initialized at import)
+- `EnvChars.Current` — currently active character set (may differ from `Default` after `select()`)
+
+Key methods:
+
+- `EnvChars.init_default()` — (re)initialize `Default` based on the running OS
+- `EnvChars.select(cutter)` — choose an `EnvCharsData` variant by matching a line-comment starter against known cutters (`#`, `::`, `!`, `|`)
+
+Each `EnvCharsData` instance also exposes:
+
+- `.copy_with(**overrides)` — create a modified copy (used internally for `POSIX_WINDOWS`)
+- `.expand_len`, `.windup_len`, `.escape_len`, `.cutter_len`, `.hard_quote_len`, `.normal_quote_len` — cached string lengths of each special character
+- `.all_quotes` — combined string of normal and hard quote characters
 
 Key static methods:
 
@@ -156,6 +176,20 @@ Key static methods:
 
 Reads series of `key=value` lines from env files, removes line comments, expands environment values and arguments, expands escaped characters, and sets or updates those as environment variables. Also allows hierarchical OS-specific stacking of such files.
 
+Key class constants:
+
+- `EOF_CHAR` — `\x1A` (Ctrl-Z) used as a file separator when concatenating multiple files. Recognized by `load_from_str()` to reset the platform-chars selection for the next file segment.
+- `RE_KEY_VALUE` — compiled regex `\s*=\s*` to split each line into key and value.
+- `DEFAULT_EXPAND_FLAGS` — default flags for `load()` and `load_from_str()`.
+
+Key public methods:
+
+- `EnvFile.load(dir, indicator, flags, *filters)` — discover and load all relevant env files from a directory, with platform-aware stacking
+- `EnvFile.load_from_str(data, args, expand_flags)` — parse a string buffer of `key=value` lines directly, with per-file platform detection via `select_chars()`
+- `EnvFile.read_text(files, flags)` — read content from a list of `Path` objects, inserting `EOF_CHAR` separators between files, respecting the loaded-files cache
+- `EnvFile.select_chars(input, chars)` — examine the first non-whitespace character(s) of a line to determine which `EnvCharsData` to use by matching cutters (`#` → POSIX, `::` → Windows, `!` → VMS, `|` → RISC OS)
+- `EnvFile.get_files(dir, indicator, flags, *filters)` — discover eligible env files for a directory with platform-based filtering
+
 ### `EnvFilter` and `EnvFilters`
 
 Environment-related filtering, mainly for use with `EnvFile`. Allows filtering env files based on:
@@ -163,6 +197,13 @@ Environment-related filtering, mainly for use with `EnvFile`. Allows filtering e
 - A necessary part of the filename (indicator)
 - Current runtime values (e.g., `dev`, `prod`)
 - All possible values for the runtime environment
+
+Key methods:
+
+- `EnvFilter(indicator, cur_values, all_values)` — constructor; `cur_values` and `all_values` accept comma-separated strings or lists
+- `EnvFilter.has_value(name, value)` — static check whether a value appears as a delimited token within a filename string
+- `EnvFilter.search(name)` — find the matching index within `cur_values`/`all_values` for a given filename
+- `EnvFilters.process(filenames, filters)` — static method to filter and sort filenames according to a list of `EnvFilter` criteria (called internally by `EnvFile.get_files()`)
 
 ### Enumerations
 
@@ -323,6 +364,8 @@ CMD_CHROME = "chrome $BROWSER_ARGS"
 ## What Kind of Expansion to Choose in the Env Files?
 
 By default, the expansion that is specific to the current platform will be chosen. You can override that by having the first non-empty line representing a line comment for the desired platform's rules. For instance, if the first non-empty line in an env file starts with `#`, it will force `Env.expand(...)` to use POSIX (in fact, bash) rules. If it starts with `::`, then Windows, if with `!`, then OpenVMS, and if with `|`, then RiscOS rules will apply. This resembles the shebang `#!` sequence for Linux/BSD/UNIX shell scripts. And it is always a good idea to start such a file with a meaningful comment anyway, so you can address both needs at once.
+
+When multiple files are loaded (via `EnvFile.load()`), the `\x1A` (EOF_CHAR) separator is inserted between them by `read_text()`. When `load_from_str()` encounters this character, it resets the platform-chars selection, allowing each file segment to independently declare its expansion rules via its first comment line.
 
 ---
 

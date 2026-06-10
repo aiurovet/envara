@@ -460,9 +460,7 @@ class TestEnvExpand:
     def test_expand_checks_quote_type_hard(self):
         """Checks returned quote_type depending on surrounding quotes"""
         with patch.object(Env, "unquote", return_value=("test", EnvQuoteType.HARD)):
-            with patch.object(
-                Env, "_Env__expand_posix", return_value="expanded"
-            ):
+            with patch.object(Env, "_Env__expand_posix", return_value="expanded"):
                 result = Env.expand("'test'", chars=EnvChars.POSIX)
                 assert result == "test"
 
@@ -510,10 +508,16 @@ class TestEnvExpandPosix:
             ("${VAR//:/-}", {"VAR": "user:name:id:123"}, None, "user-name-id-123"),
         ],
     )
-    def test_expand_posix(self, input_str: str | None, vars: dict[str, str] | None, args: list[str] | None, expected: str | None):
+    def test_expand_posix(
+        self,
+        input_str: str | None,
+        vars: dict[str, str] | None,
+        args: list[str] | None,
+        expected: str | None,
+    ):
         """Parametrized test ensuring maximum coverage for POSIX expansion"""
         with patch.dict(os.environ, vars or {}, clear=vars is not None):
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 input_str, vars=vars, args=args, chars=EnvChars.POSIX
             )
             assert result == expected
@@ -536,10 +540,16 @@ class TestEnvExpandSimple:
             ("%VAR:~-3%", {"VAR": "hello"}, None, "llo"),
         ],
     )
-    def test_expand_simple(self, input_str: str, vars: dict[str, str] | None, args: list[str] | None, expected: str):
+    def test_expand_simple(
+        self,
+        input_str: str,
+        vars: dict[str, str] | None,
+        args: list[str] | None,
+        expected: str,
+    ):
         """Parametrized test ensuring maximum coverage for Windows expansion"""
         chars = EnvChars.WINDOWS
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             input_str, vars=vars or {}, args=args, chars=chars
         )
         assert result == expected
@@ -566,7 +576,9 @@ class TestEnvUnescape:
             ("hello^x0DA^u000A", False, EnvChars.WINDOWS, "hello\rA\n"),
         ],
     )
-    def test_unescape(self, input_str: str, strip_blanks: bool, chars: EnvCharsData, expected: str):
+    def test_unescape(
+        self, input_str: str, strip_blanks: bool, chars: EnvCharsData, expected: str
+    ):
         """Parametrized test ensuring maximum coverage"""
         result = Env.unescape(input_str, strip_blanks=strip_blanks, chars=chars)
         assert result == expected
@@ -596,7 +608,9 @@ class TestEnvUnescape:
             ("hello^u001G", False, EnvChars.WINDOWS),
         ],
     )
-    def test_unescape_bad(self, input_str: str, strip_blanks: bool, chars: EnvCharsData):
+    def test_unescape_bad(
+        self, input_str: str, strip_blanks: bool, chars: EnvCharsData
+    ):
         """Parametrized test ensuring maximum coverage of exceptions"""
         with pytest.raises(ValueError, match="Incomplete escape sequence from "):
             Env.unescape(input_str, strip_blanks=strip_blanks, chars=chars)
@@ -607,36 +621,36 @@ class TestPatternRemoval:
 
     def test_single_hash_prefix(self):
         """${VAR#pattern} - remove shortest prefix match"""
-        r = Env._Env__expand_posix("${X#t*}", vars={"X": "test"}, chars=EnvChars.POSIX) # type: ignore
+        r = Env._Env__expand_posix("${X#t*}", vars={"X": "test"}, chars=EnvChars.POSIX)  # type: ignore
         assert "est" in r or "test" in r
 
     def test_double_hash_prefix(self):
         """${VAR##pattern} - remove longest prefix match"""
-        r = Env._Env__expand_posix( # type: ignore
+        r = Env._Env__expand_posix(  # type: ignore
             "${X##t*e}", vars={"X": "test"}, chars=EnvChars.POSIX
         )
         assert "st" in r or "test" in r
 
     def test_single_percent_suffix(self):
         """${VAR%pattern} - remove shortest suffix match"""
-        r = Env._Env__expand_posix("${X%t*}", vars={"X": "test"}, chars=EnvChars.POSIX) # type: ignore
+        r = Env._Env__expand_posix("${X%t*}", vars={"X": "test"}, chars=EnvChars.POSIX)  # type: ignore
         assert "tes" in r or "test" in r
 
     def test_double_percent_suffix(self):
         """${VAR%%pattern} - remove longest suffix match"""
-        r = Env._Env__expand_posix( # type: ignore
+        r = Env._Env__expand_posix(  # type: ignore
             "${X%%e*s}", vars={"X": "test"}, chars=EnvChars.POSIX
         )
         assert "te" in r or "test" in r
 
     def test_prefix_no_match(self):
         """Pattern doesn't match - return original"""
-        r = Env._Env__expand_posix("${X#x*}", vars={"X": "test"}, chars=EnvChars.POSIX) # type: ignore
+        r = Env._Env__expand_posix("${X#x*}", vars={"X": "test"}, chars=EnvChars.POSIX)  # type: ignore
         assert r == "test"
 
     def test_suffix_no_match(self):
         """Suffix pattern doesn't match - return original"""
-        r = Env._Env__expand_posix("${X%x*}", vars={"X": "test"}, chars=EnvChars.POSIX) # type: ignore
+        r = Env._Env__expand_posix("${X%x*}", vars={"X": "test"}, chars=EnvChars.POSIX)  # type: ignore
         assert r == "test"
 
 
@@ -645,28 +659,28 @@ class TestSubstitutions:
 
     def test_hash_subst(self):
         """${VAR#pattern} - substitute first prefix match"""
-        r = Env._Env__expand_posix( # type: ignore
+        r = Env._Env__expand_posix(  # type: ignore
             "${X#t}est", vars={"X": "testvalue"}, chars=EnvChars.POSIX
         )
         assert isinstance(r, str)
 
     def test_percent_subst(self):
         """${VAR%pattern} - substitute first suffix match"""
-        r = Env._Env__expand_posix( # type: ignore
+        r = Env._Env__expand_posix(  # type: ignore
             "${X%e}value", vars={"X": "testvalue"}, chars=EnvChars.POSIX
         )
         assert isinstance(r, str)
 
     def test_hash_no_match(self):
         """#pattern with no match - return original"""
-        r = Env._Env__expand_posix( # type: ignore
+        r = Env._Env__expand_posix(  # type: ignore
             "${X#x}test", vars={"X": "test"}, chars=EnvChars.POSIX
         )
         assert isinstance(r, str)
 
     def test_percent_no_match(self):
         """%pattern with no match - return original"""
-        r = Env._Env__expand_posix( # type: ignore
+        r = Env._Env__expand_posix(  # type: ignore
             "${X%x}test", vars={"X": "test"}, chars=EnvChars.POSIX
         )
         assert isinstance(r, str)
@@ -678,7 +692,7 @@ class TestSubprocess:
 
     def test_subprocess_not_allowed(self):
         """Without ALLOW_SUBPROC flag, $(...) stays as literal"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "$(echo test)",
             vars={},
             flags=EnvExpandFlags.NONE,
@@ -690,7 +704,7 @@ class TestSubprocess:
         """With ALLOW_SUBPROC flag, uses mocked subprocess"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="output\n", returncode=0)
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 "$(echo test)",
                 vars={},
                 flags=EnvExpandFlags.ALLOW_SUBPROC,
@@ -701,7 +715,7 @@ class TestSubprocess:
 
     def test_backtick_not_allowed(self):
         """Without flag, backticks stay as literal"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "`echo test`",
             vars={},
             flags=EnvExpandFlags.NONE,
@@ -713,7 +727,7 @@ class TestSubprocess:
         """With flag, backticks execute"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="result\n", returncode=0)
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 "`echo test`",
                 vars={},
                 flags=EnvExpandFlags.ALLOW_SUBPROC,
@@ -727,37 +741,37 @@ class TestPosixVariableExpansion:
 
     def test_escape_before_variable(self):
         r"Expansion with \ before $"
-        r = Env._Env__expand_posix(r"\$VAR", {"VAR": "value"}, chars=EnvChars.POSIX) # type: ignore
+        r = Env._Env__expand_posix(r"\$VAR", {"VAR": "value"}, chars=EnvChars.POSIX)  # type: ignore
         assert isinstance(r, str)
 
     def test_escape_before_dollar(self):
         r"$$\ - escaped dollar sign"
-        r = Env._Env__expand_posix("$$\n", {}, chars=EnvChars.POSIX) # type: ignore
+        r = Env._Env__expand_posix("$$\n", {}, chars=EnvChars.POSIX)  # type: ignore
         assert isinstance(r, str)
 
     def test_escape_backslash_before_var(self):
         r"\$\VAR - escape dollar then variable"
-        r = Env._Env__expand_posix(r"\$\VAR", {"VAR": "val"}, chars=EnvChars.POSIX) # type: ignore
+        r = Env._Env__expand_posix(r"\$\VAR", {"VAR": "val"}, chars=EnvChars.POSIX)  # type: ignore
         assert isinstance(r, str)
 
     def test_escape_at_end(self):
         """Trailing escape character"""
-        r = Env._Env__expand_posix("value\\", {}, chars=EnvChars.POSIX) # type: ignore
+        r = Env._Env__expand_posix("value\\", {}, chars=EnvChars.POSIX)  # type: ignore
         assert "value\\" in r or isinstance(r, str)
 
     def test_double_escape(self):
         r"\\ - double backslash"
-        r = Env._Env__expand_posix(r"\\", {}, chars=EnvChars.POSIX) # type: ignore
+        r = Env._Env__expand_posix(r"\\", {}, chars=EnvChars.POSIX)  # type: ignore
         assert isinstance(r, str)
 
     def test_escape_near_end(self):
         r"test\ at end of string"
-        result = Env._Env__expand_posix("test\\", {}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("test\\", {}, chars=EnvChars.POSIX)  # type: ignore
         assert "test" in result
 
     def test_escape_before_brace(self):
         r"\$\{VAR} - escaped variable with braces"
-        r = Env._Env__expand_posix(r"\$\{VAR}", {"VAR": "val"}, chars=EnvChars.POSIX) # type: ignore
+        r = Env._Env__expand_posix(r"\$\{VAR}", {"VAR": "val"}, chars=EnvChars.POSIX)  # type: ignore
         assert isinstance(r, str)
 
 
@@ -766,22 +780,22 @@ class TestWindowsExpandSimple:
 
     def test_triple_percent(self):
         """%%% - triple percent collapses to one"""
-        result = Env._Env__expand_simple("%%%", {}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%%%", {}, chars=EnvChars.WINDOWS)  # type: ignore
         assert "%" in result
 
     def test_percent_digit(self):
         """%$1 - percent digit variable"""
-        result = Env._Env__expand_simple("%$1", {"1": "arg1"}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%$1", {"1": "arg1"}, chars=EnvChars.WINDOWS)  # type: ignore
         assert "$1" in result or isinstance(result, str)
 
     def test_percent_range(self):
         """%$1-3 - percent digit range"""
-        result = Env._Env__expand_simple("%$10", {}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%$10", {}, chars=EnvChars.WINDOWS)  # type: ignore
         assert isinstance(result, str)
 
     def test_percent_at_end(self):
         """Trailing % at end"""
-        result = Env._Env__expand_simple("value%", {}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("value%", {}, chars=EnvChars.WINDOWS)  # type: ignore
         assert "value%" in result
 
 
@@ -1091,7 +1105,7 @@ class TestExpandSimpleAllPlatforms:
         expected: str,
     ):
         """Test expand_simple across all 4 platforms."""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             input_str, vars=vars or {}, args=args, chars=chars
         )
         assert result == expected
@@ -1113,7 +1127,7 @@ class TestExpandSimpleAllPlatforms:
         chars: EnvChars,
     ):
         """Test that unmatched patterns return the literal string."""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             input_str, vars=vars or {}, args=args, chars=chars
         )
         assert isinstance(result, str)
@@ -1134,7 +1148,7 @@ class TestExpandSimpleAllPlatforms:
         chars: EnvChars,
     ):
         """Test VMS escape character handling."""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             input_str, vars=vars or {}, args=args, chars=chars
         )
         assert isinstance(result, str)
@@ -1155,7 +1169,7 @@ class TestExpandSimpleAllPlatforms:
         chars: EnvChars,
     ):
         """Test Windows escape character handling."""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             input_str, vars=vars or {}, args=args, chars=chars
         )
         assert isinstance(result, str)
@@ -1176,14 +1190,14 @@ class TestExpandSimpleAllPlatforms:
         chars: EnvChars,
     ):
         """Test POSIX escape character handling."""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             input_str, vars=vars or {}, args=args, chars=chars
         )
         assert isinstance(result, str)
 
     def test_expand_simple_posix_no_windup(self):
         """POSIX has no windup char, so vars expand to empty when no windup."""
-        result = Env._Env__expand_simple("$VAR", {"VAR": "value"}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_simple("$VAR", {"VAR": "value"}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "$AR"
 
 
@@ -1232,7 +1246,7 @@ class TestExpandPosixAllFeatures:
         """Parametrized test for parameter expansion features."""
         args = ["one", "two"] if "1" in input_str else None
         with patch.dict(os.environ, vars or {}, clear=True):
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 input_str, vars=vars, args=args, chars=EnvChars.POSIX
             )
             assert result == expected
@@ -1254,7 +1268,7 @@ class TestExpandPosixAllFeatures:
         self, input_str: str, vars: dict[str, str], expected: str
     ):
         """Test pattern removal features: #, ## (prefix) and %, %% (suffix)."""
-        result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX)  # type: ignore
         assert result == expected
 
     @pytest.mark.parametrize(
@@ -1273,7 +1287,7 @@ class TestExpandPosixAllFeatures:
         self, input_str: str, vars: dict[str, str], expected: str
     ):
         """Test substitution features."""
-        result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX)  # type: ignore
         assert isinstance(result, str)
 
     @pytest.mark.parametrize(
@@ -1288,7 +1302,7 @@ class TestExpandPosixAllFeatures:
     )
     def test_expand_posix_escape(self, input_str: str, vars: dict[str, str]):
         """Test escape character handling."""
-        result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX)  # type: ignore
         assert isinstance(result, str)
 
     # Case modification tests: ^, ^^, ,, ,, ~, ~~
@@ -1331,7 +1345,7 @@ class TestExpandPosixAllFeatures:
         self, input_str: str, vars: dict[str, str], expected: str
     ):
         """Test basic case modification features."""
-        result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX)  # type: ignore
         assert result == expected
 
     @pytest.mark.parametrize(
@@ -1363,7 +1377,7 @@ class TestExpandPosixAllFeatures:
         self, input_str: str, vars: dict[str, str], expected: str
     ):
         """Test pattern-based case modification features."""
-        result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX)  # type: ignore
         assert result == expected
 
     @pytest.mark.parametrize(
@@ -1389,7 +1403,7 @@ class TestExpandPosixAllFeatures:
         self, input_str: str, vars: dict[str, str], expected: str
     ):
         """Test case modification with unset or null variables."""
-        result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix(input_str, vars=vars, chars=EnvChars.POSIX)  # type: ignore
         assert result == expected
 
 
@@ -1399,44 +1413,44 @@ class TestExpandPosixErrorHandling:
     def test_expand_posix_colon_question_var_null(self):
         """${VAR:?message} - raises ValueError when VAR is null (empty)"""
         with pytest.raises(ValueError, match="custom message"):
-            Env._Env__expand_posix( # type: ignore
+            Env._Env__expand_posix(  # type: ignore
                 "${VAR:?custom message}", vars={"VAR": ""}, chars=EnvChars.POSIX
             )
 
     def test_expand_posix_colon_question_var_not_set(self):
         """${VAR:?message} - raises ValueError when VAR is not set"""
         with pytest.raises(ValueError, match="custom message"):
-            Env._Env__expand_posix( # type: ignore
+            Env._Env__expand_posix(  # type: ignore
                 "${VAR:?custom message}", vars={}, chars=EnvChars.POSIX
             )
 
     def test_expand_posix_colon_question_default_msg(self):
         """${VAR:?} - raises ValueError with default message when VAR is null"""
         with pytest.raises(ValueError, match="parameter null or not set"):
-            Env._Env__expand_posix("${VAR:?}", vars={"VAR": ""}, chars=EnvChars.POSIX) # type: ignore
+            Env._Env__expand_posix("${VAR:?}", vars={"VAR": ""}, chars=EnvChars.POSIX)  # type: ignore
 
     def test_expand_posix_question_var_not_set(self):
         """${VAR?message} - raises ValueError when VAR is not set"""
         with pytest.raises(ValueError, match="custom message"):
-            Env._Env__expand_posix( # type: ignore
+            Env._Env__expand_posix(  # type: ignore
                 "${VAR?custom message}", vars={}, chars=EnvChars.POSIX
             )
 
     def test_expand_posix_question_default_msg(self):
         """${VAR?} - raises ValueError with default message when VAR is not set"""
         with pytest.raises(ValueError, match="parameter not set"):
-            Env._Env__expand_posix("${VAR?}", vars={}, chars=EnvChars.POSIX) # type: ignore
+            Env._Env__expand_posix("${VAR?}", vars={}, chars=EnvChars.POSIX)  # type: ignore
 
     def test_expand_posix_question_var_set(self):
         """${VAR?message} - returns value when VAR is set"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR?message}", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "value"
 
     def test_expand_posix_colon_question_var_set(self):
         """${VAR:?message} - returns value when VAR is set and not null"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:?message}", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "value"
@@ -1447,42 +1461,42 @@ class TestExpandPosixSubstitutionAnchors:
 
     def test_substitution_pattern_anchor_hash(self):
         """${VAR/#foo/bar} - anchor # from pattern replaces prefix match"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "repltch"
 
     def test_substitution_pattern_anchor_percent(self):
         """${VAR/%foo/bar} - anchor % from pattern replaces suffix match"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "matrepl"
 
     def test_substitution_anchor_hash_no_match(self):
         """${VAR/#foo/bar} - no match returns original"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
 
     def test_substitution_anchor_percent_no_match(self):
         """${VAR/%foo/bar} - no match returns original"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
 
     def test_substitution_all_with_anchor_hash(self):
         """${VAR//#foo/bar} - replace all with # anchor"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//m/repl}", vars={"X": "matchmatch"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_substitution_all_with_anchor_percent(self):
         """${VAR//%foo/bar} - replace all with % anchor"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//h/repl}", vars={"X": "matchmatch"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
@@ -1493,24 +1507,24 @@ class TestExpandPosixPIDAndSpecial:
 
     def test_expand_posix_dollar_dollar(self):
         """$$ expands to PID"""
-        result = Env._Env__expand_posix("$$", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$$", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == str(os.getpid())
 
     def test_expand_posix_dollar_hash_with_args(self):
         """$# expands to number of args"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "$#", args=["a", "b", "c"], chars=EnvChars.POSIX
         )
         assert result == "3"
 
     def test_expand_posix_dollar_hash_no_args(self):
         """$# expands to 0 when no args"""
-        result = Env._Env__expand_posix("$#", args=None, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$#", args=None, chars=EnvChars.POSIX)  # type: ignore
         assert result == "0"
 
     def test_expand_posix_dollar_hash_empty_args(self):
         """$# expands to 0 when args is empty list"""
-        result = Env._Env__expand_posix("$#", args=[], chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$#", args=[], chars=EnvChars.POSIX)  # type: ignore
         assert result == "0"
 
 
@@ -1519,31 +1533,31 @@ class TestExpandPosixNestedAndEdgeCases:
 
     def test_expand_posix_nested_braces(self):
         """Nested expansion inside braces"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:-${DEFAULT}}", vars={"DEFAULT": "fallback"}, chars=EnvChars.POSIX
         )
         assert result == "fallback"
 
     def test_expand_posix_empty_var_name_braces(self):
         """${} - empty var name in braces returns literal"""
-        result = Env._Env__expand_posix("${}", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${}", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "${}"
 
     def test_expand_posix_invalid_var_name_braces(self):
         """${123abc} - invalid var name in braces returns literal"""
-        result = Env._Env__expand_posix("${123abc}", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${123abc}", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "${123abc}"
 
     def test_expand_posix_var_with_underscore(self):
         """${MY_VAR} - variable with underscore"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${MY_VAR}", vars={"MY_VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "value"
 
     def test_expand_posix_multiple_vars_with_text(self):
         """Text between and around variables"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "start$VAR-middle$OTHER-end",
             vars={"VAR": "A", "OTHER": "B"},
             chars=EnvChars.POSIX,
@@ -1552,13 +1566,13 @@ class TestExpandPosixNestedAndEdgeCases:
 
     def test_expand_posix_dollar_at_end(self):
         """$ at end of string"""
-        result = Env._Env__expand_posix("value$", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("value$", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "value$"
 
     def test_expand_posix_unterminated_brace(self):
         """Unterminated brace raises ValueError"""
         with pytest.raises(ValueError, match="Unterminated braced expansion"):
-            Env._Env__expand_posix("${VAR", vars={}, chars=EnvChars.POSIX) # type: ignore
+            Env._Env__expand_posix("${VAR", vars={}, chars=EnvChars.POSIX)  # type: ignore
 
 
 class TestExpandPosixBacktickSubstitution:
@@ -1566,7 +1580,7 @@ class TestExpandPosixBacktickSubstitution:
 
     def test_backtick_not_allowed_returns_literal(self):
         """Without ALLOW_SUBPROC, backticks stay as literal"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "`echo test`",
             vars={},
             flags=EnvExpandFlags.NONE,
@@ -1578,7 +1592,7 @@ class TestExpandPosixBacktickSubstitution:
         """With ALLOW_SUBPROC flag, uses mocked subprocess"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="output\n", returncode=0)
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 "`echo test`",
                 vars={},
                 flags=EnvExpandFlags.ALLOW_SUBPROC,
@@ -1590,7 +1604,7 @@ class TestExpandPosixBacktickSubstitution:
     def test_backtick_unterminated_raises(self):
         """Unterminated backtick raises ValueError"""
         with pytest.raises(ValueError, match="Unterminated backtick"):
-            Env._Env__expand_posix("`echo test", vars={}, chars=EnvChars.POSIX) # type: ignore
+            Env._Env__expand_posix("`echo test", vars={}, chars=EnvChars.POSIX)  # type: ignore
 
 
 class TestExpandPosixCommandSubstitution:
@@ -1598,7 +1612,7 @@ class TestExpandPosixCommandSubstitution:
 
     def test_command_sub_not_allowed_returns_literal(self):
         """Without ALLOW_SUBPROC, $(...) stays as literal"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "$(echo test)",
             vars={},
             flags=EnvExpandFlags.NONE,
@@ -1610,7 +1624,7 @@ class TestExpandPosixCommandSubstitution:
         """With ALLOW_SUBPROC flag, uses mocked subprocess"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="result\n", returncode=0)
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 "$(echo test)",
                 vars={},
                 flags=EnvExpandFlags.ALLOW_SUBPROC,
@@ -1622,13 +1636,13 @@ class TestExpandPosixCommandSubstitution:
     def test_command_sub_unterminated_raises(self):
         """Unterminated $(...) raises ValueError"""
         with pytest.raises(ValueError, match="Unterminated command substitution"):
-            Env._Env__expand_posix("$(echo test", vars={}, chars=EnvChars.POSIX) # type: ignore
+            Env._Env__expand_posix("$(echo test", vars={}, chars=EnvChars.POSIX)  # type: ignore
 
     def test_command_sub_nested_parens(self):
         """$(...) with nested parentheses"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="nested\n", returncode=0)
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 "$(echo $(date))",
                 vars={},
                 flags=EnvExpandFlags.ALLOW_SUBPROC,
@@ -1643,14 +1657,14 @@ class TestExpandPosixVarsNone:
     def test_vars_none_uses_environ(self):
         """When vars is None, uses os.environ"""
         with patch.dict(os.environ, {"TEST_VAR": "from_env"}):
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 "$TEST_VAR", vars=None, chars=EnvChars.POSIX
             )
             assert result == "from_env"
 
     def test_vars_none_var_not_in_environ(self):
         """When vars is None and var not in environ, returns literal"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "$UNKNOWN_VAR_XYZ", vars=None, chars=EnvChars.POSIX
         )
         assert result == "$UNKNOWN_VAR_XYZ"
@@ -1661,70 +1675,70 @@ class TestExpandPosixSubstitutionLoops:
 
     def test_substitution_hash_anchor_all_loop_changes(self):
         """anchor == '#' with is_all=True - loop with changes"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//#ma/repl}", vars={"X": "mamatch"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_substitution_percent_anchor_all_loop_changes(self):
         """anchor == '%' with is_all=True - loop with changes"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//%ch/repl}", vars={"X": "matchch"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_substitution_hash_anchor_all_loop_no_change(self):
         """anchor == '#' with is_all=True - loop with no change"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
 
     def test_substitution_percent_anchor_all_loop_no_change(self):
         """anchor == '%' with is_all=True - loop with no change"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
 
     def test_substitution_hash_anchor_single_match(self):
         """anchor == '#' with is_all=False - match returns repl_eval + text[i:]"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "repltch"
 
     def test_substitution_hash_anchor_single_no_match(self):
         """anchor == '#' with is_all=False - no match returns val"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
 
     def test_substitution_percent_anchor_single_match(self):
         """anchor == '%' with is_all=False - match returns text[:len(text)-i] + repl_eval"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "matrepl"
 
     def test_substitution_percent_anchor_single_no_match(self):
         """anchor == '%' with is_all=False - no match returns val"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
 
     def test_substitution_no_anchor_is_all_true(self):
         """No anchor with is_all=True - replaces all occurrences"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//m/repl}", vars={"X": "matchmatch"}, chars=EnvChars.POSIX
         )
         assert result == "replatchreplatch" or "repl" in result
 
     def test_substitution_no_anchor_is_all_false(self):
         """No anchor with is_all=False - replaces first occurrence"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "replatch"
@@ -1735,21 +1749,21 @@ class TestExpandPosixColonPlusOperator:
 
     def test_colon_plus_var_set_not_null(self):
         """${VAR:+word} - when VAR is set and not null, returns word (line 440-448)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "replacement"
 
     def test_colon_plus_var_null(self):
         """${VAR:+word} - when VAR is set but null, returns "" (line 440-448)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX
         )
         assert result == ""
 
     def test_colon_plus_var_not_set(self):
         """${VAR:+word} - when VAR is not set, returns "" (line 440-448)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:+replacement}", vars={}, chars=EnvChars.POSIX
         )
         assert result == ""
@@ -1760,21 +1774,21 @@ class TestExpandPosixPlusOperator:
 
     def test_plus_var_set(self):
         """${VAR+word} - when VAR is set (even if null), returns word (line 451-458)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "replacement"
 
     def test_plus_var_null(self):
         """${VAR+word} - when VAR is set but null, returns word (line 451-458)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX
         )
         assert result == "replacement"
 
     def test_plus_var_not_set(self):
         """${VAR+word} - when VAR is not set, returns "" (line 451-458)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR+replacement}", vars={}, chars=EnvChars.POSIX
         )
         assert result == ""
@@ -1785,28 +1799,28 @@ class TestExpandPosixRestParsingLines:
 
     def test_rest_starts_with_hash_anchor(self):
         """rest starts with # - anchor='#' (lines 319-321)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_rest_starts_with_percent_anchor(self):
         """rest starts with % - anchor='%' (lines 319-321)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_rest_starts_with_double_slash(self):
         """rest starts with // - is_all=True (lines 327-331)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_rest_starts_with_slash(self):
         """rest starts with / - is_all=False (lines 332-335)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
@@ -1815,7 +1829,7 @@ class TestExpandPosixRestParsingLines:
         """rest contains / but not at start - covered at line 336-337"""
         # This is tricky - line 336-337: elif "/" in r: pat, repl = r.split("/", 1)
         # This happens when rest doesn't start with // or /, but contains /
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${Xm/repl}", vars={"Xm": "match"}, chars=EnvChars.POSIX
         )
         assert isinstance(result, str)
@@ -1826,14 +1840,14 @@ class TestExpandPosixPatStartsWithAnchor:
 
     def test_pat_starts_with_hash(self):
         """pat starts with # - anchor set (lines 339-341)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_pat_starts_with_percent(self):
         """pat starts with % - anchor set (lines 339-341)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
@@ -1844,7 +1858,7 @@ class TestExpandPosixReplEval:
 
     def test_repl_eval_expands(self):
         """repl is expanded via expand_posix (lines 353-359)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/old/${REPL}}", vars={"X": "old", "REPL": "new"}, chars=EnvChars.POSIX
         )
         assert "new" in result or result == "new"
@@ -1855,14 +1869,14 @@ class TestExpandPosixAnchorHashAllTrue:
 
     def test_anchor_hash_all_changes(self):
         """anchor == '#' with is_all=True - loop makes changes"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//#ma/repl}", vars={"X": "mamatch"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_anchor_hash_all_no_change(self):
         """anchor == '#' with is_all=True - loop no changes"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
@@ -1873,14 +1887,14 @@ class TestExpandPosixAnchorPercentAllTrue:
 
     def test_anchor_percent_all_changes(self):
         """anchor == '%' with is_all=True - loop makes changes"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//%ch/repl}", vars={"X": "matchch"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_anchor_percent_all_no_change(self):
         """anchor == '%' with is_all=True - loop no changes"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
@@ -1891,14 +1905,14 @@ class TestExpandPosixColonPlusReturnsEmpty:
 
     def test_colon_plus_null_returns_empty(self):
         """${VAR:+word} when VAR is null - returns '' (line 437)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:+word}", vars={"VAR": ""}, chars=EnvChars.POSIX
         )
         assert result == ""
 
     def test_colon_plus_not_set_returns_empty(self):
         """${VAR:+word} when VAR not set - returns '' (line 437)"""
-        result = Env._Env__expand_posix("${VAR:+word}", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${VAR:+word}", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == ""
 
 
@@ -1907,12 +1921,12 @@ class TestExpandPosixMainLoopNotExpandChar:
 
     def test_regular_char_processing(self):
         """Regular character processing (lines 571-572)"""
-        result = Env._Env__expand_posix("hello world", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("hello world", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "hello world"
 
     def test_multiple_chars_no_expand(self):
         """Multiple characters, none are expand_char (lines 571-572)"""
-        result = Env._Env__expand_posix("abc123!@#", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("abc123!@#", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "abc123!@#"
 
 
@@ -1921,33 +1935,33 @@ class TestExpandPosixEscapeProcessing:
 
     def test_escape_before_dollar(self):
         """Escape before $ (lines 500-507)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             r"\$VAR", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "$VAR"
 
     def test_double_escape_before_var(self):
         """Double escape before $VAR (lines 503-504)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             r"\\$VAR", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "\\value" or "\\" in result
 
     def test_escape_at_end_of_string(self):
         """Escape at end of string (lines 510-513)"""
-        result = Env._Env__expand_posix("test\\", vars={}, chars=EnvChars.POSIX) # type: ignore
-        assert result.endswith("\\") # type: ignore
+        result = Env._Env__expand_posix("test\\", vars={}, chars=EnvChars.POSIX)  # type: ignore
+        assert result.endswith("\\")  # type: ignore
 
     def test_escape_before_regular_char(self):
         """Escape before regular char (lines 500-507)"""
-        result = Env._Env__expand_posix(r"\n", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix(r"\n", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "\\n"
 
     def test_escape_before_backtick_with_subproc(self):
         """Escape before backtick, subprocess allowed (lines 521-522)"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="output\n", returncode=0)
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 r"\`echo test\`",
                 vars={},
                 flags=EnvExpandFlags.ALLOW_SUBPROC,
@@ -1964,7 +1978,7 @@ class TestExpandPosixUnterminatedBacktick:
     def test_unterminated_backtick_raises(self):
         """Unterminated backtick raises ValueError (line 525)"""
         with pytest.raises(ValueError, match="Unterminated backtick"):
-            Env._Env__expand_posix("`echo test", vars={}, chars=EnvChars.POSIX) # type: ignore
+            Env._Env__expand_posix("`echo test", vars={}, chars=EnvChars.POSIX)  # type: ignore
 
 
 class TestExpandPosixBacktickWithEscapeInside:
@@ -1974,7 +1988,7 @@ class TestExpandPosixBacktickWithEscapeInside:
         """Backtick with escaped backtick inside (lines 520-522)"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="output\n", returncode=0)
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 "`echo \\`test`",
                 vars={},
                 flags=EnvExpandFlags.ALLOW_SUBPROC,
@@ -1988,7 +2002,7 @@ class TestExpandPosixDollarDollar:
 
     def test_dollar_dollar_expands_pid(self):
         """$$ expands to PID (lines 575-578)"""
-        result = Env._Env__expand_posix("$$", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$$", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == str(os.getpid())
 
 
@@ -1997,19 +2011,19 @@ class TestExpandPosixDollarHash:
 
     def test_dollar_hash_with_args(self):
         """$# with args returns count (lines 580-586)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "$#", args=["a", "b", "c"], chars=EnvChars.POSIX
         )
         assert result == "3"
 
     def test_dollar_hash_no_args(self):
         """$# with no args returns 0 (lines 580-586)"""
-        result = Env._Env__expand_posix("$#", args=[], chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$#", args=[], chars=EnvChars.POSIX)  # type: ignore
         assert result == "0"
 
     def test_dollar_hash_args_none(self):
         """$# with args=None returns 0 (lines 580-586)"""
-        result = Env._Env__expand_posix("$#", args=None, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$#", args=None, chars=EnvChars.POSIX)  # type: ignore
         assert result == "0"
 
 
@@ -2020,7 +2034,7 @@ class TestExpandPosixDollarOpenParen:
         """$(...) command substitution (lines 588-641)"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="result\n", returncode=0)
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 "$(echo test)",
                 vars={},
                 flags=EnvExpandFlags.ALLOW_SUBPROC,
@@ -2031,11 +2045,11 @@ class TestExpandPosixDollarOpenParen:
     def test_dollar_open_paren_no_close(self):
         """$( without closing ) raises error (line 600)"""
         with pytest.raises(ValueError, match="Unterminated command substitution"):
-            Env._Env__expand_posix("$(echo test", vars={}, chars=EnvChars.POSIX) # type: ignore
+            Env._Env__expand_posix("$(echo test", vars={}, chars=EnvChars.POSIX)  # type: ignore
 
     def test_dollar_open_paren_no_subproc(self):
         """$(...) without ALLOW_SUBPROC returns literal (lines 609-612)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "$(echo test)",
             vars={},
             flags=EnvExpandFlags.NONE,
@@ -2049,7 +2063,7 @@ class TestExpandPosixBracedExpansion:
 
     def test_braced_expansion(self):
         """${VAR} braced expansion (lines 643-659)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR}", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "value"
@@ -2057,7 +2071,7 @@ class TestExpandPosixBracedExpansion:
     def test_braced_unterminated(self):
         """Unterminated brace raises error (line 655)"""
         with pytest.raises(ValueError, match="Unterminated braced expansion"):
-            Env._Env__expand_posix("${VAR", vars={}, chars=EnvChars.POSIX) # type: ignore
+            Env._Env__expand_posix("${VAR", vars={}, chars=EnvChars.POSIX)  # type: ignore
 
 
 class TestExpandPosixAlphaVar:
@@ -2065,14 +2079,14 @@ class TestExpandPosixAlphaVar:
 
     def test_alpha_var_set(self):
         """$VAR when set (lines 676-687)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "$VAR", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "value"
 
     def test_alpha_var_not_set(self):
         """$VAR when not set (lines 681-683)"""
-        result = Env._Env__expand_posix("$UNKNOWN", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$UNKNOWN", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "$UNKNOWN"
 
 
@@ -2081,12 +2095,12 @@ class TestExpandPosixDigitVar:
 
     def test_digit_var_in_range(self):
         """$1 when in range (lines 663-674)"""
-        result = Env._Env__expand_posix("$1", args=["one"], chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$1", args=["one"], chars=EnvChars.POSIX)  # type: ignore
         assert result == "one"
 
     def test_digit_var_out_of_range(self):
         """$99 when out of range (lines 669-672)"""
-        result = Env._Env__expand_posix("$99", args=["a"], chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$99", args=["a"], chars=EnvChars.POSIX)  # type: ignore
         assert result == "$99"
 
 
@@ -2095,12 +2109,12 @@ class TestExpandPosixLoneDollar:
 
     def test_lone_dollar_at_end(self):
         """$ at end of string (lines 689-690)"""
-        result = Env._Env__expand_posix("value$", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("value$", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "value$"
 
     def test_lone_dollar_then_invalid(self):
         """$@ - invalid char after $ (lines 689-690)"""
-        result = Env._Env__expand_posix("$@", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$@", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "$@"
 
 
@@ -2109,10 +2123,8 @@ class TestExpandPosixInputNone:
 
     def test_input_none_returns_empty(self):
         """input=None returns empty string (line 191-192)"""
-        result = Env._Env__expand_posix(None, vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix(None, vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result is None
-
-
 
 
 class TestExpandPosixAllowShell:
@@ -2122,7 +2134,7 @@ class TestExpandPosixAllowShell:
         """ALLOW_SHELL implies ALLOW_SUBPROC (lines 199-203)"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="shell\n", returncode=0)
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 "$(echo test)",
                 vars={},
                 flags=EnvExpandFlags.ALLOW_SHELL,
@@ -2139,7 +2151,7 @@ class TestExpandPosixIsBktickCmd:
         chars = EnvChars.POSIX.copy_with(escape="\\")
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="cmd\n", returncode=0)
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 "`echo test`",
                 vars={},
                 flags=EnvExpandFlags.ALLOW_SUBPROC,
@@ -2151,7 +2163,7 @@ class TestExpandPosixIsBktickCmd:
 
     def test_substring_var_not_set(self):
         """${VAR:0:3} when VAR not set returns literal (line 251)"""
-        result = Env._Env__expand_posix("${UNKNOWN:0:3}", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${UNKNOWN:0:3}", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert "${UNKNOWN:0:3}" in result or result == "${UNKNOWN:0:3}"
 
 
@@ -2161,7 +2173,7 @@ class TestExpandPosixColonEqualsAssign:
     def test_colon_equals_assigns(self):
         """${VAR:=value} assigns to vars dict (lines 274-278)"""
         vars_dict: MutableMapping[str, str] = {}
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:=newval}", vars=vars_dict, chars=EnvChars.POSIX
         )
         assert result == "newval"
@@ -2175,7 +2187,7 @@ class TestExpandPosixColonEqualsAssign:
                 raise Exception("read-only")
 
         ro_dict = ReadOnlyDict({"VAR": "old"})
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:=new}", vars=ro_dict, chars=EnvChars.POSIX
         )
         assert result == "old" or result == "new"
@@ -2183,7 +2195,7 @@ class TestExpandPosixColonEqualsAssign:
     def test_colon_equals_assigns_args(self):
         """${1:=newval} assigns to args (lines 274-278)"""
         args_list: list[str] = ["old"]
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${1:=newval}", args=args_list, chars=EnvChars.POSIX
         )
         assert result == "old"
@@ -2195,14 +2207,14 @@ class TestExpandPosixRestStartsWithHash:
 
     def test_rest_starts_with_hash(self):
         """rest starts with # - anchor='#' (lines 320-321)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_rest_starts_with_percent(self):
         """rest starts with % - anchor='%' (lines 320-321)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
@@ -2213,7 +2225,7 @@ class TestExpandPosixRestStartsWithSlashSlash:
 
     def test_rest_starts_with_slash_slash(self):
         """rest starts with // - is_all=True (lines 327-331)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
@@ -2224,7 +2236,7 @@ class TestExpandPosixRestStartsWithSlash:
 
     def test_rest_starts_with_slash(self):
         """rest starts with / - is_all=False (lines 332-335)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
@@ -2239,7 +2251,7 @@ class TestExpandPosixRestContainsSlash:
         # This would be like ${VARm/atch/repl} - but that's invalid syntax
         # Actually line 336-337 handles: elif "/" in r:
         # This is when rest has no // prefix, no / prefix, but contains /
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
@@ -2250,7 +2262,7 @@ class TestExpandPosixPatStartsWithHash:
 
     def test_pat_starts_with_hash(self):
         """pat starts with # - anchor set (lines 339-341)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
@@ -2261,7 +2273,7 @@ class TestExpandPosixPatStartsWithPercent:
 
     def test_pat_starts_with_percent(self):
         """pat starts with % - anchor set (lines 339-341)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
@@ -2272,15 +2284,13 @@ class TestExpandPosixSubstitutionNotSet:
 
     def test_substitution_var_not_set_returns_literal(self):
         """${VAR/pat/repl} when not set returns literal (line 347)"""
-        result = Env._Env__expand_posix("${UNKNOWN/m/r}", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${UNKNOWN/m/r}", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert "${UNKNOWN/m/r}" in result or result == "${UNKNOWN/m/r}"
 
     def test_substitution_var_not_set_args(self):
         """${99/match/repl} when arg not set returns literal (line 347)"""
-        result = Env._Env__expand_posix("${99/match/repl}", args=["value"], chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${99/match/repl}", args=["value"], chars=EnvChars.POSIX)  # type: ignore
         assert "${99/match/repl}" in result or result == "${99/match/repl}"
-
-
 
 
 class TestExpandPosixHashAnchorAllTrue:
@@ -2288,14 +2298,14 @@ class TestExpandPosixHashAnchorAllTrue:
 
     def test_hash_anchor_all_loops(self):
         """anchor == '#' with is_all=True - multiple replacements"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//#m/repl}", vars={"X": "mmatch"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_hash_anchor_all_no_change(self):
         """anchor == '#' with is_all=True - no change"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
@@ -2306,14 +2316,14 @@ class TestExpandPosixHashAnchorAllFalse:
 
     def test_hash_anchor_single_match(self):
         """anchor == '#' with is_all=False - first match"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "repltch"
 
     def test_hash_anchor_single_no_match(self):
         """anchor == '#' with is_all=False - no match"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
@@ -2324,14 +2334,14 @@ class TestExpandPosixPercentAnchorAllTrue:
 
     def test_percent_anchor_all_loops(self):
         """anchor == '%' with is_all=True - multiple replacements"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//%ch/repl}", vars={"X": "matchch"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_percent_anchor_all_no_change(self):
         """anchor == '%' with is_all=True - no change"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
@@ -2342,14 +2352,14 @@ class TestExpandPosixPercentAnchorAllFalse:
 
     def test_percent_anchor_single_match(self):
         """anchor == '%' with is_all=False - first match"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "matrepl"
 
     def test_percent_anchor_single_no_match(self):
         """anchor == '%' with is_all=False - no match"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
@@ -2360,7 +2370,7 @@ class TestExpandPosixNoAnchorAllTrue:
 
     def test_no_anchor_all_replaces_all(self):
         """No anchor with is_all=True - replace all"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//m/repl}", vars={"X": "matchmatch"}, chars=EnvChars.POSIX
         )
         assert result == "replatchreplatch" or "repl" in result
@@ -2371,7 +2381,7 @@ class TestExpandPosixNoAnchorAllFalse:
 
     def test_no_anchor_single_replaces_first(self):
         """No anchor with is_all=False - replace first"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "replatch"
@@ -2382,42 +2392,42 @@ class TestExpandPosixColonPlus:
 
     def test_colon_plus_set_not_null(self):
         """${VAR:+word} when set and not null (lines 440-448)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "replacement"
 
     def test_colon_plus_null(self):
         """${VAR:+word} when set but null (lines 440-448)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX
         )
         assert result == ""
 
     def test_colon_plus_not_set(self):
         """${VAR:+word} when not set (lines 440-448)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:+replacement}", vars={}, chars=EnvChars.POSIX
         )
         assert result == ""
 
     def test_colon_plus_set_not_null_args(self):
         """${1:+replacement} when arg set and not null (lines 440-448)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${1:+replacement}", args=["value"], chars=EnvChars.POSIX
         )
         assert result == "replacement"
 
     def test_colon_plus_null_args(self):
         """${1:+replacement} when arg set but null (lines 440-448)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${1:+replacement}", args=[""], chars=EnvChars.POSIX
         )
         assert result == ""
 
     def test_colon_plus_not_set_args(self):
         """${1:+replacement} when arg not set (lines 440-448)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${1:+replacement}", args=[], chars=EnvChars.POSIX
         )
         assert result == ""
@@ -2428,42 +2438,42 @@ class TestExpandPosixPlus:
 
     def test_plus_set(self):
         """${VAR+word} when set (even if null) (lines 451-458)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "replacement"
 
     def test_plus_null(self):
         """${VAR+word} when set but null (lines 451-458)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX
         )
         assert result == "replacement"
 
     def test_plus_not_set(self):
         """${VAR+word} when not set (lines 451-458)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR+replacement}", vars={}, chars=EnvChars.POSIX
         )
         assert result == ""
 
     def test_plus_set_args(self):
         """${1+replacement} when arg set (even if null) (lines 451-458)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${1+replacement}", args=["value"], chars=EnvChars.POSIX
         )
         assert result == "replacement"
 
     def test_plus_null_args(self):
         """${1+replacement} when arg set but null (lines 451-458)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${1+replacement}", args=[""], chars=EnvChars.POSIX
         )
         assert result == "replacement"
 
     def test_plus_not_set_args(self):
         """${1+replacement} when arg not set (lines 451-458)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${1+replacement}", args=[], chars=EnvChars.POSIX
         )
         assert result == ""
@@ -2475,23 +2485,23 @@ class TestExpandPosixColonQuestion:
     def test_colon_question_var_null(self):
         """${VAR:?msg} when VAR is null (lines 460-472)"""
         with pytest.raises(ValueError, match="custom msg"):
-            Env._Env__expand_posix( # type: ignore
+            Env._Env__expand_posix(  # type: ignore
                 "${VAR:?custom msg}", vars={"VAR": ""}, chars=EnvChars.POSIX
             )
 
     def test_colon_question_var_not_set(self):
         """${VAR:?msg} when VAR not set (lines 460-472)"""
         with pytest.raises(ValueError, match="custom msg"):
-            Env._Env__expand_posix("${VAR:?custom msg}", vars={}, chars=EnvChars.POSIX) # type: ignore
+            Env._Env__expand_posix("${VAR:?custom msg}", vars={}, chars=EnvChars.POSIX)  # type: ignore
 
     def test_colon_question_default_msg_null(self):
         """${VAR:?} when VAR is null (lines 460-472)"""
         with pytest.raises(ValueError, match="parameter null or not set"):
-            Env._Env__expand_posix("${VAR:?}", vars={"VAR": ""}, chars=EnvChars.POSIX) # type: ignore
+            Env._Env__expand_posix("${VAR:?}", vars={"VAR": ""}, chars=EnvChars.POSIX)  # type: ignore
 
     def test_colon_question_set(self):
         """${VAR:?msg} when VAR is set and not null (lines 460-472)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:?msg}", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "value"
@@ -2499,20 +2509,20 @@ class TestExpandPosixColonQuestion:
     def test_colon_question_var_null_args(self):
         """${1:?custom msg} when arg is null (lines 460-472)"""
         with pytest.raises(ValueError, match="custom msg"):
-            Env._Env__expand_posix( # type: ignore
+            Env._Env__expand_posix(  # type: ignore
                 "${1:?custom msg}", args=[""], chars=EnvChars.POSIX
             )
 
     def test_colon_question_var_not_set_args(self):
         """${2:?custom msg} when arg not set (lines 460-472)"""
         with pytest.raises(ValueError, match="custom msg"):
-            Env._Env__expand_posix( # type: ignore
+            Env._Env__expand_posix(  # type: ignore
                 "${2:?custom msg}", args=["value"], chars=EnvChars.POSIX
             )
 
     def test_colon_question_set_args(self):
         """${1:?msg} when arg is set and not null (lines 460-472)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${1:?msg}", args=["value"], chars=EnvChars.POSIX
         )
         assert result == "value"
@@ -2524,16 +2534,16 @@ class TestExpandPosixQuestion:
     def test_question_var_not_set(self):
         """${VAR?msg} when VAR not set (lines 473-485)"""
         with pytest.raises(ValueError, match="custom msg"):
-            Env._Env__expand_posix("${VAR?custom msg}", vars={}, chars=EnvChars.POSIX) # type: ignore
+            Env._Env__expand_posix("${VAR?custom msg}", vars={}, chars=EnvChars.POSIX)  # type: ignore
 
     def test_question_default_msg(self):
         """${VAR?} when VAR not set (lines 473-485)"""
         with pytest.raises(ValueError, match="parameter not set"):
-            Env._Env__expand_posix("${VAR?}", vars={}, chars=EnvChars.POSIX) # type: ignore
+            Env._Env__expand_posix("${VAR?}", vars={}, chars=EnvChars.POSIX)  # type: ignore
 
     def test_question_set(self):
         """${VAR?msg} when VAR is set (lines 473-486)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR?msg}", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "value"
@@ -2541,13 +2551,13 @@ class TestExpandPosixQuestion:
     def test_question_var_not_set_args(self):
         """${2?custom msg} when arg not set (lines 473-485)"""
         with pytest.raises(ValueError, match="custom msg"):
-            Env._Env__expand_posix( # type: ignore
+            Env._Env__expand_posix(  # type: ignore
                 "${2?custom msg}", args=["value"], chars=EnvChars.POSIX
             )
 
     def test_question_set_args(self):
         """${1?msg} when arg is set (lines 473-486)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${1?msg}", args=["value"], chars=EnvChars.POSIX
         )
         assert result == "value"
@@ -2558,40 +2568,40 @@ class TestExpandPosixReturnWhenSetNoRest:
 
     def test_return_when_set_no_rest(self):
         """When var is set and no rest, return val (lines 488-490)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR}", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "value"
 
     def test_return_when_not_set_no_rest(self):
         """When var not set and no rest, return literal (lines 488-490)"""
-        result = Env._Env__expand_posix("${UNKNOWN}", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${UNKNOWN}", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "${UNKNOWN}"
 
     def test_return_when_set_no_rest_args(self):
         """When arg is set and no rest, return val (lines 488-490)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${1}", args=["value"], chars=EnvChars.POSIX
         )
         assert result == "value"
 
     def test_return_when_not_set_no_rest_args(self):
         """When arg not set and no rest, return literal (lines 488-490)"""
-        result = Env._Env__expand_posix("${99}", args=["value"], chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${99}", args=["value"], chars=EnvChars.POSIX)  # type: ignore
         assert result == "${99}"
 
     """Tests for when pat or repl is None (line 343-344)"""
 
     def test_substitution_no_slash_in_rest(self):
         """When rest has no slash, pat and repl remain None (line 343-344)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR}", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "value"
 
     def test_substitution_rest_no_slash(self):
         """rest starts with neither // nor / nor contains /"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:-default}", vars={"VAR": ""}, chars=EnvChars.POSIX
         )
         assert result == "default"
@@ -2602,14 +2612,14 @@ class TestExpandPosixEvalBracedReturn:
 
     def test_eval_braced_set_no_rest(self):
         """When var is set and no rest, returns val (line 488-490)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR}", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "value"
 
     def test_eval_braced_not_set_no_rest(self):
         """When var not set and no rest, returns literal (line 488-490)"""
-        result = Env._Env__expand_posix("${UNKNOWN}", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${UNKNOWN}", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "${UNKNOWN}"
 
 
@@ -2618,22 +2628,20 @@ class TestExpandPosixMainLoopDollarHash:
 
     def test_dollar_hash_with_args(self):
         """$# with args returns arg count (lines 580-586)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "$#", args=["a", "b", "c"], chars=EnvChars.POSIX
         )
         assert result == "3"
 
     def test_dollar_hash_no_args(self):
         """$# with no args returns 0 (lines 580-586)"""
-        result = Env._Env__expand_posix("$#", args=[], chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$#", args=[], chars=EnvChars.POSIX)  # type: ignore
         assert result == "0"
 
     def test_dollar_hash_none_args(self):
         """$# with args=None returns 0 (lines 580-586)"""
-        result = Env._Env__expand_posix("$#", args=None, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$#", args=None, chars=EnvChars.POSIX)  # type: ignore
         assert result == "0"
-
-
 
 
 class TestExpandPosixVarsNoneFallBack:
@@ -2642,22 +2650,22 @@ class TestExpandPosixVarsNoneFallBack:
     def test_vars_none_uses_environ(self):
         """When vars=None, use os.environ (line 196-197)"""
         with patch.dict(os.environ, {"TEST_VAR": "from_env"}, clear=False):
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 "$TEST_VAR", vars=None, chars=EnvChars.POSIX
             )
             assert result == "from_env"
 
 
-
-
 class TestExpandPosixBacktickIsBktickCmd:
     """Tests for is_bktick_cmd flag (line 210)"""
 
-    @pytest.mark.skipif(os.name == "nt", reason="echo is a shell built-in, not an executable on Windows")
+    @pytest.mark.skipif(
+        os.name == "nt", reason="echo is a shell built-in, not an executable on Windows"
+    )
     def test_backtick_is_command(self):
         """When escape != backtick, backtick is command sub (line 210)"""
         chars = EnvChars.POSIX.copy_with(escape="\\")
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "`echo test`",
             vars={},
             flags=EnvExpandFlags.ALLOW_SUBPROC,
@@ -2666,21 +2674,19 @@ class TestExpandPosixBacktickIsBktickCmd:
         assert "test" in result
 
 
-
-
 class TestExpandPosixLoopsNoChange:
     """Tests for loops that don't change (lines 370-377, 387-401)"""
 
     def test_hash_anchor_all_no_change(self):
         """anchor == '#' with is_all=True, no change (lines 375-377)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
 
     def test_percent_anchor_all_no_change(self):
         """anchor == '%' with is_all=True, no change (lines 394-401)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
@@ -2691,33 +2697,33 @@ class TestExpandPosixPatternRemovalEdgeCases:
 
     def test_double_hash_no_match(self):
         """## with no match returns original (lines 282-297)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X##xyz}", vars={"X": "test"}, chars=EnvChars.POSIX
         )
         assert result == "test"
 
     def test_double_percent_no_match(self):
         """%% with no match returns original (lines 298-314)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X%%xyz}", vars={"X": "test"}, chars=EnvChars.POSIX
         )
         assert result == "test"
 
     def test_single_hash_var_not_set(self):
         """# when var not set returns literal (lines 282-285)"""
-        result = Env._Env__expand_posix("${X#pattern}", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${X#pattern}", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "${X#pattern}"
 
     def test_single_percent_var_not_set(self):
         """% when var not set returns literal (lines 298-301)"""
-        result = Env._Env__expand_posix("${X%pattern}", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${X%pattern}", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "${X%pattern}"
 
     """Tests for ${#VAR} when VAR is not set (line 251)"""
 
     def test_hash_var_not_set(self):
         """${#UNKNOWN} - length of unknown variable returns literal (line 224-225)"""
-        result = Env._Env__expand_posix("${#UNKNOWN}", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${#UNKNOWN}", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "${#UNKNOWN}"
 
 
@@ -2732,13 +2738,11 @@ class TestExpandPosixColonEqualsAssignException:
                 raise Exception("Read-only")
 
         ro_dict = ReadOnlyDict({"VAR": "existing"})
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:=newval}", vars=ro_dict, chars=EnvChars.POSIX
         )
         # Should return existing value since assignment fails
         assert result == "existing"
-
-
 
 
 class TestExpandPosixBacktickSubprocessShell:
@@ -2748,7 +2752,7 @@ class TestExpandPosixBacktickSubprocessShell:
         """Backtick with ALLOW_SHELL uses shell=True (line 541-549)"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="from shell\n", returncode=0)
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 "`echo test`",
                 vars={},
                 flags=EnvExpandFlags.ALLOW_SHELL,
@@ -2770,7 +2774,7 @@ class TestExpandPosixBacktickTimeout:
             side_effect=subprocess.TimeoutExpired(cmd="test", timeout=1),
         ):
             with pytest.raises(ValueError, match="timed out"):
-                Env._Env__expand_posix( # type: ignore
+                Env._Env__expand_posix(  # type: ignore
                     "`sleep 10`",
                     vars={},
                     flags=EnvExpandFlags.ALLOW_SUBPROC,
@@ -2789,7 +2793,7 @@ class TestExpandPosixBacktickError:
                 stdout="", stderr="command not found", returncode=1
             )
             with pytest.raises(ValueError, match="failed"):
-                Env._Env__expand_posix( # type: ignore
+                Env._Env__expand_posix(  # type: ignore
                     "`badcommand`",
                     vars={},
                     flags=EnvExpandFlags.ALLOW_SUBPROC,
@@ -2804,7 +2808,7 @@ class TestExpandPosixCommandSubShell:
         """$(...) with ALLOW_SHELL uses shell=True (line 615-621)"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="from shell\n", returncode=0)
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 "$(echo test)",
                 vars={},
                 flags=EnvExpandFlags.ALLOW_SHELL,
@@ -2825,7 +2829,7 @@ class TestExpandPosixCommandSubTimeout:
             side_effect=subprocess.TimeoutExpired(cmd="test", timeout=1),
         ):
             with pytest.raises(ValueError, match="timed out"):
-                Env._Env__expand_posix( # type: ignore
+                Env._Env__expand_posix(  # type: ignore
                     "$(sleep 10)",
                     vars={},
                     flags=EnvExpandFlags.ALLOW_SUBPROC,
@@ -2844,7 +2848,7 @@ class TestExpandPosixCommandSubError:
                 stdout="", stderr="command not found", returncode=1
             )
             with pytest.raises(ValueError, match="failed"):
-                Env._Env__expand_posix( # type: ignore
+                Env._Env__expand_posix(  # type: ignore
                     "$(badcommand)",
                     vars={},
                     flags=EnvExpandFlags.ALLOW_SUBPROC,
@@ -2852,30 +2856,24 @@ class TestExpandPosixCommandSubError:
                 )
 
 
-
-
 class TestExpandPosixDollarDigit:
     """Tests for $1, $2, etc. (lines 663-674)"""
 
     def test_dollar_digit_single(self):
         """$1 - single digit (lines 664-674)"""
-        result = Env._Env__expand_posix("$1", args=["one"], chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$1", args=["one"], chars=EnvChars.POSIX)  # type: ignore
         assert result == "one"
 
     def test_dollar_digit_multi(self):
         """$10 - multi-digit (lines 664-674)"""
         args = [str(i) for i in range(1, 11)]
-        result = Env._Env__expand_posix("$10", args=args, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$10", args=args, chars=EnvChars.POSIX)  # type: ignore
         assert result == "10"
 
     def test_dollar_digit_out_of_range(self):
         """$99 - out of range (lines 669-672)"""
-        result = Env._Env__expand_posix("$99", args=["a"], chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$99", args=["a"], chars=EnvChars.POSIX)  # type: ignore
         assert result == "$99"
-
-
-
-
 
 
 class TestExpandPosixColonEqualsException:
@@ -2884,7 +2882,7 @@ class TestExpandPosixColonEqualsException:
     def test_colon_equals_vars_none(self):
         """${VAR:=value} with vars=None falls back to os.environ (line 196-197)"""
         with patch.dict(os.environ, {"TEST_VAR": "from_env"}, clear=False):
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 "${TEST_VAR:=newval}", vars=None, chars=EnvChars.POSIX
             )
             assert result == "from_env"
@@ -2899,7 +2897,7 @@ class TestExpandPosixColonEqualsException:
                 raise Exception("Read-only")
 
         ro_dict = ReadOnlyDict(vars_readonly)
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:=newval}", vars=ro_dict, chars=EnvChars.POSIX
         )
         assert result == "existing" or result == "newval"
@@ -2910,28 +2908,28 @@ class TestExpandPosixRestParsing:
 
     def test_rest_starts_with_hash_anchor(self):
         """rest starts with # - anchor set to # (lines 319-321)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_rest_starts_with_percent_anchor(self):
         """rest starts with % - anchor set to % (lines 319-321)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_pat_starts_with_hash_anchor(self):
         """pat starts with # - anchor set to # (lines 339-341)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_pat_starts_with_percent_anchor(self):
         """pat starts with % - anchor set to % (lines 339-341)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
@@ -2942,92 +2940,88 @@ class TestExpandPosixMainLoop:
 
     def test_main_loop_char_not_expand_char(self):
         """ch != expand_char - just append (line 570-573)"""
-        result = Env._Env__expand_posix("hello", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("hello", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "hello"
 
     def test_main_loop_dollar_dollar(self):
         """$$ expands to PID (lines 575-578)"""
-        result = Env._Env__expand_posix("$$", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$$", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == str(os.getpid())
 
     def test_main_loop_alpha_var(self):
         """$VAR - alphabetic variable (lines 676-687)"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "$VAR", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "value"
 
     def test_main_loop_digit_arg(self):
         """$1 - numeric arg (lines 663-674)"""
-        result = Env._Env__expand_posix("$1", args=["one"], chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$1", args=["one"], chars=EnvChars.POSIX)  # type: ignore
         assert result == "one"
 
     def test_main_loop_unrecognized_after_dollar(self):
         """$@ - unrecognized after dollar, just append $ (lines 689-690)"""
-        result = Env._Env__expand_posix("$@", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$@", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "$@"
 
     """Tests for substitution loops with anchors # and % (is_all=True)"""
 
     def test_substitution_hash_anchor_all_loop_changes(self):
         """anchor == '#' with is_all=True - loop with changes"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//#ma/repl}", vars={"X": "mamatch"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_substitution_percent_anchor_all_loop_changes(self):
         """anchor == '%' with is_all=True - loop with changes"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//%ch/repl}", vars={"X": "matchch"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_substitution_hash_anchor_single_no_match(self):
         """anchor == '#' with is_all=False - no match returns val"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
 
     def test_substitution_percent_anchor_single_no_match(self):
         """anchor == '%' with is_all=False - no match returns val"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%xyz/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "match"
 
     def test_substitution_hash_anchor_single_match(self):
         """anchor == '#' with is_all=False - match returns repl_eval + text[i:]"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "repltch"
 
     def test_substitution_percent_anchor_single_match(self):
         """anchor == '%' with is_all=False - match returns text[:len(text)-i] + repl_eval"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "matrepl"
 
     def test_substitution_no_anchor_is_all_true(self):
         """No anchor with is_all=True - replaces all occurrences"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//m/repl}", vars={"X": "matchmatch"}, chars=EnvChars.POSIX
         )
         assert result == "replatchreplatch" or "repl" in result
 
     def test_substitution_no_anchor_is_all_false(self):
         """No anchor with is_all=False - replaces first occurrence"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "replatch"
-
-
-
-
 
 
 class TestExpandPosixRestPatterns:
@@ -3035,35 +3029,35 @@ class TestExpandPosixRestPatterns:
 
     def test_rest_starts_with_slash_slash(self):
         """rest starts with // - is_all=True"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_rest_starts_with_slash(self):
         """rest starts with / - is_all=False"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/m/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result or result == "repltch"
 
     def test_rest_contains_slash(self):
         """rest contains / but doesn't start with /"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${Xm/repl}", vars={"Xm": "match"}, chars=EnvChars.POSIX
         )
         assert isinstance(result, str)
 
     def test_pat_starts_with_hash(self):
         """pat starts with # - anchor is set to #"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_pat_starts_with_percent(self):
         """pat starts with % - anchor is set to %"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
@@ -3072,42 +3066,38 @@ class TestExpandPosixRestPatterns:
 
     def test_substitution_hash_anchor_all_loop(self):
         """anchor == '#' with is_all=True - replace all prefix matches"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//#ma/repl}", vars={"X": "mamatch"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_substitution_percent_anchor_all_loop(self):
         """anchor == '%' with is_all=True - replace all suffix matches"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X//%ch/repl}", vars={"X": "matchch"}, chars=EnvChars.POSIX
         )
         assert "repl" in result
 
     def test_substitution_hash_anchor_single(self):
         """anchor == '#' with is_all=False - replace first prefix match"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/#ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "repltch"
 
     def test_substitution_percent_anchor_single(self):
         """anchor == '%' with is_all=False - replace first suffix match"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/%ch/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "matrepl"
 
     def test_substitution_no_anchor(self):
         """No anchor - standard substitution"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X/ma/repl}", vars={"X": "match"}, chars=EnvChars.POSIX
         )
         assert result == "repltch"
-
-
-
-
 
 
 class TestExpandPosixEvalBracedEdgeCases:
@@ -3115,55 +3105,55 @@ class TestExpandPosixEvalBracedEdgeCases:
 
     def test_eval_braced_hash_unknown_var(self):
         """${#UNKNOWN} - length of unknown variable returns literal"""
-        result = Env._Env__expand_posix("${#UNKNOWN}", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${#UNKNOWN}", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "${#UNKNOWN}"
 
     def test_eval_braced_numeric_param_out_of_range(self):
         """${99} - numeric param out of range returns literal"""
-        result = Env._Env__expand_posix("${99}", args=["a", "b"], chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${99}", args=["a", "b"], chars=EnvChars.POSIX)  # type: ignore
         assert result == "${99}"
 
     def test_eval_braced_substring_negative_offset(self):
         """${VAR:-3:2} - substring with negative offset"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:-3:2}", vars={"VAR": "hello"}, chars=EnvChars.POSIX
         )
         assert result == "ll"
 
     def test_eval_braced_colon_equals_set_var(self):
         """${VAR:=value} - when VAR is already set, returns value"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:=newval}", vars={"VAR": "existing"}, chars=EnvChars.POSIX
         )
         assert result == "existing"
 
     def test_eval_braced_pattern_removal_not_set(self):
         """${VAR#pattern} - when VAR not set, returns literal"""
-        result = Env._Env__expand_posix("${VAR#pattern}", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${VAR#pattern}", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "${VAR#pattern}"
 
     def test_eval_braced_percent_removal_not_set(self):
         """${VAR%pattern} - when VAR not set, returns literal"""
-        result = Env._Env__expand_posix("${VAR%pattern}", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("${VAR%pattern}", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "${VAR%pattern}"
 
     def test_eval_braced_plus_operator_set(self):
         """${VAR:+word} - when VAR is set and not null"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:+replacement}", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "replacement"
 
     def test_eval_braced_plus_operator_null(self):
         """${VAR:+word} - when VAR is set but null, returns empty"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:+replacement}", vars={"VAR": ""}, chars=EnvChars.POSIX
         )
         assert result == ""
 
     def test_eval_braced_return_when_set_no_rest(self):
         """${VAR} - when VAR is set and no rest, returns val"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR}", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "value"
@@ -3171,7 +3161,7 @@ class TestExpandPosixEvalBracedEdgeCases:
     def test_eval_braced_colon_equals_assigns_var(self):
         """${VAR:=value} - assigns value to var when unset"""
         vars_dict: MutableMapping[str, str] = {}
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:=newval}", vars=vars_dict, chars=EnvChars.POSIX
         )
         assert result == "newval"
@@ -3179,56 +3169,56 @@ class TestExpandPosixEvalBracedEdgeCases:
 
     def test_eval_braced_hash_var_set(self):
         """${#VAR} - length of set variable"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${#VAR}", vars={"VAR": "hello"}, chars=EnvChars.POSIX
         )
         assert result == "5"
 
     def test_eval_braced_substring_negative_offset_clamped(self):
         """${VAR:-20:2} - negative offset clamped to 0"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:-20:2}", vars={"VAR": "hello"}, chars=EnvChars.POSIX
         )
         assert result == "he"
 
     def test_eval_braced_substring_no_length(self):
         """${VAR:2} - substring from offset to end"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR:2}", vars={"VAR": "hello"}, chars=EnvChars.POSIX
         )
         assert result == "llo"
 
     def test_eval_braced_pattern_removal_double_hash_longest(self):
         """${VAR##pattern} - longest prefix removal"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X##t*e}", vars={"X": "test"}, chars=EnvChars.POSIX
         )
         assert result == "st"
 
     def test_eval_braced_pattern_removal_double_percent_longest(self):
         """${VAR%%pattern} - longest suffix removal when no match"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X%%e*s}", vars={"X": "test"}, chars=EnvChars.POSIX
         )
         assert result == "test"
 
     def test_eval_braced_pattern_removal_double_percent_matches(self):
         """${VAR%%pattern} - longest suffix removal when matches"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${X%%t}", vars={"X": "test"}, chars=EnvChars.POSIX
         )
         assert result == "tes"
 
     def test_eval_braced_substitution_no_pat_repl(self):
         """When pat or repl is None, skip substitution"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR}", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "value"
 
     def test_eval_braced_args_set(self):
         """${1} when arg is set returns value"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${1}", args=["hello"], chars=EnvChars.POSIX
         )
         assert result == "hello"
@@ -3236,7 +3226,7 @@ class TestExpandPosixEvalBracedEdgeCases:
     def test_eval_braced_args_colon_equals(self):
         """${1:=newval} when arg not set assigns and returns newval"""
         args_list: list[str] = []
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${1:=newval}", args=args_list, chars=EnvChars.POSIX
         )
         assert result == "newval"
@@ -3248,7 +3238,7 @@ class TestExpandPosixMainLoopEdgeCases:
 
     def test_main_loop_backtick_no_subproc_returns_literal(self):
         """Backtick without ALLOW_SUBPROC returns literal"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "`echo test`",
             vars={},
             flags=EnvExpandFlags.NONE,
@@ -3258,56 +3248,56 @@ class TestExpandPosixMainLoopEdgeCases:
 
     def test_main_loop_double_escape_before_var(self):
         """Double escape before $VAR"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             r"\\$VAR", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "\\value" or "\\$VAR" in result
 
     def test_main_loop_escape_at_end_of_string(self):
         """Escape character at end of string"""
-        result = Env._Env__expand_posix("test\\", vars={}, chars=EnvChars.POSIX) # type: ignore
-        assert result.endswith("\\") # type: ignore
+        result = Env._Env__expand_posix("test\\", vars={}, chars=EnvChars.POSIX)  # type: ignore
+        assert result.endswith("\\")  # type: ignore
 
     def test_main_loop_dollar_no_following_char(self):
         """$ at end of string"""
-        result = Env._Env__expand_posix("value$", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("value$", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "value$"
 
     def test_main_loop_dollar_dollar(self):
         """$$ expands to PID"""
-        result = Env._Env__expand_posix("$$", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$$", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == str(os.getpid())
 
     def test_main_loop_dollar_hash_with_args(self):
         """$# with args"""
-        result = Env._Env__expand_posix("$#", args=["a", "b"], chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$#", args=["a", "b"], chars=EnvChars.POSIX)  # type: ignore
         assert result == "2"
 
     def test_main_loop_dollar_open_paren_no_close(self):
         """$( without closing ) raises error"""
         with pytest.raises(ValueError, match="Unterminated command substitution"):
-            Env._Env__expand_posix("$(echo test", vars={}, chars=EnvChars.POSIX) # type: ignore
+            Env._Env__expand_posix("$(echo test", vars={}, chars=EnvChars.POSIX)  # type: ignore
 
     def test_main_loop_brace_with_no_close(self):
         """${ without closing } raises error"""
         with pytest.raises(ValueError, match="Unterminated braced expansion"):
-            Env._Env__expand_posix("${VAR", vars={}, chars=EnvChars.POSIX) # type: ignore
+            Env._Env__expand_posix("${VAR", vars={}, chars=EnvChars.POSIX)  # type: ignore
 
     def test_main_loop_alpha_var_after_dollar(self):
         """$VAR after dollar sign"""
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "$VAR", vars={"VAR": "value"}, chars=EnvChars.POSIX
         )
         assert result == "value"
 
     def test_main_loop_digit_after_dollar(self):
         """$1 after dollar sign"""
-        result = Env._Env__expand_posix("$1", args=["one"], chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("$1", args=["one"], chars=EnvChars.POSIX)  # type: ignore
         assert result == "one"
 
     def test_main_loop_lone_dollar(self):
         """Lone $ with no valid following char"""
-        result = Env._Env__expand_posix("value$", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_posix("value$", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "value$"
 
 
@@ -3316,13 +3306,13 @@ class TestExpandSimpleCoverLines:
 
     def test_line_713_input_none(self):
         """input=None returns empty (line 713)"""
-        result = Env._Env__expand_simple(None, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple(None, chars=EnvChars.WINDOWS)  # type: ignore
         assert result is None
 
     def test_line_717_718_vars_none(self):
         """vars=None uses os.environ (lines 717-718)"""
         with patch.dict(os.environ, {"TEST": "val"}, clear=False):
-            result = Env._Env__expand_simple( # type: ignore
+            result = Env._Env__expand_simple(  # type: ignore
                 "%TEST%", vars=None, chars=EnvChars.WINDOWS
             )
             assert result == "val"
@@ -3330,24 +3320,24 @@ class TestExpandSimpleCoverLines:
     def test_line_736_750_escape_before_expand(self):
         """Escape before % (lines 736-750)"""
         # \%VAR% - escape before %, so % is literal
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             r"\%VAR%", {"VAR": "value"}, chars=EnvChars.WINDOWS
         )
         assert "%" in result
 
     def test_line_762_765_escape_at_end(self):
         """Escape at end (lines 762-765)"""
-        result = Env._Env__expand_simple("value%", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("value%", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "value%"
 
     def test_line_767_770_not_expand_char(self):
         """Regular char (lines 767-770)"""
-        result = Env._Env__expand_simple("hello", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("hello", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "hello"
 
     def test_line_772_775_expand_windup(self):
         """%% in Windows (lines 772-775)"""
-        result = Env._Env__expand_simple("%%", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%%", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
 
 
 class TestExpandSimpleRemainingCoverage:
@@ -3356,80 +3346,80 @@ class TestExpandSimpleRemainingCoverage:
     def test_escape_before_expand_char(self):
         """Escape before % in Windows (lines 736-750)"""
         # In Windows, % is expand_char. \% makes % literal
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "\\%VAR%", {"VAR": "value"}, chars=EnvChars.WINDOWS
         )
         assert "%" in result
 
     def test_escape_then_windup(self):
         """Escape then windup char (lines 751-758)"""
-        result = Env._Env__expand_simple("\\%", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("\\%", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert "%" in result
 
     def test_escape_at_end_of_string(self):
         """Escape at end (lines 762-765)"""
-        result = Env._Env__expand_simple("value%", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("value%", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "value%"
 
     def test_tilde_modifier_execution(self):
         """Execute tilde modifier code (lines 781-839)"""
         # Just call it to cover the code
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~d1", args=["C:\\test"], chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_digit_arg_with_windup(self):
         """%1% with windup (lines 841-862)"""
-        result = Env._Env__expand_simple("%1%", args=["one"], chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%1%", args=["one"], chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "one"
 
     def test_star_with_windup(self):
         """%*% with windup (lines 864-873)"""
-        result = Env._Env__expand_simple("%*%", args=["a", "b"], chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%*%", args=["a", "b"], chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "a b"
 
     def test_tilde_range_no_comma(self):
         """%VAR:~3% no comma (lines 888-931)"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%VAR:~3%", vars={"VAR": "hello"}, chars=EnvChars.WINDOWS
         )
         assert result == "lo"
 
     def test_tilde_range_negative_start(self):
         """%VAR:~-3% (lines 888-931)"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%VAR:~-3%", vars={"VAR": "hello"}, chars=EnvChars.WINDOWS
         )
         assert result == "llo"
 
     def test_tilde_empty_base(self):
         """%:~0,3% empty base (lines 888-931)"""
-        result = Env._Env__expand_simple("%:~0,3%", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%:~0,3%", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert "%:~0,3%" in result
 
     def test_tilde_bad_start(self):
         """%VAR:~abc,3% bad start (lines 888-931)"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%VAR:~abc,3%", vars={"VAR": "hello"}, chars=EnvChars.WINDOWS
         )
         assert "%VAR:~abc,3%" in result
 
     def test_var_not_set_with_windup(self):
         """%UNKNOWN% when not set (lines 935-936)"""
-        result = Env._Env__expand_simple("%UNKNOWN%", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%UNKNOWN%", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "%UNKNOWN%"
 
     def test_riscos_not_windows(self):
         """RISC OS not windows (lines 724-726)"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "<VAR>", vars={"VAR": "value"}, chars=EnvChars.RISCOS
         )
         assert result == "value"
 
     def test_vms_not_windows(self):
         """VMS not windows (lines 724-726)"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "'VAR'", vars={"VAR": "value"}, chars=EnvChars.VMS
         )
         assert result == "value"
@@ -3441,7 +3431,7 @@ class TestExpandSimpleCoverageRemaining:
     def test_escape_before_expand(self):
         """Cover lines 736-750: escape before expand_char"""
         # In Windows, % is expand_char. \% makes % literal
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "\\%VAR%", {"VAR": "value"}, chars=EnvChars.WINDOWS
         )
         # Should contain literal %VAR%
@@ -3449,62 +3439,62 @@ class TestExpandSimpleCoverageRemaining:
 
     def test_escape_at_end(self):
         """Cover lines 762-765: escape at end"""
-        result = Env._Env__expand_simple("test\\", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("test\\", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "test\\" or "\\" in result
 
     def test_regular_char(self):
         """Cover lines 767-770: regular character"""
-        result = Env._Env__expand_simple("hello", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("hello", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "hello"
 
     def test_expand_windup(self):
         """Cover lines 772-775: expand_char + windup_char"""
-        result = Env._Env__expand_simple("%%", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%%", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "%"
 
     def test_tilde_d(self):
         """Cover lines 781-839: tilde modifier d"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~d1", args=["C:\\test"], chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_tilde_p(self):
         """Cover lines 781-839: tilde modifier p"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~p1", args=["C:\\Windows"], chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_tilde_n(self):
         """Cover lines 781-839: tilde modifier n"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~n1", args=["file.txt"], chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_tilde_x(self):
         """Cover lines 781-839: tilde modifier x"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~x1", args=["file.txt"], chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_tilde_f(self):
         """Cover lines 781-839: tilde modifier f"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~f1", args=["file.txt"], chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_digit_arg(self):
         """Cover lines 841-862: digit argument"""
-        result = Env._Env__expand_simple("%1", args=["one"], chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%1", args=["one"], chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "one"
 
     def test_star(self):
         """Cover lines 864-873: star expansion"""
-        result = Env._Env__expand_simple("%*", args=["a", "b"], chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%*", args=["a", "b"], chars=EnvChars.WINDOWS)  # type: ignore
 
 
 class TestExpandSimpleCompleteCoverage:
@@ -3512,7 +3502,7 @@ class TestExpandSimpleCompleteCoverage:
 
     def test_input_none(self):
         """Line 713: input=None returns empty string"""
-        result = Env._Env__expand_simple(None, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple(None, chars=EnvChars.WINDOWS)  # type: ignore
         assert result is None
 
 
@@ -3521,66 +3511,66 @@ class TestExpandSimpleFinalCoverage:
 
     def test_line_713_none(self):
         """Line 713: input=None"""
-        result = Env._Env__expand_simple(None, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple(None, chars=EnvChars.WINDOWS)  # type: ignore
         assert result is None
 
     def test_line_717_718_vars_none(self):
         """Lines 717-718: vars=None uses os.environ"""
         with patch.dict(os.environ, {"TEST": "val"}, clear=False):
-            result = Env._Env__expand_simple( # type: ignore
+            result = Env._Env__expand_simple(  # type: ignore
                 "%TEST%", vars=None, chars=EnvChars.WINDOWS
             )
             assert result == "val"
 
     def test_line_736_750_escape(self):
         """Lines 736-750: escape before expand_char"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             r"\%VAR%", {"VAR": "value"}, chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_line_762_765_escape_end(self):
         """Lines 762-765: escape at end"""
-        result = Env._Env__expand_simple("test\\", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("test\\", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert isinstance(result, str)
 
     def test_line_767_770_regular(self):
         """Lines 767-770: regular character"""
-        result = Env._Env__expand_simple("hello", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("hello", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "hello"
 
     def test_line_772_775_expand_windup(self):
         """Lines 772-775: expand_char + windup_char"""
-        result = Env._Env__expand_simple("%%", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%%", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "%"
 
     def test_line_781_839_tilde(self):
         """Lines 781-839: tilde modifier"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~d1", args=["C:\\test"], chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_line_841_862_digit(self):
         """Lines 841-862: digit argument"""
-        result = Env._Env__expand_simple("%1", args=["one"], chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%1", args=["one"], chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "one"
 
     def test_line_864_873_star(self):
         """Lines 864-873: star expansion"""
-        result = Env._Env__expand_simple("%*", args=["a", "b"], chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%*", args=["a", "b"], chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "a b"
 
     def test_line_875_879_no_windup(self):
         """Lines 875-879: no windup found"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%VAR", {"VAR": "value"}, chars=EnvChars.WINDOWS
         )
         assert "%VAR" in result or result == "%VAR"
 
     def test_line_882_886_empty_token(self):
         """Lines 882-886: empty token"""
-        result = Env._Env__expand_simple("%%", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%%", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "%"
 
 
@@ -3593,64 +3583,64 @@ class TestExpandSimpleEscapeCoverage:
 
     def test_escape_before_expand_rstring(self):
         """Escape before % using raw string - lines 736-750"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             r"\%VAR%", {"VAR": "value"}, chars=EnvChars.WINDOWS
         )
         assert "%" in result
 
     def test_escape_before_windup_rstring(self):
         """Escape before % (windup) using raw string - lines 751-758"""
-        result = Env._Env__expand_simple(r"\%", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple(r"\%", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert "%" in result
 
     def test_escape_at_end_backslash(self):
         """Escape at end - lines 762-765"""
-        result = Env._Env__expand_simple("test\\", vars={}, chars=EnvChars.WINDOWS) # type: ignore
-        assert result == "test\\" or result.endswith("\\") # type: ignore
+        result = Env._Env__expand_simple("test\\", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
+        assert result == "test\\" or result.endswith("\\")  # type: ignore
 
     def test_tilde_d_modifier(self):
         """%~d modifier - lines 781-839"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~d1", args=["C:\\test"], chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_tilde_p_modifier(self):
         """%~p modifier - lines 781-839"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~p1", args=["C:\\Windows"], chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_tilde_n_modifier(self):
         """%~n modifier - lines 781-839"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~n1", args=["file.txt"], chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_tilde_x_modifier(self):
         """%~x modifier - lines 781-839"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~x1", args=["file.txt"], chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_tilde_f_modifier(self):
         """%~f modifier - lines 781-839"""
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~f1", args=["file.txt"], chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_digit_arg_with_windup(self):
         """%1% with windup - lines 847-860"""
-        result = Env._Env__expand_simple("%1%", args=["one"], chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%1%", args=["one"], chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "one"
 
     def test_star_with_windup(self):
         """%*% with windup - lines 871"""
-        result = Env._Env__expand_simple("%*%", args=["a", "b"], chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("%*%", args=["a", "b"], chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "a b"
 
 
@@ -3814,7 +3804,7 @@ class TestExpandPosixLines274_278:
     def test_set_vars_on_success(self):
         """Lines 274-278: set vars[name] = new_val on success"""
         vars_dict: MutableMapping[str, str] = {}
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "$VAR", vars=vars_dict, flags=EnvExpandFlags.DEFAULT
         )
         # Expansion doesn't change anything, as VAR is undefined
@@ -3828,14 +3818,14 @@ class TestExpandPosixLines320_321:
         """Lines 320-321: anchor = #"""
         # ${VAR/#pattern/repl} - anchor is #
         vars_dict = {"VAR": "prefix_text"}
-        result = Env._Env__expand_posix("${VAR/#prefix/repl}", vars=vars_dict) # type: ignore
+        result = Env._Env__expand_posix("${VAR/#prefix/repl}", vars=vars_dict)  # type: ignore
         assert "repl" in result or result == "repl_text" or True
 
     def test_anchor_percent(self):
         """Lines 320-321: anchor = %"""
         # ${VAR/%suffix/repl} - anchor is %
         vars_dict = {"VAR": "text_suffix"}
-        result = Env._Env__expand_posix("${VAR/%suffix/repl}", vars=vars_dict) # type: ignore
+        result = Env._Env__expand_posix("${VAR/%suffix/repl}", vars=vars_dict)  # type: ignore
         assert "repl" in result or result == "text_repl" or True
 
 
@@ -3845,13 +3835,13 @@ class TestExpandPosixLines330_339:
     def test_double_slash_substitution(self):
         """Lines 327-335: // for all matches"""
         vars_dict = {"VAR": "foo foo foo"}
-        result = Env._Env__expand_posix("${VAR//foo/bar}", vars=vars_dict) # type: ignore
+        result = Env._Env__expand_posix("${VAR//foo/bar}", vars=vars_dict)  # type: ignore
         assert "bar" in result
 
     def test_single_slash_substitution(self):
         """Lines 332-335: / for first match"""
         vars_dict = {"VAR": "foo foo foo"}
-        result = Env._Env__expand_posix("${VAR/foo/bar}", vars=vars_dict) # type: ignore
+        result = Env._Env__expand_posix("${VAR/foo/bar}", vars=vars_dict)  # type: ignore
         assert "bar" in result
 
     def test_slash_in_rest_no_slash_prefix(self):
@@ -3859,7 +3849,7 @@ class TestExpandPosixLines330_339:
         # This is the case where r has / but doesn't start with / or //
         # The pattern is everything before /, repl is after /
         vars_dict = {"VAR": "hello_world"}
-        result = Env._Env__expand_posix("${VAR/hello/repl}", vars=vars_dict) # type: ignore
+        result = Env._Env__expand_posix("${VAR/hello/repl}", vars=vars_dict)  # type: ignore
         assert "repl" in result or True
 
 
@@ -3870,7 +3860,7 @@ class TestExpandPosixLines350_353:
         """Lines 349-353: core = fnmatch.translate(pat)"""
         vars_dict = {"VAR": "test123"}
         # Pattern with special chars that need fnmatch.translate
-        result = Env._Env__expand_posix("${VAR/test*/repl}", vars=vars_dict) # type: ignore
+        result = Env._Env__expand_posix("${VAR/test*/repl}", vars=vars_dict)  # type: ignore
         assert "repl" in result or result == "repl" or True
 
 
@@ -3881,7 +3871,7 @@ class TestExpandPosixLines370_371:
         """Lines 370-371: changed = False when no match"""
         vars_dict = {"VAR": "test"}
         # Pattern that doesn't match at any position
-        result = Env._Env__expand_posix("${VAR/##zzz/repl}", vars=vars_dict) # type: ignore
+        result = Env._Env__expand_posix("${VAR/##zzz/repl}", vars=vars_dict)  # type: ignore
         assert result == "test"  # No change
 
 
@@ -3892,7 +3882,7 @@ class TestExpandPosixLines394_395:
         """Lines 394-395: changed = False when no match"""
         vars_dict = {"VAR": "test"}
         # Pattern that doesn't match at any position from end
-        result = Env._Env__expand_posix("${VAR/%%zzz/repl}", vars=vars_dict) # type: ignore
+        result = Env._Env__expand_posix("${VAR/%%zzz/repl}", vars=vars_dict)  # type: ignore
         assert result == "test"  # No change
 
 
@@ -3903,7 +3893,7 @@ class TestExpandPosixLine437:
         """Line 437: return val when is_set and not is_null"""
         vars_dict = {"VAR": "value"}
         # ${VAR:-word} when VAR is set and non-null returns val
-        result = Env._Env__expand_posix("${VAR:-default}", vars=vars_dict) # type: ignore
+        result = Env._Env__expand_posix("${VAR:-default}", vars=vars_dict)  # type: ignore
         assert result == "value"
 
 
@@ -3912,7 +3902,7 @@ class TestExpandSimpleLines745_750_Cover:
 
     def test_dollar_dollar_digit(self):
         """Lines 745-750: execute $$ digit path"""
-        result = Env._Env__expand_simple("$$1", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_simple("$$1", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert isinstance(result, str)
 
 
@@ -3921,7 +3911,7 @@ class TestExpandSimpleLines756_758_Cover:
 
     def test_dollar_dollar_no_windup(self):
         """Lines 756-758: execute no windup path"""
-        result = Env._Env__expand_simple("$$", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_simple("$$", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert isinstance(result, str)
 
 
@@ -3930,7 +3920,7 @@ class TestExpandSimpleLines763_765_Cover:
 
     def test_escape_normal_char(self):
         """Lines 763-765: execute escape + normal char path"""
-        result = Env._Env__expand_simple("\\a", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_simple("\\a", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert isinstance(result, str)
 
 
@@ -3939,7 +3929,7 @@ class TestExpandSimpleDigitWindup:
 
     def test_digit_with_windup_no_args(self):
         """Lines 857-860: $1} with no args"""
-        result = Env._Env__expand_simple("$1}", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_simple("$1}", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert isinstance(result, str)
 
 
@@ -3948,7 +3938,7 @@ class TestExpandSimpleLine871:
 
     def test_riscos_not_windows(self):
         """Line 871: RISC OS is not windows"""
-        result = Env._Env__expand_simple("<~n", vars={}, chars=EnvChars.RISCOS) # type: ignore
+        result = Env._Env__expand_simple("<~n", vars={}, chars=EnvChars.RISCOS)  # type: ignore
         assert isinstance(result, str)
 
 
@@ -3959,17 +3949,13 @@ class TestExpandPosixLine274_278:
         """Lines 274-278: set vars[name] after expansion"""
         vars_dict: MutableMapping[str, str] = {}
         # Expand a variable and check if it gets set in vars
-        result = Env._Env__expand_posix("$NEW_VAR", vars=vars_dict) # type: ignore
+        result = Env._Env__expand_posix("$NEW_VAR", vars=vars_dict)  # type: ignore
         # NEW_VAR is not set, so result is empty
         # Need a case where expansion succeeds and vars is set
         vars_dict["EXISTING"] = "value"
-        result = Env._Env__expand_posix("$EXISTING", vars=vars_dict) # type: ignore
+        result = Env._Env__expand_posix("$EXISTING", vars=vars_dict)  # type: ignore
         # After expansion, vars["EXISTING"] should still be "value"
         assert vars_dict.get("EXISTING") == "value"
-
-
-
-
 
 
 class TestExpandSimpleCoverage:
@@ -3978,7 +3964,7 @@ class TestExpandSimpleCoverage:
     def test_dollar_dollar_digit_basic(self):
         """Lines 745-750: $$ followed by digit"""
         # In POSIX, $$ is PID, $$1 is PID + "1"
-        result = Env._Env__expand_simple("$$1", chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_simple("$$1", chars=EnvChars.POSIX)  # type: ignore
         # Just check it returns something
 
 
@@ -3987,25 +3973,25 @@ class TestExpandSimpleEasy:
 
     def test_dollar_followed_by_digit(self):
         """Lines 745-750: $$1 path"""
-        result = Env._Env__expand_simple("$$1", chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_simple("$$1", chars=EnvChars.POSIX)  # type: ignore
         # $$ is PID, so result should be PID + "1"
         assert isinstance(result, str) and len(result) > 0
 
     def test_escape_a(self):
         """Lines 763-765: \a"""
-        result = Env._Env__expand_simple("\\a", chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_simple("\\a", chars=EnvChars.POSIX)  # type: ignore
         assert result == "\\a"
 
     def test_tilde_p(self):
         """Lines 779-841: $~p"""
         args = ["/home/user/file.txt"]
-        result = Env._Env__expand_simple("$~p", args=args, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_simple("$~p", args=args, chars=EnvChars.POSIX)  # type: ignore
         assert isinstance(result, str)
 
     def test_tilde_n(self):
         """Lines 779-841: $~n"""
         args = ["/home/user/file.txt"]
-        result = Env._Env__expand_simple("$~n", args=args, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_simple("$~n", args=args, chars=EnvChars.POSIX)  # type: ignore
         assert isinstance(result, str)
 
     def test_windows_cutter(self):
@@ -4549,21 +4535,21 @@ class TestEnvExpandPath:
                 str(Path("/home/$USER")),
                 {"USER": "test"},
                 None,
-                EnvChars.POSIX,
-                str(Path("/home/test"))
+                EnvChars.POSIX_WINDOWS if Env.IS_WINDOWS else EnvChars.POSIX,
+                str(Path("/home/test")),
             ),
             (
                 str(Path("$HOME/docs")),
                 {"HOME": "/home/test"},
                 None,
-                EnvChars.POSIX,
+                EnvChars.POSIX_WINDOWS if Env.IS_WINDOWS else EnvChars.POSIX,
                 str(Path("/home/test/docs")),
             ),
             (
                 str(Path("$HOME/file.txt")),
                 {"HOME": "/home/test"},
                 None,
-                EnvChars.POSIX,
+                EnvChars.POSIX_WINDOWS if Env.IS_WINDOWS else EnvChars.POSIX,
                 str(Path("/home/test/file.txt")),
             ),
             # Windows paths
@@ -4607,7 +4593,7 @@ class TestEnvExpandPath:
                 args=args,
                 vars=vars if vars else None,
                 chars=chars,  # type: ignore[reportArgumentType]
-                flags=flags
+                flags=flags,
             )
             if expected is None:
                 assert result is None
@@ -4654,7 +4640,12 @@ class TestEnvExpandPath:
         "path,args,chars,expected",
         [
             # Argument expansion in paths
-            (str(Path("$1/config")), ["arg1"], EnvChars.POSIX, str(Path("arg1/config"))),
+            (
+                str(Path("$1/config")),
+                ["arg1"],
+                EnvChars.POSIX_WINDOWS if Env.IS_WINDOWS else EnvChars.POSIX,
+                str(Path("arg1/config")),
+            ),
             ("%1%\\config", ["arg1"], EnvChars.WINDOWS, "arg1\\config"),
         ],
     )
@@ -4679,7 +4670,9 @@ class TestEnvExpandPath:
         expected = str(Path(f"/test/path"))
         with patch.dict(os.environ, {"TEST_VAR": expected}, clear=True):
             flags = EnvExpandFlags.DEFAULT & ~EnvExpandFlags.UNESCAPE
-            result = Env.expand_path(Path("$TEST_VAR"), vars=None, chars=EnvChars.POSIX, flags=flags)
+            result = Env.expand_path(
+                Path("$TEST_VAR"), vars=None, chars=EnvChars.POSIX, flags=flags
+            )
             assert str(result) == expected
 
     def test_expand_path_strip_spaces(self):
@@ -4705,12 +4698,12 @@ class TestEnvExpandPath:
         expected: str,
     ):
         """Test expand_path across all platforms with env vars set."""
-        vars_dict = (
-            {"HOME": expected}
-        )
+        vars_dict = {"HOME": expected}
         with patch.dict(os.environ, vars_dict, clear=True):
-            flags = EnvExpandFlags.DEFAULT & ~ EnvExpandFlags.UNESCAPE
-            result = Env.expand_path(Path(path), vars=vars_dict, chars=chars, flags=flags)
+            flags = EnvExpandFlags.DEFAULT & ~EnvExpandFlags.UNESCAPE
+            result = Env.expand_path(
+                Path(path), vars=vars_dict, chars=chars, flags=flags
+            )
             assert expected in str(result)
 
 
@@ -4724,7 +4717,7 @@ class TestEnvFinalCoverage:
             def __setitem__(self, key: str, value: str):
                 raise Exception("read-only")
 
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${UNSET:=newval}",
             vars=ReadOnlyDict(),
             flags=EnvExpandFlags.NONE,
@@ -4733,7 +4726,7 @@ class TestEnvFinalCoverage:
         assert result == "newval"
 
     def test_rest_contains_slash_no_prefix(self):
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR.foo/bar}",
             vars={"VAR": ".foo test"},
             flags=EnvExpandFlags.NONE,
@@ -4742,7 +4735,7 @@ class TestEnvFinalCoverage:
         assert isinstance(result, str)
 
     def test_anchor_hash_all_no_change_same_text(self):
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR//#t/t}",
             vars={"VAR": "test"},
             flags=EnvExpandFlags.NONE,
@@ -4751,7 +4744,7 @@ class TestEnvFinalCoverage:
         assert result == "test"
 
     def test_anchor_percent_all_no_change_same_text(self):
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR//%t/t}",
             vars={"VAR": "test"},
             flags=EnvExpandFlags.NONE,
@@ -4760,7 +4753,7 @@ class TestEnvFinalCoverage:
         assert result == "test"
 
     def test_dash_operator_set_var(self):
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR-word}",
             vars={"VAR": "value"},
             flags=EnvExpandFlags.NONE,
@@ -4769,7 +4762,7 @@ class TestEnvFinalCoverage:
         assert result == "value"
 
     def test_double_slash_no_replacement(self):
-        result = Env._Env__expand_posix( # type: ignore
+        result = Env._Env__expand_posix(  # type: ignore
             "${VAR//pattern}",
             vars={"VAR": "value"},
             flags=EnvExpandFlags.NONE,
@@ -4780,69 +4773,69 @@ class TestEnvFinalCoverage:
     # --- expand_simple coverage ---
 
     def test_escape_expand_digit(self):
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "^%1", args=["a", "b"], vars={}, chars=EnvChars.WINDOWS
         )
         assert result == "%1"
 
     def test_escape_expand_no_windup(self):
-        result = Env._Env__expand_simple("^%", vars={}, chars=EnvChars.WINDOWS) # type: ignore
+        result = Env._Env__expand_simple("^%", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "%"
 
     def test_escape_at_end_posix(self):
-        result = Env._Env__expand_simple("test\\", vars={}, chars=EnvChars.POSIX) # type: ignore
+        result = Env._Env__expand_simple("test\\", vars={}, chars=EnvChars.POSIX)  # type: ignore
         assert result == "test\\"
 
     def test_tilde_modifier_with_windup(self):
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~d1%", args=["C:\\test"], vars={}, chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_tilde_unknown_modifier(self):
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~z1", args=["test"], vars={}, chars=EnvChars.WINDOWS
         )
         assert result == ""
 
     def test_tilde_arg_out_of_range(self):
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~d99", args=["a"], vars={}, chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_tilde_arg_out_of_range_with_windup(self):
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~d99%", args=["a"], vars={}, chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_digit_arg_out_of_range_with_windup(self):
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%99%", args=["a"], vars={}, chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_star_with_no_args(self):
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%*", args=None, vars={}, chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_tilde_range_var_not_set(self):
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%UNKNOWN:~0,3%", vars={}, chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
 
     def test_tilde_range_negative_offset_clamped(self):
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%VAR:~-20,2%", vars={"VAR": "hello"}, chars=EnvChars.WINDOWS
         )
         assert result == "he"
 
     def test_tilde_p_modifier_multi_level(self):
-        result = Env._Env__expand_simple( # type: ignore
+        result = Env._Env__expand_simple(  # type: ignore
             "%~p1", args=["/home/user/test/file.txt"], vars={}, chars=EnvChars.WINDOWS
         )
         assert isinstance(result, str)
@@ -4871,7 +4864,7 @@ class TestEnvFinalCoverage:
 
     def test_fnmatch_translate_custom(self):
         with patch("envara.env.fnmatch.translate", return_value="custom"):
-            result = Env._Env__expand_posix( # type: ignore
+            result = Env._Env__expand_posix(  # type: ignore
                 "${foo/bar/baz}",
                 args=[],
                 vars={"foo": "qux"},
@@ -4895,7 +4888,12 @@ class TestEnvFinalCoverage:
     @pytest.mark.parametrize(
         "input_str,args,vars,expected",
         [
-            ("%~d1", ["C:\\path\\file.txt"], {}, os.path.splitdrive("C:\\path\\file.txt")[0]),
+            (
+                "%~d1",
+                ["C:\\path\\file.txt"],
+                {},
+                os.path.splitdrive("C:\\path\\file.txt")[0],
+            ),
             ("%~p1", ["/home/user/test/file.txt"], {}, "/home/user/test/"),
             ("%~n1", ["/home/user/test/file.txt"], {}, "file"),
             ("%~x1", ["/home/user/test/file.txt"], {}, ".txt"),
@@ -4916,8 +4914,14 @@ class TestEnvFinalCoverage:
             ("%~d%", ["a"], {}, "%~d%"),
         ],
     )
-    def test_windows_tilde_modifiers(self, input_str: str, args: list[str] | None, vars: dict[str, str], expected: str | None):
-        result = Env._Env__expand_simple( # type: ignore
+    def test_windows_tilde_modifiers(
+        self,
+        input_str: str,
+        args: list[str] | None,
+        vars: dict[str, str],
+        expected: str | None,
+    ):
+        result = Env._Env__expand_simple(  # type: ignore
             input_str, args=args, vars=vars, chars=self.WINDOWS_IS_WINDOWS
         )
         if expected is None:
@@ -4938,8 +4942,14 @@ class TestEnvFinalCoverage:
             ("%99%", ["a"], {}, "%99%"),
         ],
     )
-    def test_windows_digit_args(self, input_str: str, args: list[str] | None, vars: dict[str, str], expected: str):
-        result = Env._Env__expand_simple( # type: ignore
+    def test_windows_digit_args(
+        self,
+        input_str: str,
+        args: list[str] | None,
+        vars: dict[str, str],
+        expected: str,
+    ):
+        result = Env._Env__expand_simple(  # type: ignore
             input_str, args=args, vars=vars, chars=self.WINDOWS_IS_WINDOWS
         )
         assert result == expected
@@ -4953,8 +4963,14 @@ class TestEnvFinalCoverage:
             ("%*%", None, {}, "%*"),
         ],
     )
-    def test_windows_star_args(self, input_str: str, args: list[str] | None, vars: dict[str, str], expected: str):
-        result = Env._Env__expand_simple( # type: ignore
+    def test_windows_star_args(
+        self,
+        input_str: str,
+        args: list[str] | None,
+        vars: dict[str, str],
+        expected: str,
+    ):
+        result = Env._Env__expand_simple(  # type: ignore
             input_str, args=args, vars=vars, chars=self.WINDOWS_IS_WINDOWS
         )
         assert result == expected
@@ -4973,11 +4989,81 @@ class TestEnvFinalCoverage:
             ("%VAR:~-20,2%", {"VAR": "hello"}, "he"),
         ],
     )
-    def test_windows_tilde_range(self, input_str: str, vars: dict[str, str], expected: str):
-        result = Env._Env__expand_simple( # type: ignore
+    def test_windows_tilde_range(
+        self, input_str: str, vars: dict[str, str], expected: str
+    ):
+        result = Env._Env__expand_simple(  # type: ignore
             input_str, args=None, vars=vars, chars=self.WINDOWS_IS_WINDOWS
         )
         assert result == expected
+
+    # --- chars=None fallback coverage ---
+
+    def test_expand_default_chars(self):
+        assert Env.expand("$VAR", vars={"VAR": "val"}) == "val"
+
+    def test_expand_path_default_chars(self):
+        result = Env.expand_path(Path("/home/test"))
+        assert result is not None
+        assert str(result)
+
+    def test_expand_posix_default_chars(self):
+        result = Env._Env__expand_posix(  # type: ignore
+            "${VAR}", vars={"VAR": "val"}, flags=EnvExpandFlags.NONE
+        )
+        assert result == "val"
+
+    def test_expand_simple_default_chars(self):
+        result = Env._Env__expand_simple(  # type: ignore
+            "%VAR%", vars={"VAR": "val"}, flags=EnvExpandFlags.NONE
+        )
+        assert isinstance(result, str)
+
+    def test_quote_default_chars(self):
+        assert Env.quote("hello") is not None
+
+    def test_strip_default_chars(self):
+        result, quote = Env.strip("hello")
+        assert result == "hello"
+        assert quote == EnvQuoteType.NONE
+
+    def test_unquote_default_chars(self):
+        result, quote = Env.unquote("hello")
+        assert result == "hello"
+        assert quote == EnvQuoteType.NONE
+
+    # --- fnmatch.translate \\z suffix branch ---
+
+    def test_fnmatch_translate_z_suffix(self):
+        with patch("envara.env.fnmatch.translate", return_value="(?s:.*)\\z"):
+            result = Env._Env__expand_posix(  # type: ignore
+                "${foo/bar/baz}",
+                args=[],
+                vars={"foo": "test"},
+                flags=EnvExpandFlags.NONE,
+                chars=EnvChars.POSIX,
+            )
+            assert isinstance(result, str)
+
+    def test_fnmatch_translate_no_anchor_suffix(self):
+        with patch("envara.env.fnmatch.translate", return_value="(?s:foo)bar"):
+            result = Env._Env__expand_posix(  # type: ignore
+                "${foo/bar/baz}",
+                args=[],
+                vars={"foo": "test"},
+                flags=EnvExpandFlags.NONE,
+                chars=EnvChars.POSIX,
+            )
+            assert isinstance(result, str)
+
+    # --- part_path separator branch ---
+
+    def test_windows_tilde_p_modifier_with_sep_end(self):
+        with patch("envara.env.os.path.dirname", return_value="/"):
+            result = Env._Env__expand_simple(  # type: ignore
+                "%~p1", args=["/any/path"], vars={}, chars=self.WINDOWS_IS_WINDOWS
+            )
+            assert isinstance(result, str)
 
 
 class TestPosixWindows:
@@ -5011,7 +5097,9 @@ class TestPosixWindows:
             ("hello world", {}, "hello world"),
         ],
     )
-    def test_expand_posix_windows(self, input_str: str, vars: dict[str, str], expected: str):
+    def test_expand_posix_windows(
+        self, input_str: str, vars: dict[str, str], expected: str
+    ):
         result = Env.expand(
             input_str,
             vars=vars,
@@ -5030,7 +5118,9 @@ class TestPosixWindows:
             ('"testing"', {}, '"testing"'),
         ],
     )
-    def test_strip_posix_windows(self, input_str: str, vars: dict[str, str], expected: str):
+    def test_strip_posix_windows(
+        self, input_str: str, vars: dict[str, str], expected: str
+    ):
         result, quote_type = Env.strip(input_str, chars=EnvChars.POSIX_WINDOWS)  # type: ignore[reportArgumentType]
         assert result == expected
 
@@ -5045,16 +5135,36 @@ class TestExpandPathTilde:
             # POSIX: ~ expands to /home/user
             (("~",), {}, EnvChars.POSIX, str(Path("/home/user"))),
             ((str(Path("~/docs")),), {}, EnvChars.POSIX, str(Path("/home/user/docs"))),
-            ((str(Path("~/a/b/c")),), {}, EnvChars.POSIX, str(Path("/home/user/a/b/c"))),
+            (
+                (str(Path("~/a/b/c")),),
+                {},
+                EnvChars.POSIX,
+                str(Path("/home/user/a/b/c")),
+            ),
             # POSIX with env var in expanded path
-            ((str(Path("~/$FILE")),), {"FILE": "test"}, EnvChars.POSIX, str(Path("/home/user/test"))),
-            ((str(Path("${HOME}/docs")),), {"HOME": "/home/user"}, EnvChars.POSIX, str(Path("/home/user/docs"))),
+            (
+                (str(Path("~/$FILE")),),
+                {"FILE": "test"},
+                EnvChars.POSIX,
+                str(Path("/home/user/test")),
+            ),
+            (
+                (str(Path("${HOME}/docs")),),
+                {"HOME": "/home/user"},
+                EnvChars.POSIX,
+                str(Path("/home/user/docs")),
+            ),
             # Windows: ~ expands to C:\Users\user
             (("~",), {}, EnvChars.WINDOWS, "C:\\Users\\user"),
             (("~\\docs",), {}, EnvChars.WINDOWS, "C:\\Users\\user\\docs"),
             (("~\\a\\b\\c",), {}, EnvChars.WINDOWS, "C:\\Users\\user\\a\\b\\c"),
             # Windows with env var in expanded path
-            (("~\\%FILE%",), {"FILE": "test"}, EnvChars.WINDOWS, "C:\\Users\\user\\test"),
+            (
+                ("~\\%FILE%",),
+                {"FILE": "test"},
+                EnvChars.WINDOWS,
+                "C:\\Users\\user\\test",
+            ),
             # RISC OS: ~ expands to $.Home
             (("~",), {}, EnvChars.RISCOS, "$.Home"),
             (("~.!Apps",), {}, EnvChars.RISCOS, "$.Home.!Apps"),
@@ -5129,12 +5239,36 @@ class TestStrip:
             ("", EnvExpandFlags.DEFAULT, EnvChars.POSIX, "", EnvQuoteType.NONE),
             ("   ", EnvExpandFlags.DEFAULT, EnvChars.POSIX, "", EnvQuoteType.NONE),
             ("   ", EnvExpandFlags.NONE, EnvChars.POSIX, "   ", EnvQuoteType.NONE),
-            ("  foo  ", EnvExpandFlags.DEFAULT, EnvChars.POSIX, "foo", EnvQuoteType.NONE),
-            ("  foo  ", EnvExpandFlags.NONE, EnvChars.POSIX, "  foo  ", EnvQuoteType.NONE),
+            (
+                "  foo  ",
+                EnvExpandFlags.DEFAULT,
+                EnvChars.POSIX,
+                "foo",
+                EnvQuoteType.NONE,
+            ),
+            (
+                "  foo  ",
+                EnvExpandFlags.NONE,
+                EnvChars.POSIX,
+                "  foo  ",
+                EnvQuoteType.NONE,
+            ),
             ("foo", EnvExpandFlags.DEFAULT, EnvChars.POSIX, "foo", EnvQuoteType.NONE),
             # --- POSIX quotes (hard='  normal=") ---
-            ("'foo'", EnvExpandFlags.DEFAULT, EnvChars.POSIX, "'foo'", EnvQuoteType.HARD),
-            ('"foo"', EnvExpandFlags.DEFAULT, EnvChars.POSIX, '"foo"', EnvQuoteType.NORMAL),
+            (
+                "'foo'",
+                EnvExpandFlags.DEFAULT,
+                EnvChars.POSIX,
+                "'foo'",
+                EnvQuoteType.HARD,
+            ),
+            (
+                '"foo"',
+                EnvExpandFlags.DEFAULT,
+                EnvChars.POSIX,
+                '"foo"',
+                EnvQuoteType.NORMAL,
+            ),
             (  # starts with hard quote but trailing whitespace stripped
                 "  'foo'",
                 EnvExpandFlags.DEFAULT,
@@ -5143,16 +5277,46 @@ class TestStrip:
                 EnvQuoteType.HARD,
             ),
             # --- Windows quotes (hard=''  normal=") ---
-            ("'foo'", EnvExpandFlags.DEFAULT, EnvChars.WINDOWS, "'foo'", EnvQuoteType.NONE),
-            ('"foo"', EnvExpandFlags.DEFAULT, EnvChars.WINDOWS, '"foo"', EnvQuoteType.NORMAL),
+            (
+                "'foo'",
+                EnvExpandFlags.DEFAULT,
+                EnvChars.WINDOWS,
+                "'foo'",
+                EnvQuoteType.NONE,
+            ),
+            (
+                '"foo"',
+                EnvExpandFlags.DEFAULT,
+                EnvChars.WINDOWS,
+                '"foo"',
+                EnvQuoteType.NORMAL,
+            ),
             ("foo", EnvExpandFlags.DEFAULT, EnvChars.WINDOWS, "foo", EnvQuoteType.NONE),
             # --- VMS quotes (hard=''  normal=") ---
             ("'foo'", EnvExpandFlags.DEFAULT, EnvChars.VMS, "'foo'", EnvQuoteType.NONE),
-            ('"foo"', EnvExpandFlags.DEFAULT, EnvChars.VMS, '"foo"', EnvQuoteType.NORMAL),
+            (
+                '"foo"',
+                EnvExpandFlags.DEFAULT,
+                EnvChars.VMS,
+                '"foo"',
+                EnvQuoteType.NORMAL,
+            ),
             ("foo", EnvExpandFlags.DEFAULT, EnvChars.VMS, "foo", EnvQuoteType.NONE),
             # --- RISCOS quotes (hard=''  normal=") ---
-            ("'foo'", EnvExpandFlags.DEFAULT, EnvChars.RISCOS, "'foo'", EnvQuoteType.NONE),
-            ('"foo"', EnvExpandFlags.DEFAULT, EnvChars.RISCOS, '"foo"', EnvQuoteType.NORMAL),
+            (
+                "'foo'",
+                EnvExpandFlags.DEFAULT,
+                EnvChars.RISCOS,
+                "'foo'",
+                EnvQuoteType.NONE,
+            ),
+            (
+                '"foo"',
+                EnvExpandFlags.DEFAULT,
+                EnvChars.RISCOS,
+                '"foo"',
+                EnvQuoteType.NORMAL,
+            ),
             ("foo", EnvExpandFlags.DEFAULT, EnvChars.RISCOS, "foo", EnvQuoteType.NONE),
         ],
     )

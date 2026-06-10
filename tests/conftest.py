@@ -28,9 +28,13 @@ def mock_platform():
     with patch("os.sep", "/"):
         with patch("envara.env.Env.IS_POSIX", True):
             with patch("envara.env.Env.IS_WINDOWS", False):
-                env_chars_mod.EnvChars.Current = env_chars_mod.EnvChars.POSIX.copy_with()
+                env_chars_mod.EnvChars.Current = (
+                    env_chars_mod.EnvChars.POSIX.copy_with()
+                )
                 yield
-                env_chars_mod.EnvChars.Current = env_chars_mod.EnvChars.Default.copy_with()
+                env_chars_mod.EnvChars.Current = (
+                    env_chars_mod.EnvChars.Default.copy_with()
+                )
 
 
 @pytest.fixture
