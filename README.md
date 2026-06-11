@@ -6,7 +6,7 @@ A library to expand environment variables, application arguments and escape sequ
 
 Does not depend on any special Python package.
 
-The test suite covers **1191 tests** with **100% code coverage** across all modules.
+The test suite covers **1175 tests** with **100% code coverage** across all modules.
 
 Please note that version `0.4.0` brought breaking changes: a switch from multiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line. Finally, public methods `Env.expand_posix(...)` and `Env.expand_simple(...)` have been moved to the private scope, so stop using those directly in favour of `Env.expand(...)`.
 
