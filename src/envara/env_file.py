@@ -37,6 +37,9 @@ class EnvFile:
     )
     """Default flags to expand environment variables at every line in the file"""
 
+    DEFAULT_SUFFIX: ClassVar[str] = ".env"
+    """Default file type (filename extension)"""
+
     EOF_CHAR: ClassVar[str] = "\x1a"
     """Regex to split a string into key and value"""
 

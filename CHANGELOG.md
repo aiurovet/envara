@@ -1,3 +1,7 @@
+## 0.5.6
+
+Added `EnvFile.DEFAULT_SUFFIX` (default file type, or the filename extension)
+
 ## 0.5.5
 
 Bugfix: every variable in each env file should be expanded according to the rules defined by the first line starting with a cutter char
