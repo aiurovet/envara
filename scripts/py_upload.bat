@@ -1,4 +1,17 @@
 @echo off
+
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+:: envara (C) Alexander Iurovetski 2026
+::
+:: Script to build and upload a given package (command-line argument)
+::
+:: Requires:
+::
+::   %USERPROFILE%\.pypirc with the entries [pypi] and [testpypi]
+::  pip install build twine
+::
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
 setlocal enabledelayedexpansion
 
 set "DEST=TestPyPI"
@@ -63,6 +76,12 @@ if not "%IURL%"=="" (
 ) else (
     echo pip install %PROJ%
 )
+echo.
+goto :eof
+
+:log
+echo.
+echo *** %~1
 echo.
 goto :eof
 

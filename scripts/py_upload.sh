@@ -1,5 +1,17 @@
 #!/bin/sh
 
+###############################################################################
+# envara (C) Alexander Iurovetski 2026
+#
+# Script to build and upload a given package (command-line argument)
+#
+# Requires:
+#
+#   ~/.pypirc with the entries [pypi] and [testpypi]
+#  pip install build twine
+#
+###############################################################################
+
 set -Ee
 
 ###############################################################################
