@@ -41,11 +41,15 @@ if not "%1"=="" (
 )
 
 if "%PROJ%"=="" (
-    call :fail "Project name was not specified"
-    goto usage
+    pushd "%~dp0.." >nul && set "PDIR=%CD%" && popd
+    for %%R in ("!PDIR!") do set "PROJ=%%~nxR"
+    if "!PROJ!"=="" (
+        call :fail "Project name was not specified"
+        goto usage
+    )
+) else (
+    set "PDIR=%USERPROFILE%\Projects\%PROJ%"
 )
-
-set "PDIR=%USERPROFILE%\Projects\%PROJ%"
 
 if not exist "%PDIR%" (
     call :fail "Directory not found: %PDIR%"

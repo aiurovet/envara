@@ -57,10 +57,14 @@ init() {
     PROJ="$1"
 
     if [ -z "$PROJ" ]; then
-        usage "Project name was not specified"
+        PDIR="$(cd "$(dirname "$0")/.." && pwd)"
+        PROJ="$(basename "$PDIR")"
+        if [ -z "$PROJ" ]; then
+            usage "Project name was not specified"
+        fi
+    else
+        PDIR="$HOME/Projects/$PROJ"
     fi
-
-    PDIR="$HOME/Projects/$PROJ"
 
     if [ ! -d "$PDIR" ]; then
         fail "Directory not found: \"$PDIR\""
@@ -109,7 +113,7 @@ usage() {
 
 USAGE:
 
-~/Projects/$app OPTIONS project-name
+~/Projects/$app OPTIONS [project-name]
 
 OPTIONS:
 

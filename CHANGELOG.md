@@ -1,3 +1,7 @@
+## 0.5.7
+
+Scripts `py_upload.*` can figure out project name
+
 ## 0.5.6
 
 Added `EnvFile.DEFAULT_SUFFIX` (default file type, or the filename extension)
