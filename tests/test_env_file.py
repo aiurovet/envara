@@ -444,8 +444,6 @@ class TestEnvFileSelectChars:
             ("  # comment", EnvChars.POSIX, EnvChars.POSIX, True),
             # Switches to POSIX when current chars has different cutter
             ("# comment", EnvChars.WINDOWS, EnvChars.POSIX, True),
-            # Switches to RISCOS
-            ("| comment", EnvChars.POSIX, EnvChars.RISCOS, True),
             # Switches to VMS
             ("! comment", EnvChars.POSIX, EnvChars.VMS, True),
             # Switches to WINDOWS

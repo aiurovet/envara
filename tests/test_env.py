@@ -28,13 +28,6 @@ class TestEnvUnquote:
             (
                 " \t\r\n ",
                 EnvExpandFlags.STRIP_SPACES,
-                EnvChars.RISCOS,
-                "",
-                EnvQuoteType.NONE,
-            ),
-            (
-                " \t\r\n ",
-                EnvExpandFlags.STRIP_SPACES,
                 EnvChars.VMS,
                 "",
                 EnvQuoteType.NONE,
@@ -139,20 +132,6 @@ class TestEnvUnquote:
                 EnvQuoteType.NONE,
             ),
             (
-                "hello|comment",
-                EnvExpandFlags.STRIP_COMMENT,
-                EnvChars.RISCOS,
-                "hello",
-                EnvQuoteType.NONE,
-            ),
-            (
-                "hello | comment",
-                EnvExpandFlags.STRIP_COMMENT,
-                EnvChars.RISCOS,
-                "hello ",
-                EnvQuoteType.NONE,
-            ),
-            (
                 'he"|"llo # comment',
                 EnvExpandFlags.STRIP_COMMENT,
                 EnvChars.POSIX,
@@ -201,13 +180,6 @@ class TestEnvUnquote:
                 "he'!'llo",
                 EnvQuoteType.NONE,
             ),
-            (
-                "'hello",
-                EnvExpandFlags.NONE,
-                EnvChars.RISCOS,
-                "'hello",
-                EnvQuoteType.NONE,
-            ),
             ("'hello", EnvExpandFlags.NONE, EnvChars.VMS, "'hello", EnvQuoteType.NONE),
             (
                 "'hello",
@@ -220,13 +192,6 @@ class TestEnvUnquote:
                 '" hello "',
                 EnvExpandFlags.NONE,
                 EnvChars.POSIX,
-                " hello ",
-                EnvQuoteType.NORMAL,
-            ),
-            (
-                '" hello "',
-                EnvExpandFlags.NONE,
-                EnvChars.RISCOS,
                 " hello ",
                 EnvQuoteType.NORMAL,
             ),
@@ -261,13 +226,6 @@ class TestEnvUnquote:
             (
                 '"\t hello \r #\n"',
                 EnvExpandFlags.STRIP_SPACES,
-                EnvChars.RISCOS,
-                "\t hello \r #\n",
-                EnvQuoteType.NORMAL,
-            ),
-            (
-                '"\t hello \r #\n"',
-                EnvExpandFlags.STRIP_SPACES,
                 EnvChars.VMS,
                 "\t hello \r #\n",
                 EnvQuoteType.NORMAL,
@@ -283,13 +241,6 @@ class TestEnvUnquote:
                 "\t hello \r # A",
                 EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.STRIP_COMMENT,
                 EnvChars.POSIX,
-                "hello",
-                EnvQuoteType.NONE,
-            ),
-            (
-                "\t hello \r | A",
-                EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.STRIP_COMMENT,
-                EnvChars.RISCOS,
                 "hello",
                 EnvQuoteType.NONE,
             ),
@@ -335,12 +286,6 @@ class TestEnvUnquote:
                 '"hello\\"',
                 EnvExpandFlags.NONE,
                 EnvChars.POSIX,
-                'Unterminated quoted string: "hello',
-            ),
-            (
-                '"hello\\"',
-                EnvExpandFlags.NONE,
-                EnvChars.RISCOS,
                 'Unterminated quoted string: "hello',
             ),
             (
@@ -427,13 +372,13 @@ class TestEnvExpand:
                 Env.expand("%VAR%", chars=EnvChars.WINDOWS)
                 mock_expand_simple.assert_called()
 
-    def test_expand_routes_to_expand_simple_when_riscos(self):
+    def test_expand_routes_to_expand_simple_when_expand_and_windup_differ(self):
         """Routes to expand_simple when expand_char is "<" (RISCOS)"""
         with patch.object(Env, "unquote", return_value=("<VAR>", EnvQuoteType.NONE)):
             with patch.object(
                 Env, "_Env__expand_simple", return_value="value"
             ) as mock_expand_simple:
-                Env.expand("<VAR>", chars=EnvChars.RISCOS)
+                Env.expand("<VAR>", chars=EnvChars.VMS.copy_with(expand="<", windup=">"))
                 mock_expand_simple.assert_called()
 
     def test_expand_routes_to_expand_simple_when_vms(self):
@@ -567,11 +512,8 @@ class TestEnvUnescape:
             ("", False, EnvChars.POSIX, ""),
             ("line1\\r\\nline2", False, EnvChars.POSIX, "line1\r\nline2"),
             ("hello", False, EnvChars.WINDOWS, "hello"),
-            ("hello", False, EnvChars.RISCOS, "hello"),
-            ("line1\\nline2", False, EnvChars.RISCOS, "line1\nline2"),
             ("hello", False, EnvChars.VMS, "hello"),
             ("hello\\x0DA\\u000A", False, EnvChars.POSIX, "hello\rA\n"),
-            ("hello\\x0DA\\u000A", False, EnvChars.RISCOS, "hello\rA\n"),
             ("hello^x0DA^u000A", False, EnvChars.VMS, "hello\rA\n"),
             ("hello^x0DA^u000A", False, EnvChars.WINDOWS, "hello\rA\n"),
         ],
@@ -591,11 +533,6 @@ class TestEnvUnescape:
             ("hello\\x0G", False, EnvChars.POSIX),
             ("hello\\u001", False, EnvChars.POSIX),
             ("hello\\u001G", False, EnvChars.POSIX),
-            ("hello\\", False, EnvChars.RISCOS),
-            ("hello\\x0", False, EnvChars.RISCOS),
-            ("hello\\x0G", False, EnvChars.RISCOS),
-            ("hello\\u001", False, EnvChars.RISCOS),
-            ("hello\\u001G", False, EnvChars.RISCOS),
             ("hello^", False, EnvChars.VMS),
             ("hello^x0", False, EnvChars.VMS),
             ("hello^x0G", False, EnvChars.VMS),
@@ -1072,10 +1009,6 @@ class TestExpandSimpleAllPlatforms:
         [
             ("$$", None, None, EnvChars.POSIX, "$"),
             ("plain text", None, None, EnvChars.POSIX, "plain text"),
-            ("<VAR>", {"VAR": "value"}, None, EnvChars.RISCOS, "value"),
-            ("<UNKNOWN>", None, None, EnvChars.RISCOS, "<UNKNOWN>"),
-            ("plain text", None, None, EnvChars.RISCOS, "plain text"),
-            ("<VAR", None, None, EnvChars.RISCOS, "<VAR"),
             ("'VAR'", {"VAR": "value"}, None, EnvChars.VMS, "value"),
             ("'UNKNOWN'", None, None, EnvChars.VMS, "'UNKNOWN'"),
             ("plain text", None, None, EnvChars.VMS, "plain text"),
@@ -1114,7 +1047,6 @@ class TestExpandSimpleAllPlatforms:
         "input_str,vars,args,chars",
         [
             ("$VAR:", {"VAR": "value"}, None, EnvChars.POSIX),
-            ("<VAR:", None, None, EnvChars.RISCOS),
             (":VAR'", None, None, EnvChars.VMS),
             (":VAR%", None, None, EnvChars.WINDOWS),
         ],
@@ -3410,13 +3342,6 @@ class TestExpandSimpleRemainingCoverage:
         result = Env._Env__expand_simple("%UNKNOWN%", vars={}, chars=EnvChars.WINDOWS)  # type: ignore
         assert result == "%UNKNOWN%"
 
-    def test_riscos_not_windows(self):
-        """RISC OS not windows (lines 724-726)"""
-        result = Env._Env__expand_simple(  # type: ignore
-            "<VAR>", vars={"VAR": "value"}, chars=EnvChars.RISCOS
-        )
-        assert result == "value"
-
     def test_vms_not_windows(self):
         """VMS not windows (lines 724-726)"""
         result = Env._Env__expand_simple(  # type: ignore
@@ -3740,14 +3665,6 @@ class TestUnquoteCutterLines1419_1444:
         assert result == "hello"
         assert qt == EnvQuoteType.NONE
 
-    def test_riscos_cutter_pipe(self):
-        """Lines 1419-1432: RISC OS cutter is |"""
-        result, qt = Env.unquote(
-            "hello|world", EnvExpandFlags.STRIP_SPACES, EnvChars.RISCOS
-        )
-        assert result == "hello"
-        assert qt == EnvQuoteType.NONE
-
     def test_vms_cutter_exclaim(self):
         """Lines 1419-1432: VMS cutter is !"""
         result, qt = Env.unquote(
@@ -3933,15 +3850,6 @@ class TestExpandSimpleDigitWindup:
         assert isinstance(result, str)
 
 
-class TestExpandSimpleLine871:
-    """Cover line 871: not is_windows"""
-
-    def test_riscos_not_windows(self):
-        """Line 871: RISC OS is not windows"""
-        result = Env._Env__expand_simple("<~n", vars={}, chars=EnvChars.RISCOS)  # type: ignore
-        assert isinstance(result, str)
-
-
 class TestExpandPosixLine274_278:
     """Cover lines 274-278: vars[name] = new_val"""
 
@@ -4002,14 +3910,6 @@ class TestExpandSimpleEasy:
         assert result == "hello"
         assert qt == EnvQuoteType.NONE
 
-    def test_riscos_cutter(self):
-        """Lines 1419-1444: RISC OS cutter"""
-        result, qt = Env.unquote(
-            "hello|world", EnvExpandFlags.STRIP_SPACES, EnvChars.RISCOS
-        )
-        assert result == "hello"
-        assert qt == EnvQuoteType.NONE
-
     def test_vms_cutter(self):
         """Lines 1419-1444: VMS cutter"""
         result, qt = Env.unquote(
@@ -4028,11 +3928,9 @@ class TestEnvQuote:
             (None, False, EnvChars.WINDOWS, None),
             ("", False, EnvChars.WINDOWS, ""),
             (" ", False, EnvChars.POSIX, '" "'),
-            (" ", False, EnvChars.RISCOS, '" "'),
             (" ", False, EnvChars.VMS, '" "'),
             (" ", False, EnvChars.WINDOWS, '" "'),
             ("''", False, EnvChars.POSIX, "''"),
-            ("''", False, EnvChars.RISCOS, "''"),
             ("''", False, EnvChars.VMS, "''"),
             ("''", False, EnvChars.WINDOWS, "''"),
             ("a", True, EnvChars.POSIX, '"a"'),
@@ -4040,11 +3938,9 @@ class TestEnvQuote:
             ("a'", False, EnvChars.POSIX, '"a\'"'),
             ("a'b", False, EnvChars.POSIX, '"a\'b"'),
             ('a"b', False, EnvChars.POSIX, '"a\\"b"'),
-            ('a"b', False, EnvChars.RISCOS, '"a\\"b"'),
             ('a"b', False, EnvChars.VMS, '"a^"b"'),
             ('a"b', False, EnvChars.WINDOWS, '"a^"b"'),
             ("a\\b", False, EnvChars.POSIX, '"a\\\\b"'),
-            ("a\\b", False, EnvChars.RISCOS, '"a\\\\b"'),
             ("a^b", False, EnvChars.VMS, '"a^^b"'),
             ("a^b", False, EnvChars.WINDOWS, '"a^^b"'),
             ("a b", False, EnvChars.POSIX.copy_with(normal_quote=""), "a b"),
@@ -4096,8 +3992,6 @@ class TestEnvSplit:
             # Windows: no hard quotes, double quotes are normal
             (EnvChars.WINDOWS, '"hello world"', ["hello world"]),
             (EnvChars.WINDOWS, 'echo "hello world"', ["echo", "hello world"]),
-            # RISCOS: no hard quotes, double quotes are normal
-            (EnvChars.RISCOS, '"hello world"', ["hello world"]),
             # VMS: no hard quotes, double quotes are normal
             (EnvChars.VMS, '"hello world"', ["hello world"]),
         ],
@@ -4146,8 +4040,6 @@ class TestEnvSplit:
             (EnvChars.WINDOWS, "hello^^world", ["hello^world"]),
             # POSIX: chars by hexadecimal and unicode code
             (EnvChars.WINDOWS, "^x41A^u0042B", ["AABB"]),
-            # RISCOS: backslash escape
-            (EnvChars.RISCOS, "hello\\ world", ["hello world"]),
         ],
     )
     def test_split_escape_chars(
@@ -4174,9 +4066,6 @@ class TestEnvSplit:
             # Windows: :: is cutter
             (EnvChars.WINDOWS, "::", "echo hello ::", ["echo", "hello"]),
             (EnvChars.WINDOWS, "::", "echo ::comment", ["echo"]),
-            # RISCOS: | is cutter
-            (EnvChars.RISCOS, "|", "echo hello |", ["echo", "hello"]),
-            (EnvChars.RISCOS, "|", "echo |comment", ["echo"]),
             # VMS: ! is cutter
             (EnvChars.VMS, "!", "echo hello !", ["echo", "hello"]),
             (EnvChars.VMS, "!", "echo !comment", ["echo"]),
@@ -4196,8 +4085,6 @@ class TestEnvSplit:
             (EnvChars.POSIX, "echo #comment", ["echo"]),
             (EnvChars.POSIX, "echo #", ["echo"]),
             (EnvChars.WINDOWS, "echo ::comment", ["echo"]),
-            (EnvChars.RISCOS, "echo |comment", ["echo"]),
-            (EnvChars.VMS, "echo !comment", ["echo"]),
         ],
     )
     def test_split_cutter_at_start(
@@ -4238,8 +4125,6 @@ class TestEnvSplit:
                 {"HOME": "C:\\Users\\test"},
                 ["echo", "C:\\Users\\test"],
             ),
-            # RISCOS: <VAR>
-            (EnvChars.RISCOS, "<HOME>", {"HOME": "$.test"}, ["$.test"]),
             # VMS: 'VAR' - Note: On POSIX systems, single quotes are hard quotes
             # so this test may not work as expected on non-VMS systems
             # The VMS expansion uses ' as expand char, but IS_POSIX is True on Linux
@@ -4413,7 +4298,6 @@ class TestEnvSplit:
         [
             (EnvChars.POSIX, "# comment only", []),
             (EnvChars.WINDOWS, ":: comment only", []),
-            (EnvChars.RISCOS, "| comment only", []),
             (EnvChars.VMS, "! comment only", []),
         ],
     )
@@ -4567,8 +4451,6 @@ class TestEnvExpandPath:
                 EnvChars.WINDOWS,
                 "C:\\AppData\\config",
             ),
-            # RISC OS paths
-            ("<HOME>.!Apps", {"HOME": "$.test"}, None, EnvChars.RISCOS, "$.test.!Apps"),
             # VMS paths
             ("'HOME'", {"HOME": "device"}, None, EnvChars.VMS, "device"),
             # None path returns None
@@ -4687,7 +4569,6 @@ class TestEnvExpandPath:
         [
             (EnvChars.POSIX, "$HOME", str(Path("/home/test"))),
             (EnvChars.WINDOWS, "%HOME%", "C:\\Users\\test"),
-            (EnvChars.RISCOS, "<HOME>", "$.test"),
             (EnvChars.VMS, "'HOME'", "SYS$LOGIN"),
         ],
     )
@@ -5165,10 +5046,6 @@ class TestExpandPathTilde:
                 EnvChars.WINDOWS,
                 "C:\\Users\\user\\test",
             ),
-            # RISC OS: ~ expands to $.Home
-            (("~",), {}, EnvChars.RISCOS, "$.Home"),
-            (("~.!Apps",), {}, EnvChars.RISCOS, "$.Home.!Apps"),
-            (("~.test",), {}, EnvChars.RISCOS, "$.Home.test"),
             # VMS: ~ expands to HOME:
             (("~",), {}, EnvChars.VMS, "HOME:"),
             (("~/docs",), {}, EnvChars.VMS, "HOME:docs"),
@@ -5302,22 +5179,6 @@ class TestStrip:
                 EnvQuoteType.NORMAL,
             ),
             ("foo", EnvExpandFlags.DEFAULT, EnvChars.VMS, "foo", EnvQuoteType.NONE),
-            # --- RISCOS quotes (hard=''  normal=") ---
-            (
-                "'foo'",
-                EnvExpandFlags.DEFAULT,
-                EnvChars.RISCOS,
-                "'foo'",
-                EnvQuoteType.NONE,
-            ),
-            (
-                '"foo"',
-                EnvExpandFlags.DEFAULT,
-                EnvChars.RISCOS,
-                '"foo"',
-                EnvQuoteType.NORMAL,
-            ),
-            ("foo", EnvExpandFlags.DEFAULT, EnvChars.RISCOS, "foo", EnvQuoteType.NONE),
         ],
     )
     def test_strip(

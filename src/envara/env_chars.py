@@ -21,9 +21,6 @@ class EnvChars:
     IS_POSIX: ClassVar[bool] = os.sep == "/"
     """True if the app is running under Linux, UNIX, BSD, macOS or smimilar"""
 
-    IS_RISCOS: ClassVar[bool] = os.sep == "."
-    """True if the app is running under Risc OS"""
-
     IS_VMS: ClassVar[bool] = os.sep == ":"
     """True if the app is running under OpenVMS or similar"""
 
@@ -44,18 +41,6 @@ class EnvChars:
 
     POSIX_WINDOWS: ClassVar[EnvCharsData] = POSIX.copy_with(escape="^")
     """POSIX-specific set of environment-related characters with Windows-style escape to allow POSIX-like expansions on Windows"""
-
-    RISCOS: ClassVar = EnvCharsData(
-        is_posix=False,
-        is_windows=False,
-        expand="<",
-        windup=">",
-        escape="\\",
-        cutter="|",
-        hard_quote="",
-        normal_quote='"',
-    )
-    """RiscOS-specific set of environment-related characters"""
 
     VMS: ClassVar = EnvCharsData(
         is_posix=False,
@@ -82,7 +67,7 @@ class EnvChars:
     """Windows-specific set of environment-related characters"""
 
     Default: ClassVar[EnvCharsData] = (
-        RISCOS if IS_RISCOS else (VMS if IS_VMS else WINDOWS if IS_WINDOWS else POSIX)
+        VMS if IS_VMS else WINDOWS if IS_WINDOWS else POSIX
     ).copy_with()
     """Default OS-specific set of environment-related characters"""
 
@@ -102,12 +87,8 @@ class EnvChars:
         :rtype: EnvCharsData
         """
         EnvChars.Default = (
-            EnvChars.RISCOS
-            if EnvChars.IS_RISCOS
-            else (
-                EnvChars.VMS
-                if EnvChars.IS_VMS
-                else (EnvChars.WINDOWS if EnvChars.IS_WINDOWS else EnvChars.POSIX)
+            EnvChars.VMS if EnvChars.IS_VMS else (
+                EnvChars.WINDOWS if EnvChars.IS_WINDOWS else EnvChars.POSIX
             )
         ).copy_with()
 
@@ -129,8 +110,6 @@ class EnvChars:
             EnvChars.Current = EnvChars.Default.copy_with()
         elif EnvChars.POSIX.cutter and based_on.startswith(EnvChars.POSIX.cutter):
             EnvChars.Current = EnvChars.POSIX.copy_with()
-        elif EnvChars.RISCOS.cutter and based_on.startswith(EnvChars.RISCOS.cutter):
-            EnvChars.Current = EnvChars.RISCOS.copy_with()
         elif EnvChars.VMS.cutter and based_on.startswith(EnvChars.VMS.cutter):
             EnvChars.Current = EnvChars.VMS.copy_with()
         elif EnvChars.WINDOWS.cutter and based_on.startswith(EnvChars.WINDOWS.cutter):

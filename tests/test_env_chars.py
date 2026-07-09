@@ -7,13 +7,11 @@ from tests.conftest import env_chars_mod, env_chars_data_mod
 
 def _get_envchars(
     is_posix: bool = False,
-    is_riscos: bool = False,
     is_vms: bool = False,
     is_windows: bool = False,
 ):
     x = env_chars_mod.EnvChars
     x.IS_POSIX = is_posix
-    x.IS_RISCOS = is_riscos
     x.IS_VMS = is_vms
     x.IS_WINDOWS = is_windows
     x.Default = x.init_default()
@@ -51,19 +49,6 @@ class TestEnvCharsConstants:
                 },
             ),
             (
-                "RISCOS",
-                {
-                    "is_posix": False,
-                    "is_windows": False,
-                    "expand": "<",
-                    "windup": ">",
-                    "escape": "\\",
-                    "cutter": "|",
-                    "hard_quote": "",
-                    "normal_quote": '"',
-                },
-            ),
-            (
                 "VMS",
                 {
                     "is_posix": False,
@@ -92,7 +77,6 @@ class TestEnvCharsDataAttrs:
         "platform,expected_expand",
         [
             ("POSIX", "$"),
-            ("RISCOS", "<"),
             ("WINDOWS", "%"),
         ],
     )
@@ -122,11 +106,6 @@ class TestEnvCharsMethods:
         original = EnvChars.Default
         assert EnvChars.Default is original
 
-    def test_select_with_riscos_cutter(self):
-        EnvChars = _get_envchars()
-        EnvChars.select("|test")
-        assert EnvChars.Current.expand == "<"
-
     def test_select_with_vms_cutter(self):
         EnvChars = _get_envchars()
         EnvChars.select("!test")
@@ -154,24 +133,22 @@ class TestEnvCharsSelect:
         assert EnvChars.Current.expand == "$"
 
     @pytest.mark.parametrize(
-        "is_posix,is_riscos,is_vms,is_windows,expected_expand",
+        "is_posix,is_vms,is_windows,expected_expand",
         [
-            pytest.param(True, False, False, False, "$", id="posix"),
-            pytest.param(False, True, False, False, "<", id="riscos"),
-            pytest.param(False, False, True, False, "'", id="vms"),
-            pytest.param(False, False, False, True, "%", id="windows"),
+            pytest.param(True, False, False, "$", id="posix"),
+            pytest.param(False, True, False, "'", id="vms"),
+            pytest.param(False, False, True, "%", id="windows"),
         ],
     )
     def test_select_sets_default_based_on_platform(
         self,
         mocker: MockerFixture,
         is_posix: bool,
-        is_riscos: bool,
         is_vms: bool,
         is_windows: bool,
         expected_expand: str,
     ):
-        EnvChars = _get_envchars(is_posix, is_riscos, is_vms, is_windows)
+        EnvChars = _get_envchars(is_posix, is_vms, is_windows)
         EnvChars.select("test")
 
         assert EnvChars.Default is not None

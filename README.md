@@ -17,7 +17,7 @@ Please note that version `0.4.0` brought breaking changes: a switch from multipl
 - [Sample Usage](#sample-usage)
 - [Library Overview](#library-overview)
 - [POSIX-style Expansions](#posix-style-expansions)
-- [Simple Expansions for Windows, OpenVMS, and RiscOS](#simple-expansions-for-windows-openvms-and-riscos)
+- [Simple Expansions for Windows and OpenVMS](#simple-expansions-for-windows-and-openvms)
 - [Env File Lookup](#env-file-lookup)
 - [What Kind of Expansion to Choose in the Env Files?](#what-kind-of-expansion-to-choose-in-the-env-files)
 - [Good Luck!](#good-luck)
@@ -127,12 +127,11 @@ Provides string expansions via static methods to:
 - Quote strings with proper escape handling
 - Split input string into command-line arguments and apply the actions mentioned above
 - Load and process stacked environment files
-- Detect and work with multiple platforms (POSIX, Windows, RiscOS, VMS, etc.)
+- Detect and work with multiple platforms (POSIX, Windows, VMS, etc.)
 
 Key class variables:
 
 - `IS_POSIX` — `True` if running under Linux, UNIX, BSD/macOS or similar
-- `IS_RISCOS` — `True` if running under Risc OS
 - `IS_VMS` — `True` if running under OpenVMS or similar
 - `IS_WINDOWS` — `True` if running under Windows or OS/2
 - `PLATFORM_POSIX` — `"posix"` constant
@@ -147,7 +146,6 @@ Platform-specific character sets (`EnvChars`):
 - `EnvChars.POSIX_WINDOWS` — Same as `POSIX` but with `^` escape (compatible with Windows paths)
 - `EnvChars.WINDOWS` — `%NAME%` expansion, `^` escape, `"` normal quote
 - `EnvChars.VMS` — `'NAME'` expansion, `^` escape, `"` normal quote
-- `EnvChars.RISCOS` — `<NAME>` expansion, `\` escape, `"` normal quote
 - `EnvChars.Default` — OS-detected default (auto-initialized at import)
 - `EnvChars.Current` — currently active character set (may differ from `Default` after `select()`)
 
@@ -293,13 +291,13 @@ The following parameters control execution of command substitutions:
 
 ---
 
-## Simple Expansions for Windows, OpenVMS, and RiscOS
+## Simple Expansions for Windows and OpenVMS
 
 This method of expansion supports:
 
 - Windows-style `%NAME%`, `%1`, `%*`, `%%`, and simple `%~` modifiers (e.g., `%~dp1`) for extracting path components on Windows-like inputs.
 - A substring form for named variables using the syntax `%NAME:~start[,length]%` - negative `start` counts from the end.
-- Even more limited OpenVMS-like variables expansion `'NAME'` as well as the RiscOS-like `<NAME>`.
+- Even more limited OpenVMS-like variables expansion `'NAME'`
 
 It is implemented via `Env.expand(...)` which eventually calls private method `__expand_simple(...)`.
 
@@ -363,7 +361,7 @@ CMD_CHROME = "chrome $BROWSER_ARGS"
 
 ## What Kind of Expansion to Choose in the Env Files?
 
-By default, the expansion that is specific to the current platform will be chosen. You can override that by having the first non-empty line representing a line comment for the desired platform's rules. For instance, if the first non-empty line in an env file starts with `#`, it will force `Env.expand(...)` to use POSIX (in fact, bash) rules. If it starts with `::`, then Windows, if with `!`, then OpenVMS, and if with `|`, then RiscOS rules will apply. This resembles the shebang `#!` sequence for Linux/BSD/UNIX shell scripts. And it is always a good idea to start such a file with a meaningful comment anyway, so you can address both needs at once.
+By default, the expansion that is specific to the current platform will be chosen. You can override that by having the first non-empty line representing a line comment for the desired platform's rules. For instance, if the first non-empty line in an env file starts with `#`, it will force `Env.expand(...)` to use POSIX (in fact, bash) rules. If it starts with `::`, then Windows, and if with `!`, then OpenVMS will apply. This resembles the shebang `#!` sequence for Linux/BSD/UNIX shell scripts. And it is always a good idea to start such a file with a meaningful comment anyway, so you can address both needs at once.
 
 When multiple files are loaded (via `EnvFile.load()`), the `\x1A` (EOF_CHAR) separator is inserted between them by `read_text()`. When `load_from_str()` encounters this character, it resets the platform-chars selection, allowing each file segment to independently declare its expansion rules via its first comment line.
 

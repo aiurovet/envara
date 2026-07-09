@@ -335,24 +335,24 @@ class EnvFile:
         :return: Chars to use and a boolean (True if the input starts with a cutter)
         :rtype: tuple[EnvCharsData, bool]
         """
+        if not input:
+            return chars, False
+
         inp = input.lstrip()
 
         if not inp or (chars.cutter and inp.startswith(chars.cutter)):
-            return [chars, True]
+            return chars, True
 
         if inp.startswith(EnvChars.POSIX.cutter):
-            return [EnvChars.POSIX, True]
-
-        if inp.startswith(EnvChars.RISCOS.cutter):
-            return [EnvChars.RISCOS, True]
+            return EnvChars.POSIX, True
 
         if inp.startswith(EnvChars.VMS.cutter):
-            return [EnvChars.VMS, True]
+            return EnvChars.VMS, True
 
         if inp.startswith(EnvChars.WINDOWS.cutter):
-            return [EnvChars.WINDOWS, True]
+            return EnvChars.WINDOWS, True
 
-        return [chars, False]
+        return chars, False
 
 
 ###############################################################################

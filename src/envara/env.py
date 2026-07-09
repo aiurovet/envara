@@ -35,11 +35,10 @@ class Env:
     Class for string expansions
     """
 
+    ###########################################################################
+
     IS_POSIX: ClassVar[bool] = EnvChars.IS_POSIX
     """True if the app is running under Linux, UNIX, BSD, macOS or smimilar"""
-
-    IS_RISCOS: ClassVar[bool] = EnvChars.IS_RISCOS
-    """True if the app is running under Risc OS"""
 
     IS_VMS: ClassVar[bool] = EnvChars.IS_VMS
     """True if the app is running under OpenVMS or similar"""
@@ -68,6 +67,9 @@ class Env:
     """Rules on how to convert special characters when they
     follow an odd number of escape characters"""
 
+    SPECIAL_CMDSEP_RE: ClassVar[re.Pattern[str]] = re.compile(f"^([&|;]*)(.*?)([&|;]*)$")
+    """Special characters' regex for the extra split when no space inserted"""
+
     SYS_PLATFORM_MAP: ClassVar[dict[str, list[str]]] = {
         "": [PLATFORM_POSIX, PLATFORM_WINDOWS],  # both checked via os.sep
         "^aix": ["aix"],
@@ -82,7 +84,6 @@ class Env:
         "^linux": ["linux"],
         "^os2": ["os2"],
         "^msys": ["msys"],
-        "^riscos": ["riscos"],
         "vms": ["vms"],
         ".+": [PLATFORM_THIS],
     }
@@ -103,9 +104,8 @@ class Env:
         Unquote the input if required via flags, remove trailing line comment
         if required via flags, expand the result with the arguments if
         required via flags, expand the result with the environment variables'
-        values. The method follows POSIX (in fact, bash) and Windows/OpenVMS/
-        RiscOS expansion conventions depending on chars.is_posix and
-        chars.is_windows
+        values. The method follows POSIX (in fact, bash) and Windows/OpenVMS
+        expansion conventions depending on chars.is_posix and chars.is_windows
 
         :param input: String to expand
         :type input: str | None
@@ -1341,7 +1341,7 @@ class Env:
                 return False
             tokstr = Env.expand(tokstr, args=args, vars=vars, flags=flags, chars=chars)
             if tokstr:
-                result.append(tokstr)
+                result += Env.SPECIAL_CMDSEP_RE.sub(r"\1\n\2\n\3", tokstr).split("\n")
             return True
 
         # Define cumulative lists

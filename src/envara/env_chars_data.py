@@ -70,7 +70,7 @@ class EnvCharsData:
 
         :param windup: Character or string that denotes the end of an
             environment variable token in non-POSIX OSes (normally, the
-            same as expand, but sometimes, might differ, like for RiscOS)
+            same as expand, but in theory, might differ)
         :type windup: str
 
         :param escape: Escape character or string

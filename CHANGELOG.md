@@ -1,3 +1,7 @@
+## 0.6.0
+
+Removed support for RiscOS, as it was removed from Python 3+, fixed detection of VMS, adjusted tests
+
 ## 0.5.7
 
 Scripts `py_upload.*` can figure out project name
