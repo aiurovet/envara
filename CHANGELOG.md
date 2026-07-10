@@ -1,6 +1,6 @@
 ## 0.6.0
 
-Removed support for RiscOS, as it was removed from Python 3+, fixed detection of VMS, adjusted tests
+Removed support for RiscOS, as it was removed from Python 3+, fixed detection of VMS, adjusted tests, introduced `EnvCharsData.cmd_ops`, `EnvCharsData.split_glued()` and made `Env.split()` significantly more advanced
 
 ## 0.5.7
 

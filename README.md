@@ -157,6 +157,7 @@ Key methods:
 Each `EnvCharsData` instance also exposes:
 
 - `.copy_with(**overrides)` — create a modified copy (used internally for `POSIX_WINDOWS`)
+- `.split_glued()` - split "glued" parts of an argument like pipe or angle brackets without surrounding spaces
 - `.expand_len`, `.windup_len`, `.escape_len`, `.cutter_len`, `.hard_quote_len`, `.normal_quote_len` — cached string lengths of each special character
 - `.all_quotes` — combined string of normal and hard quote characters
 
@@ -168,7 +169,7 @@ Key static methods:
 - `Env.unquote(input, ...)` — remove enclosing quotes (single or double)
 - `Env.unescape(input, ...)` — process escape sequences (`\n`, `\t`, `\u0022`, etc.)
 - `Env.quote(input, ...)` — enclose in quotes with proper escape handling
-- `Env.split(input, ...)` — split into command-line arguments
+- `Env.split(input, ...)` — split into command-line arguments: portable and significantly more advanced than `shlex.split()`
 
 ### `EnvFile` class
 

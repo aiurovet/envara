@@ -67,9 +67,6 @@ class Env:
     """Rules on how to convert special characters when they
     follow an odd number of escape characters"""
 
-    SPECIAL_CMDSEP_RE: ClassVar[re.Pattern[str]] = re.compile(f"^([&|;]*)(.*?)([&|;]*)$")
-    """Special characters' regex for the extra split when no space inserted"""
-
     SYS_PLATFORM_MAP: ClassVar[dict[str, list[str]]] = {
         "": [PLATFORM_POSIX, PLATFORM_WINDOWS],  # both checked via os.sep
         "^aix": ["aix"],
@@ -1341,7 +1338,7 @@ class Env:
                 return False
             tokstr = Env.expand(tokstr, args=args, vars=vars, flags=flags, chars=chars)
             if tokstr:
-                result += Env.SPECIAL_CMDSEP_RE.sub(r"\1\n\2\n\3", tokstr).split("\n")
+                result += chars.split_glued(tokstr)
             return True
 
         # Define cumulative lists

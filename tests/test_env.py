@@ -378,7 +378,9 @@ class TestEnvExpand:
             with patch.object(
                 Env, "_Env__expand_simple", return_value="value"
             ) as mock_expand_simple:
-                Env.expand("<VAR>", chars=EnvChars.VMS.copy_with(expand="<", windup=">"))
+                Env.expand(
+                    "<VAR>", chars=EnvChars.VMS.copy_with(expand="<", windup=">")
+                )
                 mock_expand_simple.assert_called()
 
     def test_expand_routes_to_expand_simple_when_vms(self):
@@ -3972,6 +3974,10 @@ class TestEnvSplit:
             ("", []),
             ("   ", []),
             ("single", ["single"]),
+            (
+                "2>&1<&2 ||((bc&d))()2>3>&3",
+                ["2>&1<&2", "||", "((", "bc", "&", "d", "))", "(", ")", "2>", "3>&3"],
+            ),
         ],
     )
     def test_split_basic(self, input_str: str, expected: list[str]):

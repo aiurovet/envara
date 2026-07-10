@@ -336,7 +336,7 @@ class EnvFile:
         :rtype: tuple[EnvCharsData, bool]
         """
         if not input:
-            return chars, False
+            return chars, True
 
         inp = input.lstrip()
 

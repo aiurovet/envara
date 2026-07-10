@@ -27,6 +27,12 @@ class EnvChars:
     IS_WINDOWS: ClassVar[bool] = os.sep == "\\"
     """True if the app is running under Windows or OS/2"""
 
+    __cmd_ops_windows: ClassVar[str] = "|&<>()"
+    """Valid command operator characters under Windows"""
+
+    __cmd_ops_posix: ClassVar[str] = f"{__cmd_ops_windows}[];"
+    """Valid command operator characters under POSIX-compliant OS"""
+
     POSIX: ClassVar[EnvCharsData] = EnvCharsData(
         is_posix=True,
         is_windows=False,
@@ -36,10 +42,14 @@ class EnvChars:
         cutter="#",
         hard_quote="'",
         normal_quote='"',
+        cmd_ops=__cmd_ops_posix,
     )
     """POSIX-specific set of environment-related characters"""
 
-    POSIX_WINDOWS: ClassVar[EnvCharsData] = POSIX.copy_with(escape="^")
+    POSIX_WINDOWS: ClassVar[EnvCharsData] = POSIX.copy_with(
+        escape="^",
+        cmd_ops=__cmd_ops_windows,
+    )
     """POSIX-specific set of environment-related characters with Windows-style escape to allow POSIX-like expansions on Windows"""
 
     VMS: ClassVar = EnvCharsData(
@@ -51,6 +61,7 @@ class EnvChars:
         cutter="!",
         hard_quote="",
         normal_quote='"',
+        cmd_ops=None,
     )
     """OpenVMS-specific set of environment-related characters"""
 
@@ -63,6 +74,7 @@ class EnvChars:
         cutter="::",
         hard_quote="",
         normal_quote='"',
+        cmd_ops=__cmd_ops_windows,
     )
     """Windows-specific set of environment-related characters"""
 
@@ -87,9 +99,9 @@ class EnvChars:
         :rtype: EnvCharsData
         """
         EnvChars.Default = (
-            EnvChars.VMS if EnvChars.IS_VMS else (
-                EnvChars.WINDOWS if EnvChars.IS_WINDOWS else EnvChars.POSIX
-            )
+            EnvChars.VMS
+            if EnvChars.IS_VMS
+            else (EnvChars.WINDOWS if EnvChars.IS_WINDOWS else EnvChars.POSIX)
         ).copy_with()
 
         return EnvChars.Default
