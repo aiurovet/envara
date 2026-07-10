@@ -231,3 +231,66 @@ class TestEnvCharsDataEquality:
             normal_quote="",
         )
         assert info1 != info2
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"cmd_ops": "|"},
+            {"cmd_ops": "|&"},
+            {"cmd_ops": " |"},
+        ],
+    )
+    def test_eq_with_different_cmd_ops(self, kwargs: dict[str, str]):
+        info1 = _make_envcharsdata(expand="$")
+        info2 = _make_envcharsdata(expand="$", **kwargs)
+        assert info1 != info2
+
+
+class TestEnvCharsDataCmdOps:
+    @pytest.mark.parametrize(
+        "cmd_ops,pat_substr",
+        [
+            (None, "\\s+"),
+            (" ", "\\s+"),
+            ("|", "\\|+"),
+            ("&", "\\&+"),
+            (";", ";+"),
+        ],
+    )
+    def test_cmd_ops_re_pattern(self, cmd_ops: str | None, pat_substr: str):
+        info = _make_envcharsdata(expand="$", cmd_ops=cmd_ops)
+        inner = info.cmd_ops_re.pattern
+        assert pat_substr in inner
+
+
+class TestEnvCharsDataSplitGlued:
+    @pytest.mark.parametrize(
+        "input_str,cmd_ops,expected",
+        [
+            (None, None, []),
+            ("", None, []),
+            ("hello", None, ["hello"]),
+            ("a  b", None, ["a", "  ", "b"]),
+            ("   ", None, ["   "]),
+            ("2>&1", None, ["2>&1"]),
+            ("2>1", None, ["2>1"]),
+            ("a|b", "|", ["a", "|", "b"]),
+            ("a|b|c", "|", ["a", "|", "b", "|", "c"]),
+            ("a&b", "&", ["a", "&", "b"]),
+            ("a&&b", "&", ["a", "&&", "b"]),
+            ("2>&1", ">&", ["2>&1"]),
+            ("a>&b", ">&", ["a", ">&", "b"]),
+            ("a<&b", "<&", ["a", "<&", "b"]),
+            ("a>&b", "&", ["a>", "&", "b"]),
+            ("2>&1", "&", ["2>", "&1"]),
+        ],
+    )
+    def test_split_glued(
+        self,
+        input_str: str | None,
+        cmd_ops: str | None,
+        expected: list[str],
+    ):
+        info = _make_envcharsdata(expand="$", cmd_ops=cmd_ops)
+        result = info.split_glued(input_str)
+        assert result == expected

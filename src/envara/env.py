@@ -1328,6 +1328,7 @@ class Env:
         def add_token_and_reset(
             result: list[str],
             token: list[str],
+            was_quoted: bool = False,
             args: list[str] | None = None,
             vars: MutableMapping[str, str] | None = None,
             flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
@@ -1338,7 +1339,10 @@ class Env:
                 return False
             tokstr = Env.expand(tokstr, args=args, vars=vars, flags=flags, chars=chars)
             if tokstr:
-                result += chars.split_glued(tokstr)
+                if was_quoted:
+                    result.append(tokstr)
+                else:
+                    result += chars.split_glued(tokstr)
             return True
 
         # Define cumulative lists
@@ -1352,6 +1356,7 @@ class Env:
         is_escaped = False
         is_ready = False
         quote = None
+        was_quoted = False
 
         # Loop through every character from the input, accumulate current token
         # and append when it ends, then restart anew
@@ -1367,11 +1372,15 @@ class Env:
                     if not add_token_and_reset(
                         result=result,
                         token=token,
+                        was_quoted=was_quoted,
                         args=args,
                         vars=vars,
                         flags=flags,
                     ):
+                        was_quoted = False
                         break
+
+                was_quoted = False
 
             if is_escaped:
                 token.append(ch)
@@ -1382,6 +1391,7 @@ class Env:
                 if ch == escape:
                     is_escaped = True
                 elif (ch == normal_quote) or (ch == hard_quote):
+                    was_quoted = True
                     if in_token:
                         quote = None
                         in_token = False
@@ -1394,8 +1404,10 @@ class Env:
                 if ch == escape:
                     is_escaped = True
                 elif ch == quote:
+                    was_quoted = True
                     is_ready = True
             elif hard_quote and (quote == hard_quote):  # pragma: no cover
+                was_quoted = True
                 if ch == quote:
                     is_ready = True
 
@@ -1421,6 +1433,7 @@ class Env:
             add_token_and_reset(
                 result=result,
                 token=token,
+                was_quoted=was_quoted,
                 args=args,
                 vars=vars,
                 flags=flags,

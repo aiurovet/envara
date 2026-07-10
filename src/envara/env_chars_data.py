@@ -137,7 +137,9 @@ class EnvCharsData:
         self.cmd_ops: str = cmd_ops or EnvCharsData.DEFAULT_CMD_OPS
 
         pat_str = "|".join([f"{re.escape(c)}+" for c in self.cmd_ops])
-        pat_str = pat_str.replace(EnvCharsData.DEFAULT_CMD_OPS, r"\s")
+
+        # The from-character is escaped already
+        pat_str = pat_str.replace(EnvCharsData.DEFAULT_CMD_OPS, r"s")
 
         self.cmd_ops_re: re.Pattern[str] = re.compile(rf"({pat_str})")
 
