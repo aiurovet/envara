@@ -373,7 +373,7 @@ class TestEnvExpand:
                 mock_expand_simple.assert_called()
 
     def test_expand_routes_to_expand_simple_when_expand_and_windup_differ(self):
-        """Routes to expand_simple when expand_char is "<" (RISCOS)"""
+        """Routes to expand_simple when expand_char is "<" (expand != windup)"""
         with patch.object(Env, "unquote", return_value=("<VAR>", EnvQuoteType.NONE)):
             with patch.object(
                 Env, "_Env__expand_simple", return_value="value"
