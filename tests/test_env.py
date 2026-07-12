@@ -20,21 +20,21 @@ class TestEnvUnquote:
             ("", EnvExpandFlags.NONE, EnvChars.POSIX, "", EnvQuoteType.NONE),
             (
                 " \t\r\n ",
-                EnvExpandFlags.STRIP_SPACES,
+                EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 "",
                 EnvQuoteType.NONE,
             ),
             (
                 " \t\r\n ",
-                EnvExpandFlags.STRIP_SPACES,
+                EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE,
                 EnvChars.VMS,
                 "",
                 EnvQuoteType.NONE,
             ),
             (
                 " \t\r\n ",
-                EnvExpandFlags.STRIP_SPACES,
+                EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE,
                 EnvChars.WINDOWS,
                 "",
                 EnvQuoteType.NONE,
@@ -43,7 +43,7 @@ class TestEnvUnquote:
                 "'hello'",
                 EnvExpandFlags.NONE,
                 EnvChars.POSIX,
-                "hello",
+                "'hello'",
                 EnvQuoteType.HARD,
             ),
             ("$VAR", EnvExpandFlags.NONE, EnvChars.POSIX, "$VAR", EnvQuoteType.NONE),
@@ -70,112 +70,112 @@ class TestEnvUnquote:
             ),
             (
                 "hello#comment",
-                EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 "hello",
                 EnvQuoteType.NONE,
             ),
             (
                 "hello # comment",
-                EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 "hello ",
                 EnvQuoteType.NONE,
             ),
             (
                 '\\"he#llo\\" # comment',
-                EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 '\\"he',
                 EnvQuoteType.NONE,
             ),
             (
                 '\\"he\\#llo\\" # comment',
-                EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 '\\"he\\#llo\\" ',
                 EnvQuoteType.NONE,
             ),
             (
                 "he'#'llo # comment",
-                EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 "he'",
                 EnvQuoteType.NONE,
             ),
             (
                 "hello::comment",
-                EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.WINDOWS,
                 "hello",
                 EnvQuoteType.NONE,
             ),
             (
                 "hello :: comment",
-                EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.WINDOWS,
                 "hello ",
                 EnvQuoteType.NONE,
             ),
             (
                 'he"::"llo # comment',
-                EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 'he"::"llo ',
                 EnvQuoteType.NONE,
             ),
             (
                 "he'::'llo # comment",
-                EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 "he'::'llo ",
                 EnvQuoteType.NONE,
             ),
             (
                 'he"|"llo # comment',
-                EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 'he"|"llo ',
                 EnvQuoteType.NONE,
             ),
             (
                 "he'|'llo # comment",
-                EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 "he'|'llo ",
                 EnvQuoteType.NONE,
             ),
             (
                 "hello!comment",
-                EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.VMS,
                 "hello",
                 EnvQuoteType.NONE,
             ),
             (
                 "hello ! comment",
-                EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.VMS,
                 "hello ",
                 EnvQuoteType.NONE,
             ),
             (
                 'he"!"llo # comment',
-                EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 'he"!"llo ',
                 EnvQuoteType.NONE,
             ),
             (
                 "he'!'llo # comment",
-                EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 "he'!'llo ",
                 EnvQuoteType.NONE,
             ),
             (
                 "\the'!'llo\n # comment",
-                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.STRIP_SPACES,
+                EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 "he'!'llo",
                 EnvQuoteType.NONE,
@@ -190,70 +190,70 @@ class TestEnvUnquote:
             ),
             (
                 '" hello "',
-                EnvExpandFlags.NONE,
+                EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 " hello ",
                 EnvQuoteType.NORMAL,
             ),
             (
                 '" hello "',
-                EnvExpandFlags.NONE,
+                EnvExpandFlags.UNQUOTE,
                 EnvChars.VMS,
                 " hello ",
                 EnvQuoteType.NORMAL,
             ),
             (
                 '" hello "',
-                EnvExpandFlags.NONE,
+                EnvExpandFlags.UNQUOTE,
                 EnvChars.WINDOWS,
                 " hello ",
                 EnvQuoteType.NORMAL,
             ),
             (
                 "'\t hello \r #\n'",
-                EnvExpandFlags.STRIP_SPACES,
+                EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 "\t hello \r #\n",
                 EnvQuoteType.HARD,
             ),
             (
                 '"\t hello \r #\n"',
-                EnvExpandFlags.STRIP_SPACES,
+                EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 "\t hello \r #\n",
                 EnvQuoteType.NORMAL,
             ),
             (
                 '"\t hello \r #\n"',
-                EnvExpandFlags.STRIP_SPACES,
+                EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE,
                 EnvChars.VMS,
                 "\t hello \r #\n",
                 EnvQuoteType.NORMAL,
             ),
             (
                 '"\t hello \r #\n"',
-                EnvExpandFlags.STRIP_SPACES,
+                EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE,
                 EnvChars.WINDOWS,
                 "\t hello \r #\n",
                 EnvQuoteType.NORMAL,
             ),
             (
                 "\t hello \r # A",
-                EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 "hello",
                 EnvQuoteType.NONE,
             ),
             (
                 "\t hello \r ! A",
-                EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.VMS,
                 "hello",
                 EnvQuoteType.NONE,
             ),
             (
                 "\t hello \r :: A",
-                EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.STRIP_COMMENT,
+                EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.STRIP_COMMENT | EnvExpandFlags.UNQUOTE,
                 EnvChars.WINDOWS,
                 "hello",
                 EnvQuoteType.NONE,
@@ -278,25 +278,25 @@ class TestEnvUnquote:
         [
             (
                 "'hello\\'",
-                EnvExpandFlags.NONE,
+                EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 "Unterminated hard-quoted string: 'hello",
             ),
             (
                 '"hello\\"',
-                EnvExpandFlags.NONE,
+                EnvExpandFlags.UNQUOTE,
                 EnvChars.POSIX,
                 'Unterminated quoted string: "hello',
             ),
             (
                 '"hello^"',
-                EnvExpandFlags.NONE,
+                EnvExpandFlags.UNQUOTE,
                 EnvChars.VMS,
                 'Unterminated quoted string: "hello',
             ),
             (
                 '"hello^"',
-                EnvExpandFlags.NONE,
+                EnvExpandFlags.UNQUOTE,
                 EnvChars.WINDOWS,
                 'Unterminated quoted string: "hello',
             ),
@@ -3592,7 +3592,7 @@ class TestEnvUnquoteRemainingLines:
     def test_line_1308_1312_escape_sequence(self):
         """Lines 1308-1312: escape sequence processing"""
         # Test \u000A - unicode escape
-        result, qt = Env.unquote("hello\\u000A", EnvExpandFlags.NONE, EnvChars.POSIX)
+        result, qt = Env.unquote("hello\\u000A", EnvExpandFlags.UNQUOTE, EnvChars.POSIX)
         assert result is not None and ("hello" in result or "\n" in result)
         assert qt == EnvQuoteType.NONE
 
@@ -3656,30 +3656,30 @@ class TestUnquoteCutterLines1419_1444:
         """Lines 1419-1432: POSIX cutter is #"""
         # POSIX cutter is "#"
         result, qt = Env.unquote(
-            "hello#world", EnvExpandFlags.STRIP_SPACES, EnvChars.POSIX
+            "hello#world", EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE, EnvChars.POSIX
         )
         assert result == "hello"
         assert qt == EnvQuoteType.NONE
 
     def test_posix_cutter_hash_at_end(self):
         """Lines 1419-1432: POSIX cutter # at end"""
-        result, qt = Env.unquote("hello#", EnvExpandFlags.STRIP_SPACES, EnvChars.POSIX)
+        result, qt = Env.unquote("hello#", EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE, EnvChars.POSIX)
         assert result == "hello"
         assert qt == EnvQuoteType.NONE
 
     def test_vms_cutter_exclaim(self):
-        """Lines 1419-1432: VMS cutter is !"""
+        """Lines 1419-1444: VMS cutter is !"""
         result, qt = Env.unquote(
-            "hello!world", EnvExpandFlags.STRIP_SPACES, EnvChars.VMS
+            "hello!world", EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE, EnvChars.VMS
         )
         assert result == "hello"
         assert qt == EnvQuoteType.NONE
 
     def test_windows_cutter_double_colon(self):
-        """Lines 1419-1432: Windows cutter is ::"""
+        """Lines 1419-1444: Windows cutter is ::"""
         # Windows cutter is "::" (2 chars)
         result, qt = Env.unquote(
-            "hello::world", EnvExpandFlags.STRIP_SPACES, EnvChars.WINDOWS
+            "hello::world", EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE, EnvChars.WINDOWS
         )
         assert result == "hello"
         assert qt == EnvQuoteType.NONE
@@ -3688,7 +3688,7 @@ class TestUnquoteCutterLines1419_1444:
         """Lines 1419-1444: no cutter (empty string)"""
         # Create EnvCharsData with empty cutter
         chars = EnvChars.POSIX.copy_with(cutter="")
-        result, qt = Env.unquote("hello world", EnvExpandFlags.NONE, chars)
+        result, qt = Env.unquote("hello world", EnvExpandFlags.UNQUOTE, chars)
         assert result == "hello world"
         assert qt == EnvQuoteType.NONE
 
@@ -3696,7 +3696,7 @@ class TestUnquoteCutterLines1419_1444:
         """Lines 1424-1426: escape before cutter"""
         # Escape the cutter so it's not recognized
         result, qt = Env.unquote(
-            "hello\\#world", EnvExpandFlags.STRIP_SPACES, EnvChars.POSIX
+            "hello\\#world", EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE, EnvChars.POSIX
         )
         # The escaped # should not trigger cutter
         assert (result is not None and "#" in result) or qt == EnvQuoteType.NONE
@@ -3704,14 +3704,14 @@ class TestUnquoteCutterLines1419_1444:
     def test_cutter_strip_spaces(self):
         """Lines 1430-1431: strip spaces after cutter"""
         result, qt = Env.unquote(
-            "hello#   ", EnvExpandFlags.STRIP_SPACES, EnvChars.POSIX
+            "hello#   ", EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE, EnvChars.POSIX
         )
         assert result == "hello"
         assert qt == EnvQuoteType.NONE
 
     def test_cutter_no_strip_spaces(self):
         """Lines 1419-1444: no strip spaces flag"""
-        result, qt = Env.unquote("hello#   ", EnvExpandFlags.NONE, EnvChars.POSIX)
+        result, qt = Env.unquote("hello#   ", EnvExpandFlags.UNQUOTE, EnvChars.POSIX)
         # Without STRIP_SPACES, the part after # is just removed, no rstrip
         assert result == "hello#   " or result == "hello"
         assert qt == EnvQuoteType.NONE
@@ -3907,7 +3907,7 @@ class TestExpandSimpleEasy:
     def test_windows_cutter(self):
         """Lines 1419-1444: Windows cutter"""
         result, qt = Env.unquote(
-            "hello::world", EnvExpandFlags.STRIP_SPACES, EnvChars.WINDOWS
+            "hello::world", EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE, EnvChars.WINDOWS
         )
         assert result == "hello"
         assert qt == EnvQuoteType.NONE
@@ -3915,7 +3915,7 @@ class TestExpandSimpleEasy:
     def test_vms_cutter(self):
         """Lines 1419-1444: VMS cutter"""
         result, qt = Env.unquote(
-            "hello!world", EnvExpandFlags.STRIP_SPACES, EnvChars.VMS
+            "hello!world", EnvExpandFlags.STRIP_SPACES | EnvExpandFlags.UNQUOTE, EnvChars.VMS
         )
         assert result == "hello"
         assert qt == EnvQuoteType.NONE
@@ -3987,7 +3987,7 @@ class TestEnvSplit:
     def test_split_basic(self, input_str: str, expected: list[str]):
         """Test basic splitting without expansion."""
         with patch.dict(os.environ, {}, clear=True):
-            result = Env.split(input_str, flags=EnvExpandFlags.NONE)
+            result = Env.split(input_str, flags=EnvExpandFlags.NONE | EnvExpandFlags.UNQUOTE)
             assert result == expected
 
     # Platform-specific splitting with quotes
@@ -4000,10 +4000,11 @@ class TestEnvSplit:
             (EnvChars.POSIX, "echo 'hello world'", ["echo", "hello world"]),
             (EnvChars.POSIX, 'echo "hello world"', ["echo", "hello world"]),
             # Windows: no hard quotes, double quotes are normal
-            (EnvChars.WINDOWS, '"hello world"', ["hello world"]),
-            (EnvChars.WINDOWS, 'echo "hello world"', ["echo", "hello world"]),
+            (EnvChars.WINDOWS, '"hello world"', ['"hello world"']),
+            (EnvChars.WINDOWS, 'echo "hello world"', ["echo", '"hello world"']),
             # VMS: no hard quotes, double quotes are normal
             (EnvChars.VMS, '"hello world"', ["hello world"]),
+            (EnvChars.VMS, 'echo "hello world"', ["echo", "hello world"]),
         ],
     )
     def test_split_quotes_by_platform(
@@ -4011,7 +4012,7 @@ class TestEnvSplit:
     ):
         """Test quote handling across different platforms."""
         with patch.dict(os.environ, {}, clear=True):
-            result = Env.split(input_str, flags=EnvExpandFlags.NONE, chars=chars)
+            result = Env.split(input_str, flags=EnvExpandFlags.DEFAULT, chars=chars)
             assert result == expected
 
     # POSIX hard quotes (single quotes) - literal strings
@@ -4028,7 +4029,7 @@ class TestEnvSplit:
         """Test POSIX hard-quoted (single-quoted) strings are literal."""
         with patch.dict(os.environ, {"HOME": "/home/test", "USER": "test"}, clear=True):
             result = Env.split(
-                input_str, flags=EnvExpandFlags.SKIP_HARD_QUOTED, chars=EnvChars.POSIX
+                input_str, flags=EnvExpandFlags.SKIP_HARD_QUOTED | EnvExpandFlags.UNQUOTE, chars=EnvChars.POSIX
             )
             assert result == expected
 
@@ -4224,8 +4225,8 @@ class TestEnvSplit:
     @pytest.mark.parametrize(
         "input_str,flags,expected",
         [
-            ("'hello $HOME'", EnvExpandFlags.NONE, ["hello /home/test"]),
-            ("'hello $HOME'", EnvExpandFlags.SKIP_HARD_QUOTED, ["hello $HOME"]),
+            ("'hello $HOME'", EnvExpandFlags.NONE | EnvExpandFlags.UNQUOTE, ["hello /home/test"]),
+            ("'hello $HOME'", EnvExpandFlags.SKIP_HARD_QUOTED | EnvExpandFlags.UNQUOTE, ["hello $HOME"]),
         ],
     )
     def test_split_skip_hard_quoted(
@@ -4297,7 +4298,7 @@ class TestEnvSplit:
     )
     def test_split_mixed_quotes(self, input_str: str, expected: list[str]):
         """Test mix of quoted and unquoted tokens."""
-        result = Env.split(input_str, flags=EnvExpandFlags.NONE, chars=EnvChars.POSIX)
+        result = Env.split(input_str, flags=EnvExpandFlags.NONE | EnvExpandFlags.UNQUOTE, chars=EnvChars.POSIX)
         assert result == expected
 
     # Edge case: input starting with cutter
@@ -4416,6 +4417,13 @@ class TestEnvSplit:
         """Test that pipes, redirects etc. are treated as arguments."""
         result = Env.split(input_str, flags=EnvExpandFlags.NONE)
         assert result == expected
+
+    def test_split_can_unquote_each_explicit(self):
+        """Test explicit can_unquote_each values."""
+        result_false = Env.split("hello world", can_unquote_each=False)
+        assert result_false == ["hello", "world"]
+        result_true = Env.split("hello world", can_unquote_each=True)
+        assert result_true == ["hello", "world"]
 
 
 class TestEnvExpandPath:

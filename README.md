@@ -8,7 +8,7 @@ Does not depend on any special Python package.
 
 The test suite covers **1175 tests** with **100% code coverage** across all modules.
 
-Please note that version `0.4.0` brought breaking changes: a switch from multiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line. Finally, public methods `Env.expand_posix(...)` and `Env.expand_simple(...)` have been moved to the private scope, so stop using those directly in favour of `Env.expand(...)`.
+Please note that version `0.6.1` brought breaking changes: a switch from multiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line. Finally, public methods `Env.expand_posix(...)` and `Env.expand_simple(...)` have been moved to the private scope, so stop using those directly in favour of `Env.expand(...)`.
 
 ---
 
@@ -78,15 +78,15 @@ def main():
 
     # List of all platforms
     print(f"\n*** All platforms ***\n")
-    print(f'"{'", "'.join(Env.get_all_platforms())}"')
+    print('"' + '", "'.join(Env.get_all_platforms()) + '"')
 
     # List of current platforms
     print(f"\n*** Current platforms ***\n")
-    print(f'"{'", "'.join(Env.get_cur_platforms())}"')
+    print('"' + '", "'.join(Env.get_cur_platforms()) + '"')
 
     # List files related to the current platform stack
     print(f"\n*** Env file stack ***\n")
-    print(f'"{'", "'.join([x.name for x in EnvFile.get_files(inp_dir)])}"')
+    print('"' + '", "'.join([x.name for x in EnvFile.get_files(inp_dir)]) + '"')
 
     # Make a copy of the old environment variables
     old_env = os.environ.copy()
@@ -152,7 +152,7 @@ Platform-specific character sets (`EnvChars`):
 Key methods:
 
 - `EnvChars.init_default()` — (re)initialize `Default` based on the running OS
-- `EnvChars.select(cutter)` — choose an `EnvCharsData` variant by matching a line-comment starter against known cutters (`#`, `::`, `!`, `|`)
+- `EnvChars.select(cutter)` — choose an `EnvCharsData` variant by matching a line-comment starter against known cutters (`#` for POSIX, `::` for Windows, `!` for VMS)
 
 Each `EnvCharsData` instance also exposes:
 
@@ -169,7 +169,7 @@ Key static methods:
 - `Env.unquote(input, ...)` — remove enclosing quotes (single or double)
 - `Env.unescape(input, ...)` — process escape sequences (`\n`, `\t`, `\u0022`, etc.)
 - `Env.quote(input, ...)` — enclose in quotes with proper escape handling
-- `Env.split(input, ...)` — split into command-line arguments: portable and significantly more advanced than `shlex.split()`
+- `Env.split(input, ...)` — split into command-line arguments: portable and more advanced than `shlex.split()`
 
 ### `EnvFile` class
 
@@ -186,7 +186,7 @@ Key public methods:
 - `EnvFile.load(dir, indicator, flags, *filters)` — discover and load all relevant env files from a directory, with platform-aware stacking
 - `EnvFile.load_from_str(data, args, expand_flags)` — parse a string buffer of `key=value` lines directly, with per-file platform detection via `select_chars()`
 - `EnvFile.read_text(files, flags)` — read content from a list of `Path` objects, inserting `EOF_CHAR` separators between files, respecting the loaded-files cache
-- `EnvFile.select_chars(input, chars)` — examine the first non-whitespace character(s) of a line to determine which `EnvCharsData` to use by matching cutters (`#` → POSIX, `::` → Windows, `!` → VMS, `|` → RISC OS)
+- `EnvFile.select_chars(input, chars)` — examine the first non-whitespace character(s) of a line to determine which `EnvCharsData` to use by matching cutters (`#` for POSIX, `::` for Windows, `!` for VMS)
 - `EnvFile.get_files(dir, indicator, flags, *filters)` — discover eligible env files for a directory with platform-based filtering
 
 ### `EnvFilter` and `EnvFilters`

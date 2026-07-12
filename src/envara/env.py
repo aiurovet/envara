@@ -1284,6 +1284,7 @@ class Env:
         vars: MutableMapping[str, str] | None = None,
         flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
         chars: EnvCharsData | None = None,
+        can_unquote_each: bool | None = None,
     ) -> list[str]:
         """
         Split input into tokens following platform-independent command-line
@@ -1308,6 +1309,11 @@ class Env:
             variables, etc.
         :type chars: EnvCharsData
 
+        :param can_unquote_each: if flags & EnvExpandFlags.UNQUOTE, unquoting
+            of every obtained token is allowed if this flag is True, as well
+            as if it is None, and chars.is_windows is False
+        :type can_unquote_each: bool | None
+
         :return: List of tokens
         :rtype: list[str]
         """
@@ -1324,6 +1330,16 @@ class Env:
         escape = chars.escape
         normal_quote = chars.normal_quote
         hard_quote = chars.hard_quote
+
+        # Define can_unquote if it wasn't specified
+
+        if can_unquote_each is None:
+            can_unquote_each = (not chars.is_windows)
+
+        if not can_unquote_each:
+            flags = flags & ~EnvExpandFlags.UNQUOTE
+
+        # A function to execute on every full token obtained
 
         def add_token_and_reset(
             result: list[str],
@@ -1628,12 +1644,9 @@ class Env:
         if chars is None:
             chars = EnvChars.Current
 
-        if not input:
-            return (input, EnvQuoteType.NONE)
-
         result, quote_type = Env.strip(input, flags=flags, chars=chars)
 
-        if not result:
+        if not result or (not (flags & EnvExpandFlags.UNQUOTE)):
             return (result, quote_type)
 
         escape = chars.escape
@@ -1654,7 +1667,7 @@ class Env:
                 i += 1
             if end_pos < 0:
                 raise ValueError(f"Unterminated hard-quoted string: {input}")
-            return (result[0:end_pos], EnvQuoteType.HARD)
+            return (result[0:end_pos], quote_type)
 
         if quote_type == EnvQuoteType.NORMAL:
             quote = chars.normal_quote
@@ -1672,7 +1685,7 @@ class Env:
                 i += 1
             if end_pos < 0:
                 raise ValueError(f"Unterminated quoted string: {input}")
-            return (result[0:end_pos], EnvQuoteType.NORMAL)
+            return (result[0:end_pos], quote_type)
 
         cutter = chars.cutter
 
