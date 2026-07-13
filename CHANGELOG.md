@@ -1,3 +1,12 @@
+## 0.6.2
+
+Added `Env.break_args()` to make 2 lists: the one with "proper" arguments, and the one with things like pipes or I/O re-direction, and beyond
+Added `Env.join()` to join arguments into a single command, the opposite to `Env.split()`
+
+## 0.6.1
+
+Had to bump the version due to stopped upload
+
 ## 0.6.0
 
 Removed support for RiscOS, as it was removed from Python 3+, fixed detection of VMS, adjusted tests, introduced `EnvCharsData.cmd_ops`, `EnvCharsData.split_glued()` and made `Env.split()` more advanced (breaking where needed, but no space character found). Fixed `Env.unquote()`: if _flags_ has UNQUOTE not set, should not unquote.

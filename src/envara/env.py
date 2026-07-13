@@ -89,6 +89,48 @@ class Env:
     ###########################################################################
 
     @staticmethod
+    def break_args(
+        args: list[str],
+        chars: EnvCharsData | None = None
+    ) -> tuple[list[str], list[str]]:
+        """
+        Break args into the args that directly belong to an app and the ones
+        that don't. Typically, the latter would start with a pipe character
+        or a parenthesis, or angle brackets for I/O redirection. Basically,
+        it allows to get the list of "proper" arguments and the list of the
+        "other" arguments
+
+        :param args: List of arguments to search
+        :type args: list[str]
+
+        :param chars: An object to take cmd_ops from
+        :type chars: EnvCharsData
+
+        :returns: A tuple of two arrays of arguments
+        :rtype: tuple[list[str], list[str]]
+        """
+        cmd_ops = EnvChars.Current.cmd_ops if chars is None else chars.cmd_ops
+
+        is_found = False
+        offset = -1
+
+        for arg in args:
+            if is_found:
+                break
+            offset += 1
+            for c in cmd_ops:
+                if arg.startswith(c):
+                    is_found = True
+                    break
+
+        if not is_found:
+            return args, []
+
+        return args[0:offset], args[offset:]
+
+    ###########################################################################
+
+    @staticmethod
     def expand(
         input: str | None,
         args: list[str] | None = None,
@@ -1194,6 +1236,43 @@ class Env:
         # Return the accumulated list
 
         return result
+
+    ###########################################################################
+
+    @staticmethod
+    def join(
+        args: list[str],
+        chars: EnvCharsData | None = None,
+    ) -> str:
+        """
+        Join list of arguments into a single command as a string, use the
+        space character as the separator, and escape every space in each
+        argument. Enclosing in double-quotes is not used due to it alters
+        expected behaviour under Windows where these will be passed to
+        a command or an app (e.g. echo "A" will print "A" rather than A)
+
+        :param args: Arguments to join
+        :type args: lsit[str]
+
+        :returns: A string that represents arguments concatenated according to
+            the rules described above
+        :rtype str:
+        """
+        if chars is None:
+            chars = EnvChars.Current
+
+        args_ex: list[str] = []
+        space = " "
+        space_esc = chars.escape + space
+        can_replace = space != space_esc
+
+        for arg in args:
+            if can_replace:
+                args_ex.append(arg.replace(space, space_esc))
+            else:
+                args_ex.append(arg)
+
+        return " ".join(args_ex)
 
     ###########################################################################
 

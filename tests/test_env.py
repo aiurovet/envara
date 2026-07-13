@@ -4426,6 +4426,103 @@ class TestEnvSplit:
         assert result_true == ["hello", "world"]
 
 
+class TestEnvBreakArgs:
+    @pytest.mark.parametrize(
+        "args,chars,expected_proper,expected_other",
+        [
+            ([], EnvChars.POSIX, [], []),
+            ([], EnvChars.WINDOWS, [], []),
+            ([], EnvChars.VMS, [], []),
+            (["app", "file"], EnvChars.POSIX, ["app", "file"], []),
+            (["app", "file"], EnvChars.WINDOWS, ["app", "file"], []),
+            (["app", "file"], EnvChars.VMS, ["app", "file"], []),
+            (["app", "|", "grep"], EnvChars.POSIX, ["app"], ["|", "grep"]),
+            (["app", "|", "grep"], EnvChars.WINDOWS, ["app"], ["|", "grep"]),
+            (["app", "|", "grep"], EnvChars.VMS, ["app", "|", "grep"], []),
+            (["app", ">", "out"], EnvChars.POSIX, ["app"], [">", "out"]),
+            (["app", ">", "out"], EnvChars.WINDOWS, ["app"], [">", "out"]),
+            (["app", ">", "out"], EnvChars.VMS, ["app", ">", "out"], []),
+            (["|", "grep"], EnvChars.POSIX, [], ["|", "grep"]),
+            (["|", "grep"], EnvChars.WINDOWS, [], ["|", "grep"]),
+            (["app", "|grep"], EnvChars.POSIX, ["app"], ["|grep"]),
+            (["app", ">&", "out"], EnvChars.POSIX, ["app"], [">&", "out"]),
+            (["app", "()", "x"], EnvChars.POSIX, ["app"], ["()", "x"]),
+            (["app", "[]", "x"], EnvChars.POSIX, ["app"], ["[]", "x"]),
+            (["app", ";", "x"], EnvChars.POSIX, ["app"], [";", "x"]),
+            (["app", "()", "x"], EnvChars.WINDOWS, ["app"], ["()", "x"]),
+            (["app", "[]", "x"], EnvChars.WINDOWS, ["app", "[]", "x"], []),
+            (["a", "b", "|", "c", "d"], EnvChars.POSIX, ["a", "b"], ["|", "c", "d"]),
+            (["a", "b", "|", "c", "d"], EnvChars.WINDOWS, ["a", "b"], ["|", "c", "d"]),
+            (["|", ">", "out"], EnvChars.POSIX, [], ["|", ">", "out"]),
+            (["|", ">", "out"], EnvChars.WINDOWS, [], ["|", ">", "out"]),
+        ],
+    )
+    def test_break_args(
+        self,
+        args: list[str],
+        chars: EnvCharsData,
+        expected_proper: list[str],
+        expected_other: list[str],
+    ):
+        proper, other = Env.break_args(args, chars=chars)
+        assert proper == expected_proper
+        assert other == expected_other
+
+    def test_break_args_default_chars(self):
+        proper, other = Env.break_args([])
+        assert proper == []
+        assert other == []
+
+
+class TestEnvJoin:
+    @pytest.mark.parametrize(
+        "args,chars,expected",
+        [
+            ([], EnvChars.POSIX, ""),
+            ([], EnvChars.WINDOWS, ""),
+            ([], EnvChars.VMS, ""),
+            (["hello"], EnvChars.POSIX, "hello"),
+            (["hello"], EnvChars.WINDOWS, "hello"),
+            (["hello"], EnvChars.VMS, "hello"),
+            (["hello world"], EnvChars.POSIX, "hello\\ world"),
+            (["hello world"], EnvChars.WINDOWS, "hello^ world"),
+            (["hello world"], EnvChars.VMS, "hello^ world"),
+            (["a", "b"], EnvChars.POSIX, "a b"),
+            (["a", "b"], EnvChars.WINDOWS, "a b"),
+            (["a", "b"], EnvChars.VMS, "a b"),
+            (["a b", "c d"], EnvChars.POSIX, "a\\ b c\\ d"),
+            (["a b", "c d"], EnvChars.WINDOWS, "a^ b c^ d"),
+            (["a b", "c d"], EnvChars.VMS, "a^ b c^ d"),
+            ([""], EnvChars.POSIX, ""),
+            ([""], EnvChars.WINDOWS, ""),
+            ([""], EnvChars.VMS, ""),
+            (["a", "", "b"], EnvChars.POSIX, "a  b"),
+            (["a", "", "b"], EnvChars.WINDOWS, "a  b"),
+            (["a", "", "b"], EnvChars.VMS, "a  b"),
+            ([" hello "], EnvChars.POSIX, "\\ hello\\ "),
+            ([" hello "], EnvChars.WINDOWS, "^ hello^ "),
+            ([" hello "], EnvChars.VMS, "^ hello^ "),
+        ],
+    )
+    def test_join(
+        self,
+        args: list[str],
+        chars: EnvCharsData,
+        expected: str,
+    ):
+        result = Env.join(args, chars=chars)
+        assert result == expected
+
+    def test_join_default_chars(self):
+        result = Env.join(["hello", "world"])
+        assert isinstance(result, str)
+
+    def test_join_empty_escape(self):
+        chars = EnvChars.POSIX.copy_with(escape="")
+        result = Env.join(["hello world"], chars=chars)
+        assert result == "hello world"
+
+
 class TestEnvExpandPath:
     """Tests for Env.expand_path() method covering various platforms"""
 

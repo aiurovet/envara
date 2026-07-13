@@ -126,6 +126,7 @@ Provides string expansions via static methods to:
 - Unescape special characters (`\t`, `\n`, `\u0022`, etc.)
 - Quote strings with proper escape handling
 - Split input string into command-line arguments and apply the actions mentioned above
+- Join command-line arguments into a single string escaping all internal spaces
 - Load and process stacked environment files
 - Detect and work with multiple platforms (POSIX, Windows, VMS, etc.)
 
