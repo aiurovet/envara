@@ -4549,6 +4549,29 @@ class TestEnvIsPiped:
         result = Env.is_piped(input_str)
         assert result == expected
 
+    @pytest.mark.parametrize(
+        "args,expected",
+        [
+            (["app", "|", "grep"], [False, True, False]),
+            (["app", "||", "grep"], [False, False, False]),
+            (["app", "|&", "grep"], [False, True, False]),
+            (["app", "|>", "out"], [False, True, False]),
+            (["|", "grep"], [True, False]),
+            (["||", "grep"], [False, False]),
+            (["|grep"], [True]),
+            (["app", ">&", "out"], [False, False, False]),
+            (["app", ">", "out", "|", "wc"], [False, False, False, True, False]),
+            ([], []),
+        ],
+    )
+    def test_is_piped_from_list(
+        self,
+        args: list[str],
+        expected: list[bool],
+    ):
+        result = [Env.is_piped(a) for a in args]
+        assert result == expected
+
 
 class TestEnvExpandPath:
     """Tests for Env.expand_path() method covering various platforms"""

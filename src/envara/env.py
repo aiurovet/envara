@@ -1248,7 +1248,7 @@ class Env:
 
     @staticmethod
     def is_piped(
-        input: str | None
+        input: list[str] | str | None
     ) -> bool:
         """
         Check whether the input is a split command's argument that represents
@@ -1260,16 +1260,17 @@ class Env:
         :return: Result of the above check as True or False
         :rtype: bool
         """
-        if not input:
+        if (input is None) or (not input):
             return False
 
-        ch1 = input[0]
+        arg = input[0] if isinstance(input, list) else input
+        ch1 = arg[0]
 
         if ch1 != "|":
             return False
 
-        lng = len(input)
-        ch2 = input[1] if lng > 1 else ""
+        lng = len(arg)
+        ch2 = arg[1] if lng > 1 else ""
 
         return (ch1 != ch2)
 

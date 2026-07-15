@@ -1,3 +1,7 @@
+## 0.6.4
+
+Allowed to pass a list of strings to `Env.is_piped()`
+
 ## 0.6.3
 
 Added `Env.is_piped()` and changed the return value for `Env.break_args()` to contain the indicator showing that the proper app arguments end with a pipe to another process
