@@ -92,13 +92,14 @@ class Env:
     def break_args(
         args: list[str],
         chars: EnvCharsData | None = None
-    ) -> tuple[list[str], list[str]]:
+    ) -> tuple[list[str], list[str], bool]:
         """
         Break args into the args that directly belong to an app and the ones
         that don't. Typically, the latter would start with a pipe character
         or a parenthesis, or angle brackets for I/O redirection. Basically,
         it allows to get the list of "proper" arguments and the list of the
-        "other" arguments
+        "other", or "towed", arguments, as well as to determine whether the
+        latter start with a pipe
 
         :param args: List of arguments to search
         :type args: list[str]
@@ -106,8 +107,8 @@ class Env:
         :param chars: An object to take cmd_ops from
         :type chars: EnvCharsData
 
-        :returns: A tuple of two arrays of arguments
-        :rtype: tuple[list[str], list[str]]
+        :returns: A tuple of two arrays of arguments, and piping indicator
+        :rtype: tuple[list[str], list[str], bool]
         """
         cmd_ops = EnvChars.Current.cmd_ops if chars is None else chars.cmd_ops
 
@@ -123,10 +124,16 @@ class Env:
                     is_found = True
                     break
 
-        if not is_found:
-            return args, []
+        if is_found:
+            own_args = args[0:offset]
+            tow_args = args[offset:]
+            is_piped = Env.is_piped(tow_args[0])
+        else:
+            own_args = args
+            tow_args = []
+            is_piped = False
 
-        return args[0:offset], args[offset:]
+        return own_args, tow_args, is_piped
 
     ###########################################################################
 
@@ -1236,6 +1243,35 @@ class Env:
         # Return the accumulated list
 
         return result
+
+    ###########################################################################
+
+    @staticmethod
+    def is_piped(
+        input: str | None
+    ) -> bool:
+        """
+        Check whether the input is a split command's argument that represents
+        a pipe
+
+        :param input: String to check
+        :type input: str | None
+
+        :return: Result of the above check as True or False
+        :rtype: bool
+        """
+        if not input:
+            return False
+
+        ch1 = input[0]
+
+        if ch1 != "|":
+            return False
+
+        lng = len(input)
+        ch2 = input[1] if lng > 1 else ""
+
+        return (ch1 != ch2)
 
     ###########################################################################
 

@@ -4428,33 +4428,33 @@ class TestEnvSplit:
 
 class TestEnvBreakArgs:
     @pytest.mark.parametrize(
-        "args,chars,expected_proper,expected_other",
+        "args,chars,expected_proper,expected_other,expected_piped",
         [
-            ([], EnvChars.POSIX, [], []),
-            ([], EnvChars.WINDOWS, [], []),
-            ([], EnvChars.VMS, [], []),
-            (["app", "file"], EnvChars.POSIX, ["app", "file"], []),
-            (["app", "file"], EnvChars.WINDOWS, ["app", "file"], []),
-            (["app", "file"], EnvChars.VMS, ["app", "file"], []),
-            (["app", "|", "grep"], EnvChars.POSIX, ["app"], ["|", "grep"]),
-            (["app", "|", "grep"], EnvChars.WINDOWS, ["app"], ["|", "grep"]),
-            (["app", "|", "grep"], EnvChars.VMS, ["app", "|", "grep"], []),
-            (["app", ">", "out"], EnvChars.POSIX, ["app"], [">", "out"]),
-            (["app", ">", "out"], EnvChars.WINDOWS, ["app"], [">", "out"]),
-            (["app", ">", "out"], EnvChars.VMS, ["app", ">", "out"], []),
-            (["|", "grep"], EnvChars.POSIX, [], ["|", "grep"]),
-            (["|", "grep"], EnvChars.WINDOWS, [], ["|", "grep"]),
-            (["app", "|grep"], EnvChars.POSIX, ["app"], ["|grep"]),
-            (["app", ">&", "out"], EnvChars.POSIX, ["app"], [">&", "out"]),
-            (["app", "()", "x"], EnvChars.POSIX, ["app"], ["()", "x"]),
-            (["app", "[]", "x"], EnvChars.POSIX, ["app"], ["[]", "x"]),
-            (["app", ";", "x"], EnvChars.POSIX, ["app"], [";", "x"]),
-            (["app", "()", "x"], EnvChars.WINDOWS, ["app"], ["()", "x"]),
-            (["app", "[]", "x"], EnvChars.WINDOWS, ["app", "[]", "x"], []),
-            (["a", "b", "|", "c", "d"], EnvChars.POSIX, ["a", "b"], ["|", "c", "d"]),
-            (["a", "b", "|", "c", "d"], EnvChars.WINDOWS, ["a", "b"], ["|", "c", "d"]),
-            (["|", ">", "out"], EnvChars.POSIX, [], ["|", ">", "out"]),
-            (["|", ">", "out"], EnvChars.WINDOWS, [], ["|", ">", "out"]),
+            ([], EnvChars.POSIX, [], [], False),
+            ([], EnvChars.WINDOWS, [], [], False),
+            ([], EnvChars.VMS, [], [], False),
+            (["app", "file"], EnvChars.POSIX, ["app", "file"], [], False),
+            (["app", "file"], EnvChars.WINDOWS, ["app", "file"], [], False),
+            (["app", "file"], EnvChars.VMS, ["app", "file"], [], False),
+            (["app", "|", "grep"], EnvChars.POSIX, ["app"], ["|", "grep"], True),
+            (["app", "|", "grep"], EnvChars.WINDOWS, ["app"], ["|", "grep"], True),
+            (["app", "|", "grep"], EnvChars.VMS, ["app", "|", "grep"], [], False),
+            (["app", ">", "out"], EnvChars.POSIX, ["app"], [">", "out"], False),
+            (["app", ">", "out"], EnvChars.WINDOWS, ["app"], [">", "out"], False),
+            (["app", ">", "out"], EnvChars.VMS, ["app", ">", "out"], [], False),
+            (["|", "grep"], EnvChars.POSIX, [], ["|", "grep"], True),
+            (["|", "grep"], EnvChars.WINDOWS, [], ["|", "grep"], True),
+            (["app", "|grep"], EnvChars.POSIX, ["app"], ["|grep"], True),
+            (["app", ">&", "out"], EnvChars.POSIX, ["app"], [">&", "out"], False),
+            (["app", "()", "x"], EnvChars.POSIX, ["app"], ["()", "x"], False),
+            (["app", "[]", "x"], EnvChars.POSIX, ["app"], ["[]", "x"], False),
+            (["app", ";", "x"], EnvChars.POSIX, ["app"], [";", "x"], False),
+            (["app", "()", "x"], EnvChars.WINDOWS, ["app"], ["()", "x"], False),
+            (["app", "[]", "x"], EnvChars.WINDOWS, ["app", "[]", "x"], [], False),
+            (["a", "b", "|", "c", "d"], EnvChars.POSIX, ["a", "b"], ["|", "c", "d"], True),
+            (["a", "b", "|", "c", "d"], EnvChars.WINDOWS, ["a", "b"], ["|", "c", "d"], True),
+            (["|", ">", "out"], EnvChars.POSIX, [], ["|", ">", "out"], True),
+            (["|", ">", "out"], EnvChars.WINDOWS, [], ["|", ">", "out"], True),
         ],
     )
     def test_break_args(
@@ -4463,15 +4463,18 @@ class TestEnvBreakArgs:
         chars: EnvCharsData,
         expected_proper: list[str],
         expected_other: list[str],
+        expected_piped: bool,
     ):
-        proper, other = Env.break_args(args, chars=chars)
+        proper, other, piped = Env.break_args(args, chars=chars)
         assert proper == expected_proper
         assert other == expected_other
+        assert piped == expected_piped
 
     def test_break_args_default_chars(self):
-        proper, other = Env.break_args([])
+        proper, other, piped = Env.break_args([])
         assert proper == []
         assert other == []
+        assert piped is False
 
 
 class TestEnvJoin:
@@ -4521,6 +4524,30 @@ class TestEnvJoin:
         chars = EnvChars.POSIX.copy_with(escape="")
         result = Env.join(["hello world"], chars=chars)
         assert result == "hello world"
+
+
+class TestEnvIsPiped:
+    @pytest.mark.parametrize(
+        "input_str,expected",
+        [
+            (None, False),
+            ("", False),
+            ("hello", False),
+            ("|", True),
+            ("||", False),
+            ("| ", True),
+            ("|a", True),
+            ("|&", True),
+            ("|>", True),
+        ],
+    )
+    def test_is_piped(
+        self,
+        input_str: str | None,
+        expected: bool,
+    ):
+        result = Env.is_piped(input_str)
+        assert result == expected
 
 
 class TestEnvExpandPath:

@@ -6,8 +6,6 @@ A library to expand environment variables, application arguments and escape sequ
 
 Does not depend on any special Python package.
 
-The test suite covers **1175 tests** with **100% code coverage** across all modules.
-
 Please note that version `0.6.1` brought breaking changes: a switch from multiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line. Finally, public methods `Env.expand_posix(...)` and `Env.expand_simple(...)` have been moved to the private scope, so stop using those directly in favour of `Env.expand(...)`.
 
 ---
@@ -91,7 +89,7 @@ def main():
     # Make a copy of the old environment variables
     old_env = os.environ.copy()
 
-    # Place some .env files into directory below
+    # Place some env files into directory below
     EnvFile.load(inp_dir, args=args)
 
     # Show new environment variables
@@ -171,6 +169,9 @@ Key static methods:
 - `Env.unescape(input, ...)` — process escape sequences (`\n`, `\t`, `\u0022`, etc.)
 - `Env.quote(input, ...)` — enclose in quotes with proper escape handling
 - `Env.split(input, ...)` — split into command-line arguments: portable and more advanced than `shlex.split()`
+- `Env.join(args, ...)` — join arguments back into a single string, escaping internal spaces rather than enclosing the respective argument in double-quotes (this reflects on Windows treatment of double-quotes passed to the application as normal characters)
+- `Env.break_args(args, ...)` — split arguments into proper (app) args and towed (other) args (like pipes, I/O re-directions and logical operators), with a piping indicator
+- `Env.is_piped(input)` — check whether a string represents a pipe (`|`) operator or starts with that, but not with `||`
 
 ### `EnvFile` class
 
@@ -305,7 +306,7 @@ It is implemented via `Env.expand(...)` which eventually calls private method `_
 
 ### POSIX-style on Windows
 
-`EnvChars.POSIX_WINDOWS` provides POSIX-style (`$`-based) expansion with the Windows caret (`^`) as the escape character. This avoids ambiguity between backslash path separators and the POSIX escape character when expanding paths on Windows. 
+`EnvChars.POSIX_WINDOWS` provides POSIX-style (`$`-based) expansion with the Windows caret (`^`) as the escape character. This avoids ambiguity between backslash path separators and the POSIX escape character when expanding paths on Windows.
 
 ---
 

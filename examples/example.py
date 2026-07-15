@@ -58,7 +58,7 @@ def main():
     # Make a copy of the old environment variables
     old_env = os.environ.copy()
 
-    # Place some .env files into directory below
+    # Place some env files into directory below
     EnvFile.load(inp_dir, args=args)
 
     # Show new environment variables

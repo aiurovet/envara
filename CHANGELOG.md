@@ -1,3 +1,7 @@
+## 0.6.3
+
+Added `Env.is_piped()` and changed the return value for `Env.break_args()` to contain the indicator showing that the proper app arguments end with a pipe to another process
+
 ## 0.6.2
 
 Added `Env.break_args()` to make 2 lists: the one with "proper" arguments, and the one with things like pipes or I/O re-direction, and beyond
