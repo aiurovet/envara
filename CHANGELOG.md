@@ -1,3 +1,7 @@
+## 0.6.5
+
+Renamed `Env.is_piped()` to `Env.startswith_pipe()` for better clarity
+
 ## 0.6.4
 
 Allowed to pass a list of strings to `Env.is_piped()`

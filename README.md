@@ -162,16 +162,16 @@ Each `EnvCharsData` instance also exposes:
 
 Key static methods:
 
-- `Env.expand(input, ...)` — expand environment variables, arguments, escape sequences, and sub-commands
+- `Env.expand(str, ...)` — expand environment variables, arguments, escape sequences, and sub-commands
 - `Env.expand_path(path, ...)` — expand a `Path`, with tilde (`~`) home-directory expansion via `Path.expanduser()`
-- `Env.strip(input, ...)` — strip leading/trailing spaces and detect surrounding quote type
-- `Env.unquote(input, ...)` — remove enclosing quotes (single or double)
-- `Env.unescape(input, ...)` — process escape sequences (`\n`, `\t`, `\u0022`, etc.)
-- `Env.quote(input, ...)` — enclose in quotes with proper escape handling
-- `Env.split(input, ...)` — split into command-line arguments: portable and more advanced than `shlex.split()`
-- `Env.join(args, ...)` — join arguments back into a single string, escaping internal spaces rather than enclosing the respective argument in double-quotes (this reflects on Windows treatment of double-quotes passed to the application as normal characters)
-- `Env.break_args(args, ...)` — split arguments into proper (app) args and towed (other) args (like pipes, I/O re-directions and logical operators), with a piping indicator
-- `Env.is_piped(input)` — check whether a string represents a pipe (`|`) operator or starts with that, but not with `||`
+- `Env.strip(str, ...)` — strip leading/trailing spaces and detect surrounding quote type
+- `Env.unquote(str, ...)` — remove enclosing quotes (single or double)
+- `Env.unescape(str, ...)` — process escape sequences (`\n`, `\t`, `\u0022`, etc.)
+- `Env.quote(str, ...)` — enclose in quotes with proper escape handling
+- `Env.split(str, ...)` — split into command-line arguments: portable and more advanced than `shlex.split()`
+- `Env.join(list, ...)` — join arguments back into a single string, escaping internal spaces rather than enclosing the respective argument in double-quotes (this reflects on Windows treatment of double-quotes passed to the application as normal characters)
+- `Env.break_args(list, ...)` — split arguments into proper (app) args and towed (other) args (like pipes, I/O re-directions and logical operators), with a piping indicator
+- `Env.startswith_pipe(list|str)` — check whether the first element of a string list, or a string, represents a pipe (`|`) operator or starts with that, but not with `||`
 
 ### `EnvFile` class
 

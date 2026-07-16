@@ -4539,14 +4539,16 @@ class TestEnvIsPiped:
             ("|a", True),
             ("|&", True),
             ("|>", True),
+            (">|", False),
+            ("hello|", False),
         ],
     )
-    def test_is_piped(
+    def test_startswith_pipe(
         self,
         input_str: str | None,
         expected: bool,
     ):
-        result = Env.is_piped(input_str)
+        result = Env.startswith_pipe(input_str)
         assert result == expected
 
     @pytest.mark.parametrize(
@@ -4569,7 +4571,7 @@ class TestEnvIsPiped:
         args: list[str],
         expected: list[bool],
     ):
-        result = [Env.is_piped(a) for a in args]
+        result = [Env.startswith_pipe(a) for a in args]
         assert result == expected
 
 

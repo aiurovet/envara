@@ -127,7 +127,7 @@ class Env:
         if is_found:
             own_args = args[0:offset]
             tow_args = args[offset:]
-            is_piped = Env.is_piped(tow_args[0])
+            is_piped = Env.startswith_pipe(tow_args[0])
         else:
             own_args = args
             tow_args = []
@@ -1247,14 +1247,14 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def is_piped(
+    def startswith_pipe(
         input: list[str] | str | None
     ) -> bool:
         """
-        Check whether the input is a split command's argument that represents
-        a pipe
+        Check whether the first str element or the only str can be considered
+        the beginning of a pipe: "|", "|abc...", but not "||", "||abc..."
 
-        :param input: String to check
+        :param input: A list of strings or a string to check
         :type input: str | None
 
         :return: Result of the above check as True or False
