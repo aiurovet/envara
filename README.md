@@ -151,7 +151,7 @@ Platform-specific character sets (`EnvChars`):
 Key methods:
 
 - `EnvChars.init_default()` — (re)initialize `Default` based on the running OS
-- `EnvChars.select(cutter)` — choose an `EnvCharsData` variant by matching a line-comment starter against known cutters (`#` for POSIX, `::` for Windows, `!` for VMS)
+- `EnvChars.select(based_on)` — choose an `EnvCharsData` variant by matching a line-comment starter against known cutters (`#` for POSIX, `::` for Windows, `!` for VMS)
 
 Each `EnvCharsData` instance also exposes:
 
@@ -171,7 +171,8 @@ Key static methods:
 - `Env.split(str, ...)` — split into command-line arguments: portable and more advanced than `shlex.split()`
 - `Env.join(list, ...)` — join arguments back into a single string, escaping internal spaces rather than enclosing the respective argument in double-quotes (this reflects on Windows treatment of double-quotes passed to the application as normal characters)
 - `Env.break_args(list, ...)` — split arguments into proper (app) args and towed (other) args (like pipes, I/O re-directions and logical operators), with a piping indicator
-- `Env.startswith_pipe(list|str)` — check whether the first element of a string list, or a string, represents a pipe (`|`) operator or starts with that, but not with `||`
+- `Env.escape(str, ...)` — escape whitespace and escape characters in a string (used internally by `join()`)
+- `Env.startswith_pipe(list|str|None)` — check whether a string or the first element of a string list represents a pipe (`|`) operator or starts with one, but not with `||`
 
 ### `EnvFile` class
 
