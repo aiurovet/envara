@@ -1,3 +1,7 @@
+## 0.6.6
+
+Added `EnvCharsData.escape_map` and `Env.escape()`. Re-wrote `Env.join()` using that.
+
 ## 0.6.5
 
 Renamed `Env.is_piped()` to `Env.startswith_pipe()` for better clarity

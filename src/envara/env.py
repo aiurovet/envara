@@ -138,6 +138,40 @@ class Env:
     ###########################################################################
 
     @staticmethod
+    def escape(
+        input: str | None,
+        chars: EnvCharsData | None = None
+    ) -> str | None:
+        """
+        This method escapes whitespaces and escape characters only. This will
+        preserve special characters like a pipe '|' or any kind of a bracket,
+        etc, obtained from splitting command strings
+
+        :param input: String to escape
+        :type input: str | None
+
+        :param chars: Platform-specific special environment characters to
+            parse various tokens like escaped characters, environment
+            variables, etc.
+        :type chars: EnvCharsData
+
+        :return: Escaped string that doesn't need double-quotes around when
+            used as an argument for a shell command
+        :rtype: str | None
+        """
+        if not input:
+            return input
+
+        if chars is None:
+            chars = EnvChars.Current
+
+        escape_map = chars.escape_map
+
+        return input if escape_map is None else input.translate(escape_map)
+
+    ###########################################################################
+
+    @staticmethod
     def expand(
         input: str | None,
         args: list[str] | None = None,
@@ -1247,49 +1281,19 @@ class Env:
     ###########################################################################
 
     @staticmethod
-    def startswith_pipe(
-        input: list[str] | str | None
-    ) -> bool:
-        """
-        Check whether the first str element or the only str can be considered
-        the beginning of a pipe: "|", "|abc...", but not "||", "||abc..."
-
-        :param input: A list of strings or a string to check
-        :type input: str | None
-
-        :return: Result of the above check as True or False
-        :rtype: bool
-        """
-        if (input is None) or (not input):
-            return False
-
-        arg = input[0] if isinstance(input, list) else input
-        ch1 = arg[0]
-
-        if ch1 != "|":
-            return False
-
-        lng = len(arg)
-        ch2 = arg[1] if lng > 1 else ""
-
-        return (ch1 != ch2)
-
-    ###########################################################################
-
-    @staticmethod
     def join(
         args: list[str],
         chars: EnvCharsData | None = None,
     ) -> str:
         """
         Join list of arguments into a single command as a string, use the
-        space character as the separator, and escape every space in each
-        argument. Enclosing in double-quotes is not used due to it alters
-        expected behaviour under Windows where these will be passed to
-        a command or an app (e.g. echo "A" will print "A" rather than A)
+        space character as the separator, and escape every argument.
+        Enclosing in double-quotes is not used due to it alters the expected
+        behaviour under Windows where these will be passed to a command or
+        an app (e.g. echo "A" will print "A" rather than A)
 
         :param args: Arguments to join
-        :type args: lsit[str]
+        :type args: list[str]
 
         :returns: A string that represents arguments concatenated according to
             the rules described above
@@ -1298,18 +1302,12 @@ class Env:
         if chars is None:
             chars = EnvChars.Current
 
-        args_ex: list[str] = []
-        space = " "
-        space_esc = chars.escape + space
-        can_replace = space != space_esc
+        escape_map = chars.escape_map
 
-        for arg in args:
-            if can_replace:
-                args_ex.append(arg.replace(space, space_esc))
-            else:
-                args_ex.append(arg)
+        if escape_map is None:
+            return " ".join(args)
 
-        return " ".join(args_ex)
+        return " ".join(x for arg in args if (x := Env.escape(arg, chars)))
 
     ###########################################################################
 
@@ -1572,6 +1570,36 @@ class Env:
             )
 
         return result
+
+    ###########################################################################
+
+    @staticmethod
+    def startswith_pipe(
+        input: list[str] | str | None
+    ) -> bool:
+        """
+        Check whether the first str element or the only str can be considered
+        the beginning of a pipe: "|", "|abc...", but not "||", "||abc..."
+
+        :param input: A list of strings or a string to check
+        :type input: str | None
+
+        :return: Result of the above check as True or False
+        :rtype: bool
+        """
+        if (input is None) or (not input):
+            return False
+
+        arg = input[0] if isinstance(input, list) else input
+        ch1 = arg[0]
+
+        if ch1 != "|":
+            return False
+
+        lng = len(arg)
+        ch2 = arg[1] if lng > 1 else ""
+
+        return (ch1 != ch2)
 
     ###########################################################################
 

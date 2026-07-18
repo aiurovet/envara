@@ -6,7 +6,7 @@
 
 
 import re
-from typing import ClassVar
+from typing import Any, ClassVar
 
 
 class EnvCharsData:
@@ -143,6 +143,25 @@ class EnvCharsData:
 
         self.cmd_ops_re: re.Pattern[str] = re.compile(rf"({pat_str})")
 
+        # Create translation table for the characters that should be
+        # escaped when used as unquoted command-line arguments
+
+        escape = self.escape
+        self.escape_map: dict[int, Any] | None = None
+
+        if escape:
+            self.escape_map = str.maketrans({
+                " ": f"{escape} ",
+                "\a": f"{escape}a",
+                "\b": f"{escape}b",
+                "\f": f"{escape}f",
+                "\n": f"{escape}n",
+                "\r": f"{escape}r",
+                "\t": f"{escape}t",
+                "\v": f"{escape}v",
+                escape: f"{escape}{escape}",
+            })
+
     ###########################################################################
 
     def copy_with(
@@ -155,7 +174,7 @@ class EnvCharsData:
         cutter: str | None = None,
         hard_quote: str | None = None,
         normal_quote: str | None = None,
-        cmd_ops: str | None = None,
+        cmd_ops: str | None = None
     ):
         """
         Copy all properties to a new object replacing certain properties. See

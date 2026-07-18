@@ -4499,9 +4499,9 @@ class TestEnvJoin:
             ([""], EnvChars.POSIX, ""),
             ([""], EnvChars.WINDOWS, ""),
             ([""], EnvChars.VMS, ""),
-            (["a", "", "b"], EnvChars.POSIX, "a  b"),
-            (["a", "", "b"], EnvChars.WINDOWS, "a  b"),
-            (["a", "", "b"], EnvChars.VMS, "a  b"),
+            (["a", "", "b"], EnvChars.POSIX, "a b"),
+            (["a", "", "b"], EnvChars.WINDOWS, "a b"),
+            (["a", "", "b"], EnvChars.VMS, "a b"),
             ([" hello "], EnvChars.POSIX, "\\ hello\\ "),
             ([" hello "], EnvChars.WINDOWS, "^ hello^ "),
             ([" hello "], EnvChars.VMS, "^ hello^ "),
@@ -4573,6 +4573,72 @@ class TestEnvIsPiped:
     ):
         result = [Env.startswith_pipe(a) for a in args]
         assert result == expected
+
+
+class TestEnvEscape:
+    @pytest.mark.parametrize(
+        "input_str,chars,expected",
+        [
+            (None, EnvChars.POSIX, None),
+            (None, EnvChars.WINDOWS, None),
+            (None, EnvChars.VMS, None),
+            ("", EnvChars.POSIX, ""),
+            ("", EnvChars.WINDOWS, ""),
+            ("", EnvChars.VMS, ""),
+            ("hello", EnvChars.POSIX, "hello"),
+            ("hello", EnvChars.WINDOWS, "hello"),
+            ("hello", EnvChars.VMS, "hello"),
+            (" ", EnvChars.POSIX, "\\ "),
+            (" ", EnvChars.WINDOWS, "^ "),
+            (" ", EnvChars.VMS, "^ "),
+            ("a b", EnvChars.POSIX, "a\\ b"),
+            ("a b", EnvChars.WINDOWS, "a^ b"),
+            ("a b", EnvChars.VMS, "a^ b"),
+            ("\t", EnvChars.POSIX, "\\t"),
+            ("\t", EnvChars.WINDOWS, "^t"),
+            ("\t", EnvChars.VMS, "^t"),
+            ("\n", EnvChars.POSIX, "\\n"),
+            ("\n", EnvChars.WINDOWS, "^n"),
+            ("\n", EnvChars.VMS, "^n"),
+            ("\r", EnvChars.POSIX, "\\r"),
+            ("\r", EnvChars.WINDOWS, "^r"),
+            ("\r", EnvChars.VMS, "^r"),
+            ("\f", EnvChars.POSIX, "\\f"),
+            ("\f", EnvChars.WINDOWS, "^f"),
+            ("\f", EnvChars.VMS, "^f"),
+            ("\v", EnvChars.POSIX, "\\v"),
+            ("\v", EnvChars.WINDOWS, "^v"),
+            ("\v", EnvChars.VMS, "^v"),
+            ("\a", EnvChars.POSIX, "\\a"),
+            ("\a", EnvChars.WINDOWS, "^a"),
+            ("\a", EnvChars.VMS, "^a"),
+            ("\b", EnvChars.POSIX, "\\b"),
+            ("\b", EnvChars.WINDOWS, "^b"),
+            ("\b", EnvChars.VMS, "^b"),
+            ("\\", EnvChars.POSIX, "\\\\"),
+            ("^", EnvChars.WINDOWS, "^^"),
+            ("^", EnvChars.VMS, "^^"),
+            ("a\tb\nc", EnvChars.POSIX, "a\\tb\\nc"),
+            ("a\tb\nc", EnvChars.WINDOWS, "a^tb^nc"),
+            ("a\tb\nc", EnvChars.VMS, "a^tb^nc"),
+        ],
+    )
+    def test_escape(
+        self,
+        input_str: str | None,
+        chars: EnvCharsData,
+        expected: str | None,
+    ):
+        result = Env.escape(input_str, chars=chars)
+        assert result == expected
+
+    def test_escape_default_chars(self):
+        assert Env.escape("hello") == "hello"
+
+    def test_escape_empty_escape(self):
+        chars = EnvChars.POSIX.copy_with(escape="")
+        result = Env.escape("hello world", chars=chars)
+        assert result == "hello world"
 
 
 class TestEnvExpandPath:
