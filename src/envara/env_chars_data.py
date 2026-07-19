@@ -11,9 +11,9 @@ from typing import Any, ClassVar
 
 class EnvCharsData:
     """
-    Special characters to facilitate parsing strings containing environment-
-    related insets, as well as a regular expression to facilitate splitting
-    a string representing an OS-specific command into executable and arguments
+    Special characters for parsing strings containing environment-related
+    insets, as well as a regular expression for splitting a string
+    representing an OS-specific command into executable and arguments
     """
 
     DEFAULT_CMD_OPS: ClassVar[str] = " "
@@ -28,9 +28,8 @@ class EnvCharsData:
         """
         Deep equality checker
 
-        :param self: The object
-
         :param other: The object to compare to
+        :type other: object
         """
 
         if not isinstance(other, EnvCharsData):
@@ -66,48 +65,41 @@ class EnvCharsData:
         """
         Constructor
 
-        :param self: The object
+        :param is_posix: ``True`` if environment variables and command-line
+            arguments should be expanded in POSIX (bash) style
+        :type is_posix: ``bool | None``
 
-        :param is_posix: True if need to expand environment variables and
-            command-line arguments in POSIX (more precisely, bash) style
-        :type is_posix: bool | None
-
-        :param is_windows: True if need to expand environment variables and
-            command-line arguments in Windows (more precisely, DOS batch)
-            style
-        :type is_windows: bool | None
+        :param is_windows: ``True`` if environment variables and command-line
+            arguments should be expanded in Windows (DOS batch) style
+        :type is_windows: ``bool | None``
 
         :param expand: String that denotes the start of an environment
             variable token
-        :type expand: str | None
+        :type expand: ``str | None``
 
         :param windup: Character or string that denotes the end of an
-            environment variable token in non-POSIX OSes (normally, the
-            same as expand, but in theory, might differ)
-        :type windup: str | None
+            environment variable token in non-POSIX OSes (normally the
+            same as ``expand``, but may differ)
+        :type windup: ``str | None``
 
         :param escape: Escape character or string
-        :type escape: str | None
+        :type escape: ``str | None``
 
         :param cutter: Character or string denoting the end of data in a
-            string (a line comment start
-        :type cutter: str | None
+            string (line comment start)
+        :type cutter: ``str | None``
 
         :param hard_quote: Character for a literal string start and end
-            that requires to avoid unescaping and expansion of the
-            environment variables
-        :type hard_quote: str | None
+            that prevents unescaping and expansion of environment variables
+        :type hard_quote: ``str | None``
 
         :param normal_quote: Character for a normal string start and end
-            that allows unescaping and expansion of the environment variables
-        :type normal_quote: str | None
+            that allows unescaping and expansion of environment variables
+        :type normal_quote: ``str | None``
 
-        :param normal_quote: Character for a normal string start and end
-            that allows unescaping and expansion of the environment variables
-        :type normal_quote: str | None
-
-        :param cmd_ops: Command operators like pipe, angles, parentheses, etc.
-        :type cmd_ops: str | None
+        :param cmd_ops: Command operators like pipe (`|`), angle brackets
+            (`<`, `>`), ampersand (`&`), parentheses, etc.
+        :type cmd_ops: ``str | None``
         """
 
         self.expand: str = expand or ""
@@ -177,10 +169,10 @@ class EnvCharsData:
         cmd_ops: str | None = None
     ):
         """
-        Copy all properties to a new object replacing certain properties. See
-        __init__ for the details on arguments
+        Copy all properties to a new object, replacing certain properties.
+        See ``__init__`` for details on arguments.
 
-        :return: The destination object (to)
+        :return: A new ``EnvCharsData`` instance
         :rtype: EnvCharsData
         """
 
@@ -202,12 +194,12 @@ class EnvCharsData:
 
     def split_glued(self, input: str | None = None) -> list[str]:
         """
-        Splits input string ignoring any possible injected environment variable,
-        sub-command, or quote. Used in Env.split() to split each argument
-        after splitting the whole comand by valid whitespaces
+        Splits input string ignoring any injected environment variable,
+        sub-command, or quote. Used in ``Env.split()`` to split each
+        argument after splitting the whole command by valid whitespaces.
 
         :param input: String to split
-        :type input: str | None
+        :type input: ``str | None``
         """
         if not input:
             return []

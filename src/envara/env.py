@@ -5,7 +5,7 @@
 # list and escaped characters (\t, \n, etc.) in a string. As well as remove
 # line comments if needed
 #
-# Additionally, accepts bit flags to control what and hopw to expand
+# Additionally, accepts bit flags to control what and how to expand
 #
 # This class also allows to avoid unnecessary dependency: easy to implement.
 ###############################################################################
@@ -32,28 +32,28 @@ from envara.env_quote_type import EnvQuoteType
 
 class Env:
     """
-    Class for string expansions
+    Class for string expansions.
     """
 
     ###########################################################################
 
     IS_POSIX: ClassVar[bool] = EnvChars.IS_POSIX
-    """True if the app is running under Linux, UNIX, BSD, macOS or smimilar"""
+    """``True`` if the app is running under Linux, UNIX, BSD, macOS or similar."""
 
     IS_VMS: ClassVar[bool] = EnvChars.IS_VMS
-    """True if the app is running under OpenVMS or similar"""
+    """``True`` if the app is running under OpenVMS or similar."""
 
     IS_WINDOWS: ClassVar[bool] = EnvChars.IS_WINDOWS
-    """True if the app is running under Windows or OS/2"""
+    """``True`` if the app is running under Windows or OS/2."""
 
     PLATFORM_POSIX: ClassVar[str] = "posix"
-    """A text indicating a POSIX-compatible platform"""
+    """A ``str`` indicating a POSIX-compatible platform."""
 
     PLATFORM_WINDOWS: ClassVar[str] = "windows"
-    """A text indicating a Windows-compatible platform"""
+    """A ``str`` indicating a Windows-compatible platform."""
 
     PLATFORM_THIS: ClassVar[str] = sys.platform.lower()
-    """A text indicating the running platform"""
+    """A ``str`` indicating the running platform."""
 
     SPECIAL: ClassVar[dict[str, str]] = {
         "a": "\a",
@@ -65,7 +65,7 @@ class Env:
         "v": "\v",
     }
     """Rules on how to convert special characters when they
-    follow an odd number of escape characters"""
+    follow an odd number of escape characters."""
 
     SYS_PLATFORM_MAP: ClassVar[dict[str, list[str]]] = {
         "": [PLATFORM_POSIX, PLATFORM_WINDOWS],  # both checked via os.sep
@@ -84,7 +84,7 @@ class Env:
         "vms": ["vms"],
         ".+": [PLATFORM_THIS],
     }
-    """Dictionary: regex => list-of-platform-names"""
+    """``dict[str, list[str]]``: regex => list-of-platform-names."""
 
     ###########################################################################
 
@@ -94,21 +94,21 @@ class Env:
         chars: EnvCharsData | None = None
     ) -> tuple[list[str], list[str], bool]:
         """
-        Break args into the args that directly belong to an app and the ones
+        Break `args` into the args that directly belong to an app and the ones
         that don't. Typically, the latter would start with a pipe character
-        or a parenthesis, or angle brackets for I/O redirection. Basically,
+        `|` or a parenthesis, or angle brackets for I/O redirection. Basically,
         it allows to get the list of "proper" arguments and the list of the
         "other", or "towed", arguments, as well as to determine whether the
-        latter start with a pipe
+        latter start with a pipe.
 
-        :param args: List of arguments to search
-        :type args: list[str]
+        :param args: List of arguments to search.
+        :type args: ``list[str]``
 
-        :param chars: An object to take cmd_ops from
-        :type chars: EnvCharsData
+        :param chars: An object to take ``cmd_ops`` from.
+        :type chars: ``EnvCharsData``
 
-        :returns: A tuple of two arrays of arguments, and piping indicator
-        :rtype: tuple[list[str], list[str], bool]
+        :returns: A tuple of two arrays of arguments, and piping indicator.
+        :rtype: ``tuple[list[str], list[str], bool]``
         """
         cmd_ops = EnvChars.Current.cmd_ops if chars is None else chars.cmd_ops
 
@@ -144,20 +144,20 @@ class Env:
     ) -> str | None:
         """
         This method escapes whitespaces and escape characters only. This will
-        preserve special characters like a pipe '|' or any kind of a bracket,
-        etc, obtained from splitting command strings
+        preserve special characters like a pipe `|` or any kind of a bracket,
+        etc., obtained from splitting command strings.
 
-        :param input: String to escape
-        :type input: str | None
+        :param input: String to escape.
+        :type input: ``str | None``
 
         :param chars: Platform-specific special environment characters to
             parse various tokens like escaped characters, environment
             variables, etc.
-        :type chars: EnvCharsData
+        :type chars: ``EnvCharsData``
 
         :return: Escaped string that doesn't need double-quotes around when
-            used as an argument for a shell command
-        :rtype: str | None
+            used as an argument for a shell command.
+        :rtype: ``str | None``
         """
         if not input:
             return input
@@ -181,36 +181,36 @@ class Env:
         subprocess_timeout: float | None = None,
     ) -> str | None:
         """
-        Unquote the input if required via flags, remove trailing line comment
-        if required via flags, expand the result with the arguments if
-        required via flags, expand the result with the environment variables'
+        Unquote the `input` if required via `flags`, remove trailing line comment
+        if required via `flags`, expand the result with `args` if
+        required via `flags`, expand the result with the environment variables'
         values. The method follows POSIX (in fact, bash) and Windows/OpenVMS
-        expansion conventions depending on chars.is_posix and chars.is_windows
+        expansion conventions depending on `chars.is_posix` and `chars.is_windows`.
 
-        :param input: String to expand
-        :type input: str | None
+        :param input: String to expand.
+        :type input: ``str | None``
 
-        :param args: List of arguments to expand $#, $1, $2, ...
-            pass [] or None to avoid expansion
-        :type args: list[str] | None
+        :param args: List of arguments to expand `$#`, `$1`, `$2`, ...
+            pass `[]` or `None` to avoid expansion.
+        :type args: ``list[str] | None``
 
-        :param vars: Dictionary of pairs string => string;
-            if None, os.environ will be used; pass {} to avoid expansion
-        :type vars: MutableMapping[str, str] | None
+        :param vars: Dictionary of pairs ``str`` => ``str``;
+            if `None`, ``os.environ`` will be used; pass `{}` to avoid expansion.
+        :type vars: ``MutableMapping[str, str] | None``
 
-        :param flags: Flags controlling what/how to expand input
-        :type flags: EnvExpandFlags
+        :param flags: Flags controlling what/how to expand `input`.
+        :type flags: ``EnvExpandFlags``
 
         :param chars: Platform-specific special environment characters to
             parse various tokens like escaped characters, environment
             variables, etc.
-        :type chars: EnvCharsData
+        :type chars: ``EnvCharsData``
 
-        :param subprocess_timeout: Timeout in seconds for subprocess execution
-        :type subprocess_timeout: float | None
+        :param subprocess_timeout: Timeout in seconds for subprocess execution.
+        :type subprocess_timeout: ``float | None``
 
-        :return: Expanded string
-        :rtype: str | None
+        :return: Expanded string.
+        :rtype: ``str | None``
         """
 
         if chars is None:
@@ -265,8 +265,8 @@ class Env:
         chars: EnvCharsData | None = None,
     ) -> Path | None:
         """
-        A wrapper around expand() for paths. It also expands the current or
-        specific user's directory according to the current OS's rules
+        A wrapper around `Env.expand()` for paths. It also expands the current or
+        specific user's directory according to the current OS's rules.
         """
         if chars is None:
             chars = EnvChars.Current
@@ -302,8 +302,8 @@ class Env:
     ) -> str | None:
         """
         Expand environment variables and sub-processes according to complex
-        POSIX (in fact, bash) rules: like ${ABC:-${DEF:-$(uname -a)}. See the
-        description of arguments under the main method expand(...)
+        POSIX (in fact, bash) rules: like ``${ABC:-${DEF:-$(uname -a)}``. See the
+        description of arguments under the main method `Env.expand()`.
         """
         if chars is None:
             chars = EnvChars.Current
@@ -944,8 +944,8 @@ class Env:
     ) -> str | None:
         """
         Expand environment variables and sub-processes according to simple
-        rules and symmetric expand characters: like %ABC% in Windows. See
-        the description of arguments under the main method expand(...)
+        rules and symmetric expand characters: like ``%ABC%`` in Windows. See
+        the description of arguments under the main method `Env.expand()`.
         """
         if chars is None:
             chars = EnvChars.Current
@@ -1189,13 +1189,13 @@ class Env:
         flags: EnvPlatformFlags = EnvPlatformFlags.NONE,
     ) -> list[str]:
         """
-        Get the list of all supported platforms (see Env.__platform_map).
+        Get the list of all supported platforms (see ``Env.SYS_PLATFORM_MAP``).
 
-        :param flags: Controls which items will be added to the stack
-        :type flags: EnvPlatformFlags
+        :param flags: Controls which items will be added to the stack.
+        :type flags: ``EnvPlatformFlags``
 
-        :return: List of all relevant platforms
-        :rtype: list[str]
+        :return: List of all relevant platforms.
+        :rtype: ``list[str]``
         """
 
         # Initialize the return value
@@ -1225,17 +1225,17 @@ class Env:
         """
         Get the list of platforms from more generic to more specific ones.
         For instance, if an application is running on Linux, it could be
-        ["posix", "linux", Env.PLATFORM_THIS], or for macOS it could be
-        ["posix", "bsd", "darwin", "macos", Env.PLATFORM_THIS]. The last
+        ``["posix", "linux", Env.PLATFORM_THIS]``, or for macOS it could be
+        ``["posix", "bsd", "darwin", "macos", Env.PLATFORM_THIS]``. The last
         item will be added only if more specific than "macOS". An empty
         string is added first to the returned list if you set the
-        EnvPlatformFlags.ADD_EMPTY bit in flags.
+        ``EnvPlatformFlags.ADD_EMPTY`` bit in `flags`.
 
-        :param flags: Controls which items will be added to the list
-        :type flags: EnvPlatformFlags
+        :param flags: Controls which items will be added to the list.
+        :type flags: ``EnvPlatformFlags``
 
-        :return: List of all relevant platforms
-        :rtype: list[str]
+        :return: List of all relevant platforms.
+        :rtype: ``list[str]``
         """
 
         # Initialize the return value
@@ -1286,18 +1286,18 @@ class Env:
         chars: EnvCharsData | None = None,
     ) -> str:
         """
-        Join list of arguments into a single command as a string, use the
-        space character as the separator, and escape every argument.
+        Join list of `args` into a single command as a ``str``, using the
+        space character as the separator, and escaping every argument.
         Enclosing in double-quotes is not used due to it alters the expected
         behaviour under Windows where these will be passed to a command or
-        an app (e.g. echo "A" will print "A" rather than A)
+        an app (e.g. ``echo "A"`` will print ``"A"`` rather than ``A``).
 
-        :param args: Arguments to join
-        :type args: list[str]
+        :param args: Arguments to join.
+        :type args: ``list[str]``
 
-        :returns: A string that represents arguments concatenated according to
-            the rules described above
-        :rtype str:
+        :returns: A ``str`` that represents arguments concatenated according to
+            the rules described above.
+        :rtype: ``str``
         """
         if chars is None:
             chars = EnvChars.Current
@@ -1318,24 +1318,24 @@ class Env:
         chars: EnvCharsData | None = None,
     ) -> str:
         """
-        Enclose input in quotes. Neither leading, nor trailing whitespaces
-        removed before checking the leading quotes. Use .strip() yourself
+        Enclose `input` in quotes. Neither leading, nor trailing whitespaces
+        removed before checking the leading quotes. Use ``.strip()`` yourself
         before calling this method if needed.
 
-        :param input: String being expanded
-        :type input: str
+        :param input: String to enclose in quotes.
+        :type input: ``str``
 
-        :param is_forced: If True, enclose in quotes even if already quoted
-        :type is_forced: bool
+        :param is_forced: If ``True``, enclose in quotes even if already quoted.
+        :type is_forced: ``bool``
 
         :param chars: Platform-specific special environment characters to
             parse various tokens like escaped characters, environment
             variables, etc.
-        :type chars: EnvCharsData
+        :type chars: ``EnvCharsData``
 
         :return: Quoted string with possible quotes and escape characters from
-                 the inside being escaped
-        :rtype: str
+                 the inside being escaped.
+        :rtype: ``str``
         """
 
         if chars is None:
@@ -1401,35 +1401,35 @@ class Env:
         can_unquote_each: bool | None = None,
     ) -> list[str]:
         """
-        Split input into tokens following platform-independent command-line
-        rules: based on the normal and the hard quotes (if the latter defined)
+        Split `input` into tokens following platform-independent command-line
+        rules: based on the normal and the hard quotes (if the latter defined).
 
-        :param input: String to split
-        :type input: str | None
+        :param input: String to split.
+        :type input: ``str | None``
 
-        :param args: List of arguments to expand $#, $1, $2, ...
-            pass [] or None to avoid expansion
-        :type args: list[str] | None
+        :param args: List of arguments to expand `$#`, `$1`, `$2`, ...
+            pass `[]` or `None` to avoid expansion.
+        :type args: ``list[str] | None``
 
-        :param vars: Dictionary of pairs string => string;
-            if None, os.environ will be used; pass {} to avoid expansion
-        :type vars: MutableMapping[str, str] | None
+        :param vars: Dictionary of pairs ``str`` => ``str``;
+            if `None`, ``os.environ`` will be used; pass `{}` to avoid expansion.
+        :type vars: ``MutableMapping[str, str] | None``
 
-        :param flags: Flags controlling what/how to expand tokens
-        :type flags: EnvExpandFlags
+        :param flags: Flags controlling what/how to expand tokens.
+        :type flags: ``EnvExpandFlags``
 
         :param chars: Platform-specific special environment characters to
             parse various tokens like escaped characters, environment
             variables, etc.
-        :type chars: EnvCharsData
+        :type chars: ``EnvCharsData``
 
-        :param can_unquote_each: if flags & EnvExpandFlags.UNQUOTE, unquoting
-            of every obtained token is allowed if this flag is True, as well
-            as if it is None, and chars.is_windows is False
-        :type can_unquote_each: bool | None
+        :param can_unquote_each: If ``flags & EnvExpandFlags.UNQUOTE``, unquoting
+            of every obtained token is allowed if this flag is ``True``, as well
+            as if it is `None`, and ``chars.is_windows`` is ``False``.
+        :type can_unquote_each: ``bool | None``
 
-        :return: List of tokens
-        :rtype: list[str]
+        :return: List of tokens.
+        :rtype: ``list[str]``
         """
         if chars is None:
             chars = EnvChars.Current
@@ -1578,14 +1578,14 @@ class Env:
         input: list[str] | str | None
     ) -> bool:
         """
-        Check whether the first str element or the only str can be considered
-        the beginning of a pipe: "|", "|abc...", but not "||", "||abc..."
+        Check whether the first ``str`` element or the only ``str`` can be considered
+        the beginning of a pipe: ``"|"`` or ``"|abc..."``, but not ``"||"`` or ``"||abc..."``.
 
-        :param input: A list of strings or a string to check
-        :type input: str | None
+        :param input: A list of strings or a string to check.
+        :type input: ``list[str] | str | None``
 
-        :return: Result of the above check as True or False
-        :rtype: bool
+        :return: Result of the above check as ``True`` or ``False``.
+        :rtype: ``bool``
         """
         if (input is None) or (not input):
             return False
@@ -1610,24 +1610,24 @@ class Env:
         chars: EnvCharsData | None = None,
     ) -> tuple[str | None, EnvQuoteType]:
         """
-        Remove leading and trailing spaces, then determine the quote type by
+        Strip leading and trailing spaces from `input`, then determine the quote type by
         checking the first character.
 
-        :param input: String to remove enclosing quotes from
-        :type input: str | None
+        :param input: String to strip.
+        :type input: ``str | None``
 
-        :param flags: Flags controlling what/how to unquote input. Essentially,
-            only two bits are considered: STRIP_SPACES and STRIP_COMMENT
-        :type flags: EnvExpandFlags
+        :param flags: Flags controlling what/how to strip `input`. Essentially,
+            only two bits are considered: ``STRIP_SPACES`` and ``STRIP_COMMENT``.
+        :type flags: ``EnvExpandFlags``
 
         :param chars: Platform-specific special environment characters to
             parse various tokens like escaped characters, environment
             variables, etc.
-        :type chars: EnvCharsData
+        :type chars: ``EnvCharsData``
 
-        :return: input stripped off leading and trailing spaces and the type
-            of surrounding quotes if found
-        :rtype: tuple[str | None, EnvQuoteType]
+        :return: `input` stripped of leading and trailing spaces and the type
+            of surrounding quotes if found.
+        :rtype: ``tuple[str | None, EnvQuoteType]``
         """
 
         if chars is None:
@@ -1657,21 +1657,21 @@ class Env:
         input: str, strip_blanks: bool = False, chars: EnvCharsData | None = None
     ) -> str:
         """
-        Unescape '\\t', '\\n', '\\u0022' etc.
+        Unescape ``'\\t'``, ``'\\n'``, ``'\\u0022'``, etc.
 
-        :param input: Input string to unescape escaped characters in
-        :type input: str
+        :param input: Input string to unescape escaped characters in.
+        :type input: ``str``
 
-        :param strip_blanks: True = remove leading and trailing blanks
-        :type strip_blanks: bool
+        :param strip_blanks: ``True`` = remove leading and trailing blanks.
+        :type strip_blanks: ``bool``
 
         :param chars: Platform-specific special environment characters to
             parse various tokens like escaped characters, environment
             variables, etc.
-        :type chars: EnvCharsData
+        :type chars: ``EnvCharsData``
 
-        :return: Unescaped string, optionally, stripped of blanks
-        :rtype: str
+        :return: Unescaped string, optionally stripped of blanks.
+        :rtype: ``str``
         """
 
         if chars is None:
@@ -1761,28 +1761,28 @@ class Env:
         chars: EnvCharsData | None = None,
     ) -> tuple[str | None, EnvQuoteType]:
         """
-        Remove enclosing quotes from a string ignoring everything beyond the
-        closing quote ignoring escaped quotes. Raise ValueError if a dangling
-        escape or no closing quote found.
+        Remove enclosing quotes from a string, ignoring everything beyond the
+        closing quote and ignoring escaped quotes. Raise ``ValueError`` if a dangling
+        escape or no closing quote is found.
 
-        In most cases, you'd rather use Env.expand() that calls this method,
+        In most cases, you'd rather use `Env.expand()` that calls this method,
         then expands environment variables, arguments, and unescapes special
         characters.
 
-        :param input: String to remove enclosing quotes from
-        :type input: str | None
+        :param input: String to remove enclosing quotes from.
+        :type input: ``str | None``
 
-        :param flags: Flags controlling what/how to unquote input. Essentially,
-            only two bits are considered: STRIP_SPACES and STRIP_COMMENT
-        :type flags: EnvExpandFlags
+        :param flags: Flags controlling what/how to unquote `input`. Essentially,
+            only two bits are considered: ``STRIP_SPACES`` and ``STRIP_COMMENT``.
+        :type flags: ``EnvExpandFlags``
 
         :param chars: Platform-specific special environment characters to
             parse various tokens like escaped characters, environment
             variables, etc.
-        :type chars: EnvCharsData
+        :type chars: ``EnvCharsData``
 
-        :return: Unquoted input and the type of surrounding quotes (see EnvQuoteType)
-        :rtype: tuple[str | None, EnvQuoteType]
+        :return: Unquoted input and the type of surrounding quotes (see ``EnvQuoteType``).
+        :rtype: ``tuple[str | None, EnvQuoteType]``
         """
 
         if chars is None:

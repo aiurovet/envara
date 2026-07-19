@@ -11,10 +11,10 @@ from enum import IntFlag
 
 class EnvPlatformFlags(IntFlag):
     NONE = 0
-    """No flag set"""
+    """No flag set."""
 
     ADD_EMPTY = 1 << 0
-    """Add empty: relevant to any platform"""
+    """Add an empty entry, which is relevant to any platform."""
 
 
 ###############################################################################

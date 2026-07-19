@@ -20,18 +20,18 @@ class EnvFilters:
         filters: list[EnvFilter],
     ) -> list[str]:
         """
-        Filter and sort the input list of strings according to filters, and in
-        the order those passed. In a highly unlikely event of no difference
-        found, a mere case-sensitive string comparison engaged.
+        Filter and sort the `input` list of strings according to `filters`,
+        and in the order those passed. In a highly unlikely event of no
+        difference found, a mere case-sensitive string comparison is engaged.
 
         :param input: The input list to filter and sort
-        :type input: list[str]
+        :type input: `list[str]`
 
-        :param filters: The list of filters to apply
-        :type filters: list[EnvFilter]
+        :param filters: The list of `EnvFilter` instances to apply
+        :type filters: `list[EnvFilter]`
 
         :return: The final list
-        :rtype: list[str]
+        :rtype: `list[str]`
         """
 
         # Check empty parameters

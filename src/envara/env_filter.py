@@ -30,9 +30,8 @@ class EnvFilter:
         """
         Deep equality checker
 
-        :param self: The object
-
         :param other: The object to compare to
+        :type other: object
         """
 
         if not isinstance(other, EnvFilter):
@@ -52,19 +51,17 @@ class EnvFilter:
         """
         Constructor
 
-        :param self: The object
-
-        :param indicator: Nnecessary part of a name (always present),
-            default: DEFAULT_INDICATOR
-        :type indicator: str | None
+        :param indicator: Necessary part of a name (always present),
+            default: `DEFAULT_INDICATOR`
+        :type indicator: `str | None`
 
         :param cur_values: List of zero, one or more strings representing
-            all available values for this machine and OS and run
-        :type cur_values: list[str] | None
+            all available values for this machine, OS, and run
+        :type cur_values: `list[str] | None`
 
-        :param all_values: List of all theoretically possible f string values
-            regradless of this machine, OS and run
-        :type all_values: list[str]
+        :param all_values: List of all theoretically possible string values
+            regardless of this machine, OS, and run
+        :type all_values: `list[str] | None`
         """
         # Accept parameters
 
@@ -81,21 +78,21 @@ class EnvFilter:
         value: str | None,
     ) -> tuple[bool, bool]:
         """
-        Check the input contains the given value separated from the rest by a
-        dot, dash and/or underscore as well as being at the start start or at
-        the end of the input. While `has_value("abc", "ab")` returns `False`,
-        separation at both sides works: `has_value("ab.c", "ab")`,
+        Check whether `input` contains the given `value` separated from the
+        rest by a dot, dash, and/or underscore as well as being at the start
+        or at the end of the `input`. While `has_value("abc", "ab")` returns
+        `False`, separation at both sides works: `has_value("ab.c", "ab")`,
         `has_value("c_ab", "ab")`, as well as `has_value("c-ab_c", "ab")` all
-        return `True`. Essentially, this is a limited version of a word match
+        return `True`. Essentially, this is a limited version of a word match.
 
-        :param input: String to search value for
-        :type input: str | None
+        :param input: String to search `value` for
+        :type input: `str | None`
 
-        :param value: String to search in the input
-        :type value: str | None
+        :param value: String to search in the `input`
+        :type value: `str | None`
 
-        :return: (is_found, are_equal)
-        :rtype: tuple[bool, bool]
+        :return: `(is_found, are_equal)`
+        :rtype: `tuple[bool, bool]`
         """
 
         # Initialise the output flag if required
@@ -155,23 +152,21 @@ class EnvFilter:
         input: str | None,
     ) -> int:
         """
-        Find matching item no for the input string. Requirements:
+        Find matching item number for the `input` string. Requirements:
 
-        - the indicator should be found if non-empty
+        - the `indicator` should be found if non-empty
         - either one of the current values should be found or none of
-          all values (i.e.'any'): assuming runtime environments include
-          'dev', 'test' and 'prod', then '.env', '.env.en.prod',
-          'fr-prod.env' and 'prod_jp_env' should be found, but neither
-          '.env.dev', '.env.dev.en', nor 'en_test.env', nor 'test-env'
-
-        :param self: The object
-        :type: EnvFilter
+          all values (i.e. `'any'`): assuming runtime environments include
+          `'dev'`, `'test'` and `'prod'`, then `'.env'`, `'.env.en.prod'`,
+          `'fr-prod.env'` and `'prod_jp_env'` should be found, but neither
+          `'.env.dev'`, `'.env.dev.en'`, nor `'en_test.env'`, nor
+          `'test-env'`
 
         :param input: The string to match against current and all values
-        :type input: str
+        :type input: `str | None`
 
-        :return: index in `all_values` if found, or -1 otherwise
-        :rtype: int
+        :return: index in `all_values` if found, or `-1` otherwise
+        :rtype: `int`
         """
 
         # If indicator found, and is equal to input, return 0

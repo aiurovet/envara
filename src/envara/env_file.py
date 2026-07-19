@@ -41,7 +41,7 @@ class EnvFile:
     """Default file type (filename extension)"""
 
     EOF_CHAR: ClassVar[str] = "\x1a"
-    """Regex to split a string into key and value"""
+    """End-of-file character (`\\x1A`) used to delimit adjacent files in concatenated content"""
 
     RE_KEY_VALUE: ClassVar[re.Pattern[str]] = re.compile(r"\s*=\s*")
     """Regex to split a string into key and value"""
@@ -59,27 +59,27 @@ class EnvFile:
         *filters: list[EnvFilter] | EnvFilter | None,
     ) -> list[Path]:
         """
-        Get list of eligible files. Adds a list of platform names if
-        `with_platforms = True` (default)
+        Get a list of eligible files. Adds a list of platform names if
+        `EnvFileFlags.ADD_PLATFORMS_BEFORE` is set in `flags` (default).
 
-        :param dir: Directory to look in
-        :type dir: Path | None
+        :param dir: Directory to look in.
+        :type dir: `Path` | `None`
 
-        :param indicator: Necessary part of every relevant filename
-        :type indicator: str
+        :param indicator: Necessary part of every relevant filename.
+        :type indicator: `str`
 
-        :param flags: Add platform names to filters
-        :type flags: EnvFileFlags, default: EnvFileFlags.ADD_PLATFORMS
+        :param flags: Controls platform name insertion into filters.
+        :type flags: `EnvFileFlags` (default: `EnvFileFlags.ADD_PLATFORMS_BEFORE`)
 
-        :param filters: One or more EnvFilter objects showing what is the
-            current value(s), and all possibilities; should be matched
+        :param filters: One or more `EnvFilter` objects showing what the
+            current value(s) and all possibilities are; should be matched
             against: `EnvFile.get_files(EnvFilter(cur_values='prod*',
             all_values=['dev', 'test', 'prod', 'production']), EnvFilter(
-            cur_values=['jp', 'en'], all='en,fr,de,jp'))`
-        :type filters: unlimited arguments of type EnvFilter
+            cur_values=['jp', 'en'], all_values='en,fr,de,jp'))`
+        :type filters: `*EnvFilter`
 
-        :return: List of matching paths in the given directory
-        :rtype: list[Path]
+        :return: List of matching paths in the given directory.
+        :rtype: `list[Path]`
         """
 
         # Adjust arguments
@@ -152,31 +152,31 @@ class EnvFile:
         *filters: list[EnvFilter] | EnvFilter,
     ):
         """
-        Add key-expanded-value pairs from .env-compliant file(s) to os.environ
+        Add key-expanded-value pairs from `.env`-compliant file(s) to `os.environ`.
 
-        :param dir: Default directory to locate platform-specific files
-        :type dir: Path | None
+        :param dir: Default directory to locate platform-specific files.
+        :type dir: `Path` | `None`
 
-        :param indicator: Necessary part of every relevant filename,
-            default: EnvFilter.DEFAULT_INDICATOR
-        :type indicator: str
+        :param indicator: Necessary part of every relevant filename
+            (default: `EnvFilter.DEFAULT_INDICATOR`).
+        :type indicator: `str`
 
-        :param file_flags: Describes what and how to load
-        :type file_flags: EnvFileFlags
+        :param file_flags: Describes what and how to load.
+        :type file_flags: `EnvFileFlags`
 
         :param args: List of arguments (e.g. application args) to expand
-            placeholders like $1, ${2}, ...
-        :type args: list[str]
+            placeholders like `$1`, `${2}`, etc.
+        :type args: `list[str]` | `None`
 
-        :param expand_flags: Describes how to expand env vars and app args
-        :type expand_flags: EnvExpandFlags
+        :param expand_flags: Describes how to expand env vars and app args.
+        :type expand_flags: `EnvExpandFlags`
 
-        :param filters: One or more EnvFilter objects showing what is the
-            current value(s), and all possibilities; should be matched
+        :param filters: One or more `EnvFilter` objects showing what the
+            current value(s) and all possibilities are; should be matched
             against: `EnvFile.get_files(EnvFilter(cur_values='prod*',
             all_values=['dev', 'test', 'prod', 'production']), EnvFilter(
-            cur_values=['jp', 'en'], all='en,fr,de,jp'))`
-        :type filters: unlimited arguments of type EnvFilter
+            cur_values=['jp', 'en'], all_values='en,fr,de,jp'))`
+        :type filters: `*EnvFilter`
 
         """
 
@@ -194,17 +194,17 @@ class EnvFile:
         expand_flags: EnvExpandFlags = DEFAULT_EXPAND_FLAGS,
     ):
         """
-        Add key-expanded-value pairs from a string buffer to os.environ
+        Add key-expanded-value pairs from a string buffer to `os.environ`.
 
-        :param data: String to parse, then load env variables from
-        :type data: str
+        :param data: String to parse, then load env variables from.
+        :type data: `str` | `None`
 
         :param args: List of arguments (e.g. application args) to expand
-            placeholders like $1, ${2}, ...
-        :type args: list[str]
+            placeholders like `$1`, `${2}`, etc.
+        :type args: `list[str]` | `None`
 
-        :param expand_flags: Describes how to expand env vars and app args
-        :type expand_flags: EnvExpandFlags
+        :param expand_flags: Describes how to expand env vars and app args.
+        :type expand_flags: `EnvExpandFlags`
         """
 
         # Split data into lines and loop through every line
@@ -270,14 +270,14 @@ class EnvFile:
     ) -> str:
         """
         Load the content of all files as text and return. May
-        discard previously loaded content if the special flag
-        is set
+        discard previously loaded content if the `EnvFileFlags.RESET_ACCUMULATED`
+        flag is set.
 
-        :param files: List of Paths to read text from
-        :type files: list[Path]
+        :param files: List of `Path` objects to read text from.
+        :type files: `list[Path]`
 
-        :param flags: Describes what and how to load
-        :type flags: EnvFileFlags
+        :param flags: Describes what and how to load.
+        :type flags: `EnvFileFlags`
         """
 
         # Initialise the content
@@ -294,7 +294,7 @@ class EnvFile:
         for file in files:
             file_str = str(file)
 
-            # If the file of that path was loaded aready, skip it
+            # If the file of that path was loaded already, skip it
 
             if file_str in EnvFile.__loaded:
                 continue
@@ -323,17 +323,18 @@ class EnvFile:
         input: str | None, chars: EnvCharsData = EnvChars.Current
     ) -> tuple[EnvCharsData, bool]:
         """
-        Choose new environment-specific chars based on input starting with one of
-        the known cutters (line comment starters)
+        Choose new environment-specific chars based on `input` starting with
+        one of the known cutters (line comment starters).
 
-        :param input: Input string
-        :type input: str
+        :param input: Input string to inspect.
+        :type input: `str` | `None`
 
-        :param chars: Currently selected chars
-        :type chars: EnvCharsData
+        :param chars: Currently selected chars.
+        :type chars: `EnvCharsData`
 
-        :return: Chars to use and a boolean (True if the input starts with a cutter)
-        :rtype: tuple[EnvCharsData, bool]
+        :return: Chars to use and a boolean (`True` if the input starts with
+            a cutter).
+        :rtype: `tuple[EnvCharsData, bool]`
         """
         if not input:
             return chars, True
