@@ -1,3 +1,7 @@
+## 0.6.7
+
+Improved docstrings
+
 ## 0.6.6
 
 Added `EnvCharsData.escape_map` and `Env.escape()`. Re-wrote `Env.join()` using that.
