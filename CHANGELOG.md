@@ -1,6 +1,6 @@
 ## 0.6.7
 
-Improved docstrings
+Improved docstrings and `README.md`
 
 ## 0.6.6
 
