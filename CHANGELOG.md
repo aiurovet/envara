@@ -1,3 +1,7 @@
+## 0.6.8
+
+Added ability to pass `None` as `flags` to `Env.split()` for a pure split without calling `Env.expand()` for every token; removed dependency on `shlex.split()`
+
 ## 0.6.7
 
 Improved docstrings and `README.md`

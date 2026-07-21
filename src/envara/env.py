@@ -17,7 +17,6 @@ import string
 import sys
 import fnmatch
 import subprocess
-import shlex
 from collections.abc import MutableMapping
 from typing import ClassVar
 
@@ -782,7 +781,7 @@ class Env:
                         )
                     else:
                         proc = subprocess.run(
-                            shlex.split(cmd),
+                            Env.split(cmd, chars=chars, flags=None),
                             shell=False,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE,
@@ -859,7 +858,7 @@ class Env:
                         )
                     else:
                         proc = subprocess.run(
-                            shlex.split(cmd),
+                            Env.split(cmd, chars=chars, flags=None),
                             shell=False,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE,
@@ -1396,7 +1395,7 @@ class Env:
         input: str | None,
         args: list[str] | None = None,
         vars: MutableMapping[str, str] | None = None,
-        flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
+        flags: EnvExpandFlags | None = EnvExpandFlags.DEFAULT,
         chars: EnvCharsData | None = None,
         can_unquote_each: bool | None = None,
     ) -> list[str]:
@@ -1450,7 +1449,7 @@ class Env:
         if can_unquote_each is None:
             can_unquote_each = (not chars.is_windows)
 
-        if not can_unquote_each:
+        if not can_unquote_each and (flags is not None):
             flags = flags & ~EnvExpandFlags.UNQUOTE
 
         # A function to execute on every full token obtained
@@ -1461,13 +1460,14 @@ class Env:
             was_quoted: bool = False,
             args: list[str] | None = None,
             vars: MutableMapping[str, str] | None = None,
-            flags: EnvExpandFlags = EnvExpandFlags.DEFAULT,
+            flags: EnvExpandFlags | None = EnvExpandFlags.DEFAULT,
         ) -> bool:
             tokstr = "".join(token)
             token.clear()
             if chars.cutter and tokstr.startswith(chars.cutter):
                 return False
-            tokstr = Env.expand(tokstr, args=args, vars=vars, flags=flags, chars=chars)
+            if flags is not None:
+                tokstr = Env.expand(tokstr, args=args, vars=vars, flags=flags, chars=chars)
             if tokstr:
                 if was_quoted:
                     result.append(tokstr)

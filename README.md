@@ -8,6 +8,10 @@ Does not depend on any special Python package.
 
 Please note that version `0.6.1` brought breaking changes: a switch from multiple parameters (for various platform-specific characters) to a single object of the class `EnvCharsData`. It also decides on which platform's rules to use for the variables' expansions in env files based on the first non-empty character(s) representing a start of a line comment. Previously, it was searching for specific patterns in every line. Finally, public methods `Env.expand_posix(...)` and `Env.expand_simple(...)` have been moved to the private scope, so stop using those directly in favour of `Env.expand(...)`.
 
+Projects that use `envara`:
+
+- [svg2many](https://pypi.org/project/svg2many/): a tool to convert an SVG file to multiple PNG images of various sizes, optionally splitting into background and foreground images. Uses the `resvg-py` package to achieve that. Supports further conversion of PNG file(s) into JPG, WEBP, ICO, GIF, PDF and other formats via the `Pillow` package. Does not require any extra tools (applications), but can be configured to use those too instead of the default converters.
+
 ---
 
 ## Table of Contents
@@ -176,7 +180,7 @@ Key static methods:
 
 ### `EnvFile` class
 
-Reads series of `key=value` lines from env files, removes line comments, expands environment values and arguments, expands escaped characters, and sets or updates those as environment variables. Also allows hierarchical OS-specific stacking of such files.
+Reads series of `key=value` lines from `env` files, removes line comments, expands environment variables and the calling application's command-line arguments. It also expands escaped characters, and sets or updates those as environment variables. As well as allows hierarchical OS-specific stacking of such files. The latter feature allows you to smooth out the differences beween the OSes like Google Chrome's executable being `google-chrome` on Linux, `chrome` on _BSD_ and _Windows_, and a complex path on _macOS_. Env files could be .env (the first to parse), posix.env (common for all UNIX-like platforms), bsd_env, env-linux, etc. You can define your custom env file that will be loaded after the whole current platform stack got loaded, as well as runtime environment-specific (prod.env, uat.env, dev.env) and language-specific (env.fr, -en_env_x, etc.)
 
 Key class constants:
 
@@ -196,8 +200,9 @@ Key public methods:
 
 Environment-related filtering, mainly for use with `EnvFile`. Allows filtering env files based on:
 
-- A necessary part of the filename (indicator)
-- Current runtime values (e.g., `dev`, `prod`)
+- A necessary part of the filename (indicator, default: `env` separated from the rest by any edge, dot, comma, dash or underscore)
+- The platform stack (like `.env` => `posix.env` => `linux.env` => `my.env`, or `.env` => `posix.env` => `bsd.env` => `my.env`, or `windows.env` => `my.env`)
+- Current runtime values (like `dev`, `prod`)
 - All possible values for the runtime environment
 
 Key methods:
@@ -291,7 +296,7 @@ The following parameters control execution of command substitutions:
 
 - `flags` — `EnvExpandFlags` controls expansion.
 - `ALLOW_SHELL` — command substitutions executed with `shell=True` (less safe, more flexible).
-- `ALLOW_SUBPROC` — executed with `shell=False` using `shlex.split(...)` (safer).
+- `ALLOW_SUBPROC` — executed with `shell=False` using `Env.split(...)` (safer).
 
 ---
 
